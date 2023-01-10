@@ -51,13 +51,13 @@ func (s Specter) Run(sourceLocations []string) error {
 
 	if lr.HasWarnings() {
 		for _, w := range lr.Warnings() {
-			s.Logger.Warn(w.Message)
+			fmt.Printf("Warning: %s\n", w.Message)
 		}
 	}
 
 	if lr.HasErrors() {
 		for _, e := range lr.Errors().Errors {
-			s.Logger.Error(e.Error())
+			fmt.Printf("Error: %s\n", e.Error())
 		}
 		return errors.WrapWithMessage(err, errors.InternalErrorCode, "linting errors encountered")
 	}
@@ -135,11 +135,9 @@ func (s Specter) LintSpecs(specs []Spec) LinterResultSet {
 
 // ProcessSpecs sends the specs to processors.
 func (s Specter) ProcessSpecs(specs ResolvedDependencies) error {
-	logger, _ := zap.NewProduction()
 	ctx := ProcessingContext{
 		DependencyGraph: specs,
 		Outputs:         nil,
-		Logger:          *logger,
 	}
 
 	for _, p := range s.Processors {

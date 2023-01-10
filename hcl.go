@@ -63,7 +63,7 @@ func (l HCLGenericSpecLoader) Load(s Source) ([]Spec, error) {
 			return nil, errors.NewWithMessage(
 				InvalidHCLErrorCode,
 				fmt.Sprintf(
-					"invalid spec source \"%s\" at line %d:%d, block \"%s\" should contain a filename",
+					"invalid spec source \"%s\" at line %d:%d, block \"%s\" should contain a name",
 					s.Location,
 					block.Range().Start.Line,
 					block.Range().Start.Column,

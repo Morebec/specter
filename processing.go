@@ -3,16 +3,13 @@ package specter
 import (
 	"fmt"
 	"github.com/morebec/errors-go/errors"
-	"go.uber.org/zap"
 	"os"
 	"sync"
 )
 
 type ProcessingContext struct {
 	DependencyGraph ResolvedDependencies
-	// Logger that can be used by processors to indicate progress or warnings.
-	Logger  zap.Logger
-	Outputs []ProcessingOutput
+	Outputs         []ProcessingOutput
 }
 
 // Output returns the output associated with a given processor.
