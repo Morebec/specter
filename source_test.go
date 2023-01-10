@@ -16,7 +16,7 @@ func TestLocalFileSourceLoader_Load(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    Source
+		want    []Source
 		wantErr bool
 	}{
 		{
@@ -24,7 +24,7 @@ func TestLocalFileSourceLoader_Load(t *testing.T) {
 			args: args{
 				target: "does-not-exist",
 			},
-			want:    Source{},
+			want:    nil,
 			wantErr: true,
 		},
 		{
@@ -32,10 +32,12 @@ func TestLocalFileSourceLoader_Load(t *testing.T) {
 			args: args{
 				target: existingFile,
 			},
-			want: Source{
-				Location: absPath,
-				Data:     []byte{},
-				Format:   HCLSourceFormat,
+			want: []Source{
+				{
+					Location: absPath,
+					Data:     []byte{},
+					Format:   HCLSourceFormat,
+				},
 			},
 			wantErr: false,
 		},
