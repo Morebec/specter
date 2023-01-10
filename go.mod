@@ -1,4 +1,4 @@
-module github.com/Morebec/specter
+module github.com/morebec/specter
 
 go 1.18
 
