@@ -86,7 +86,7 @@ func (s Specter) LoadSources(sourceTargets []string) ([]Source, error) {
 					errs = errs.Append(err)
 					continue
 				}
-				sources = append(sources, loaded)
+				sources = append(sources, loaded...)
 			}
 		}
 	}
