@@ -1,5 +1,7 @@
 # Specter
 
+[![Go](https://github.com/Morebec/specter/actions/workflows/go.yml/badge.svg)](https://github.com/Morebec/specter/actions/workflows/go.yml)
+
 Specter is a development toolkit in Go that allows you to develop configuration file processors based on 
 HashiCorp Configuration Language (HCL). With Specter, you can define your own Domain-Specific Language (DSL) 
 using HCL and create a processing pipeline to validate, lint, resolve dependencies, and generate code or output 
