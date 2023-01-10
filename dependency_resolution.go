@@ -170,15 +170,5 @@ func (g DependencyGraph) Resolve() (ResolvedDependencies, error) {
 
 // ResolvedDependencies represents an ordered list of Spec that should be processed in that specific order to avoid
 // unresolved types.
+// TODO Remove spec group and add its methods here.
 type ResolvedDependencies SpecGroup
-
-// DependenciesOfSpecTypeName returns the dependencies of a given spec.
-func (d ResolvedDependencies) DependenciesOfSpecTypeName(tn SpecName) []SpecName {
-	for _, s := range d {
-		if s.Name() == tn {
-			return s.Dependencies()
-		}
-	}
-
-	return nil
-}

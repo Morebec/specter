@@ -8,11 +8,12 @@ import (
 
 // Specter is the service responsible to run a specter pipeline.
 type Specter struct {
-	SourceLoaders []SourceLoader
-	SpecLoaders   []SpecLoader
-	Processors    []SpecProcessor
-	Linters       []SpecLinter
-	Logger        zap.Logger
+	SourceLoaders    []SourceLoader
+	SpecLoaders      []SpecLoader
+	Processors       []SpecProcessor
+	Linters          []SpecLinter
+	OutputProcessors []OutputProcessor
+	Logger           zap.Logger
 }
 
 // Run the pipeline from start to finish.
@@ -63,8 +64,14 @@ func (s Specter) Run(sourceLocations []string) error {
 	}
 
 	// Process Specs
-	if err = s.ProcessSpecs(deps); err != nil {
+	var outputs []ProcessingOutput
+	outputs, err = s.ProcessSpecs(deps)
+	if err != nil {
 		return errors.WrapWithMessage(err, errors.InternalErrorCode, "failed processing specs")
+	}
+
+	if err = s.ProcessOutputs(deps, outputs); err != nil {
+
 	}
 
 	// All good!
@@ -128,13 +135,14 @@ func (s Specter) ResolveDependencies(specs []Spec) (ResolvedDependencies, error)
 	return deps, nil
 }
 
+// LintSpecs runes all Linters against a list of Specs.
 func (s Specter) LintSpecs(specs []Spec) LinterResultSet {
 	linter := CompositeLinter(s.Linters...)
 	return linter.Lint(specs)
 }
 
 // ProcessSpecs sends the specs to processors.
-func (s Specter) ProcessSpecs(specs ResolvedDependencies) error {
+func (s Specter) ProcessSpecs(specs ResolvedDependencies) ([]ProcessingOutput, error) {
 	ctx := ProcessingContext{
 		DependencyGraph: specs,
 		Outputs:         nil,
@@ -143,10 +151,28 @@ func (s Specter) ProcessSpecs(specs ResolvedDependencies) error {
 	for _, p := range s.Processors {
 		outputs, err := p.Process(ctx)
 		if err != nil {
-			return errors.WrapWithMessage(err, errors.InternalErrorCode, "processor \"%s\" failed")
+			return nil, errors.WrapWithMessage(err, errors.InternalErrorCode, fmt.Sprintf("processor \"%s\" failed", p.Name()))
 		}
 		ctx.Outputs = append(ctx.Outputs, outputs...)
 	}
+
+	return ctx.Outputs, nil
+}
+
+// ProcessOutputs sends a list of ProcessingOutputs to the registered OutputProcessors.
+func (s Specter) ProcessOutputs(specs ResolvedDependencies, outputs []ProcessingOutput) error {
+	ctx := OutputProcessingContext{
+		DependencyGraph: specs,
+		Outputs:         outputs,
+	}
+
+	for _, p := range s.OutputProcessors {
+		err := p.Process(ctx)
+		if err != nil {
+			return errors.WrapWithMessage(err, errors.InternalErrorCode, fmt.Sprintf("output processor \"%s\" failed", p.Name()))
+		}
+	}
+
 	return nil
 }
 
@@ -187,5 +213,11 @@ func WithLinters(linters ...SpecLinter) Option {
 func WithProcessors(processors ...SpecProcessor) Option {
 	return func(s *Specter) {
 		s.Processors = append(s.Processors, processors...)
+	}
+}
+
+func WithOutputProcessors(processors ...OutputProcessor) Option {
+	return func(s *Specter) {
+		s.OutputProcessors = append(s.OutputProcessors, processors...)
 	}
 }
