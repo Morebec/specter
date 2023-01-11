@@ -34,6 +34,9 @@ func (r *OutputFileRegistry) Load() error {
 	bytes, err := os.ReadFile(r.FilePath)
 
 	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
 		return errors.WrapWithMessage(err, errors.InternalErrorCode, "failed loading output file registry")
 	}
 	if err := json.Unmarshal(bytes, r); err != nil {
@@ -122,6 +125,16 @@ func (f WriteFileOutputsProcessor) Process(ctx OutputProcessingContext) error {
 	}
 
 	registry := NewOutputFileRegistry(".specter.json")
+	if f.config.UseRegistry {
+		if err := registry.Load(); err != nil {
+			ctx.Logger.Error(fmt.Sprintf("failed loading output registry at %s", registry.FilePath))
+			return err
+		}
+		if err := registry.Clean(); err != nil {
+			ctx.Logger.Error(fmt.Sprintf("failed cleaning output registry at %s", registry.FilePath))
+			return err
+		}
+	}
 
 	errs := errors.NewGroup(WriteFileOutputsProcessorErrorCode)
 	var wg sync.WaitGroup
