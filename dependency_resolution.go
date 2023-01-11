@@ -16,7 +16,7 @@ package specter
 
 import (
 	"fmt"
-	"github.com/morebec/errors-go/errors"
+	"github.com/morebec/go-errors/errors"
 	"strings"
 )
 

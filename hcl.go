@@ -6,7 +6,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/hashicorp/hcl/v2/hclsimple"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/morebec/errors-go/errors"
+	"github.com/morebec/go-errors/errors"
 	"github.com/zclconf/go-cty/cty"
 )
 

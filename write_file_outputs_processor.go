@@ -3,7 +3,7 @@ package specter
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/morebec/errors-go/errors"
+	"github.com/morebec/go-errors/errors"
 	"io/ioutil"
 	"os"
 	"sync"
