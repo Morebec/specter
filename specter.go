@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/morebec/go-errors/errors"
 	"os"
+	"time"
 )
 
 type ExecutionMode string
@@ -28,10 +29,35 @@ type Specter struct {
 	ExecutionMode    ExecutionMode
 }
 
+type Stats struct {
+	StartedAt         time.Time
+	EndedAt           time.Time
+	NbSourceLocations int
+	NbSources         int
+	NbSpecs           int
+	NbOutputs         int
+}
+
+func (s Stats) ExecutionTime() time.Duration {
+	return s.EndedAt.Sub(s.EndedAt)
+}
+
 // Run the pipeline from start to finish.
 func (s Specter) Run(sourceLocations []string) error {
+	stats := Stats{}
+
+	defer func() {
+		s.Logger.Info(fmt.Sprintf("\nStarted At: %s, ended at: %s, execution time: %s", stats.StartedAt, stats.EndedAt, stats.ExecutionTime()))
+		s.Logger.Info(fmt.Sprintf("Number of source locations: %d", stats.NbSourceLocations))
+		s.Logger.Info(fmt.Sprintf("Number of sources: %d", stats.NbSources))
+		s.Logger.Info(fmt.Sprintf("Number of specs: %d", stats.NbSpecs))
+		s.Logger.Info(fmt.Sprintf("Number of outputs: %d", stats.NbOutputs))
+	}()
+
 	// Load sources
+	stats.NbSourceLocations = len(sourceLocations)
 	sources, err := s.LoadSources(sourceLocations)
+	stats.NbSources = len(sources)
 	if err != nil {
 		e := errors.WrapWithMessage(err, errors.InternalErrorCode, "failed loading sources")
 		s.Logger.Error(e.Error())
@@ -41,6 +67,7 @@ func (s Specter) Run(sourceLocations []string) error {
 	// Load Specs
 	var specs []Spec
 	specs, err = s.LoadSpecs(sources)
+	stats.NbSpecs = len(specs)
 	if err != nil {
 		e := errors.WrapWithMessage(err, errors.InternalErrorCode, "failed loading specs")
 		s.Logger.Error(e.Error())
@@ -73,6 +100,7 @@ func (s Specter) Run(sourceLocations []string) error {
 	// Process Specs
 	var outputs []ProcessingOutput
 	outputs, err = s.ProcessSpecs(deps)
+	stats.NbOutputs = len(outputs)
 	if err != nil {
 		e := errors.WrapWithMessage(err, errors.InternalErrorCode, "failed processing specs")
 		s.Logger.Error(e.Error())
