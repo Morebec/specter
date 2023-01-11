@@ -6,6 +6,17 @@ import (
 	"os"
 )
 
+type ExecutionMode string
+
+// LintMode will cause a Specter instance to run until the lint step only.
+const LintMode ExecutionMode = "lint"
+
+// PreviewMode will cause a Specter instance to run until the processing step only, no output will be processed.
+const PreviewMode ExecutionMode = "preview"
+
+// FullMode will cause a Specter instance to be ran fully.
+const FullMode ExecutionMode = "full"
+
 // Specter is the service responsible to run a specter pipeline.
 type Specter struct {
 	SourceLoaders    []SourceLoader
@@ -14,6 +25,7 @@ type Specter struct {
 	Linters          []SpecLinter
 	OutputProcessors []OutputProcessor
 	Logger           Logger
+	ExecutionMode    ExecutionMode
 }
 
 // Run the pipeline from start to finish.
@@ -53,6 +65,10 @@ func (s Specter) Run(sourceLocations []string) error {
 		}
 		return errors.WrapWithMessage(errs, errors.InternalErrorCode, "linting errors encountered")
 	}
+	// stop here
+	if s.ExecutionMode == LintMode {
+		return nil
+	}
 
 	// Process Specs
 	var outputs []ProcessingOutput
@@ -62,6 +78,10 @@ func (s Specter) Run(sourceLocations []string) error {
 		s.Logger.Error(e.Error())
 		return e
 	}
+	// stop here
+	if s.ExecutionMode == PreviewMode {
+		return nil
+	}
 
 	if err = s.ProcessOutputs(deps, outputs); err != nil {
 		e := errors.WrapWithMessage(err, errors.InternalErrorCode, "failed processing outputs")
@@ -69,7 +89,7 @@ func (s Specter) Run(sourceLocations []string) error {
 		return e
 	}
 
-	s.Logger.Success("\nProcessing completed successfully")
+	s.Logger.Success("\nProcessing completed successfully.")
 	return nil
 }
 
@@ -128,19 +148,19 @@ func (s Specter) LoadSpecs(sources []Source) ([]Spec, error) {
 		}
 	}
 
-	s.Logger.Info(fmt.Sprintf("(%d) Specs loaded.", len(specs)))
+	s.Logger.Info(fmt.Sprintf("%d specs loaded.", len(specs)))
 
 	return specs, errors.GroupOrNil(errs)
 }
 
 // ResolveDependencies resolves the dependencies between specs.
 func (s Specter) ResolveDependencies(specs []Spec) (ResolvedDependencies, error) {
-	s.Logger.Info("\nResolving spec dependencies...")
+	s.Logger.Info("\nResolving dependencies...")
 	deps, err := NewDependencyGraph(specs...).Resolve()
 	if err != nil {
 		return nil, errors.WrapWithMessage(err, errors.InternalErrorCode, "failed resolving dependencies")
 	}
-	s.Logger.Success("Spec dependencies resolved successfully.")
+	s.Logger.Success("Dependencies resolved successfully.")
 	return deps, nil
 }
 
@@ -162,7 +182,7 @@ func (s Specter) LintSpecs(specs []Spec) LinterResultSet {
 	}
 
 	if !lr.HasWarnings() && !lr.HasErrors() {
-		s.Logger.Success("Specs linted successfully")
+		s.Logger.Success("Specs linted successfully.")
 	}
 
 	return lr
@@ -183,6 +203,11 @@ func (s Specter) ProcessSpecs(specs ResolvedDependencies) ([]ProcessingOutput, e
 			return nil, errors.WrapWithMessage(err, errors.InternalErrorCode, fmt.Sprintf("processor \"%s\" failed", p.Name()))
 		}
 		ctx.Outputs = append(ctx.Outputs, outputs...)
+	}
+
+	s.Logger.Info(fmt.Sprintf("%d outputs generated.", len(ctx.Outputs)))
+	for _, o := range ctx.Outputs {
+		s.Logger.Info(fmt.Sprintf("-> %s", o.Name))
 	}
 
 	s.Logger.Success("Specs processed successfully.")
@@ -209,13 +234,11 @@ func (s Specter) ProcessOutputs(specs ResolvedDependencies, outputs []Processing
 	return nil
 }
 
-// Option represents an option to configure a specter instance.
-type Option func(s *Specter)
-
 // New allows creating a new specter instance using the provided options.
 func New(opts ...Option) *Specter {
 	s := &Specter{
-		Logger: NewColoredOutputLogger(ColoredOutputLoggerConfig{EnableColors: true, Writer: os.Stdout}),
+		Logger:        NewColoredOutputLogger(ColoredOutputLoggerConfig{EnableColors: true, Writer: os.Stdout}),
+		ExecutionMode: FullMode,
 	}
 	for _, o := range opts {
 		o(s)
@@ -223,42 +246,54 @@ func New(opts ...Option) *Specter {
 	return s
 }
 
+// Option represents an option to configure a specter instance.
+type Option func(s *Specter)
+
+// WithLogger configures the Logger of a Specter instance.
 func WithLogger(l Logger) Option {
 	return func(s *Specter) {
 		s.Logger = l
 	}
 }
 
-// WithSourceLoaders allows configuring the SourceLoader of a Specter instance.
+// WithSourceLoaders configures the SourceLoader of a Specter instance.
 func WithSourceLoaders(loaders ...SourceLoader) Option {
 	return func(s *Specter) {
 		s.SourceLoaders = append(s.SourceLoaders, loaders...)
 	}
 }
 
-// WithLoaders allows configuring the SpecLoader of a Specter instance.
+// WithLoaders configures the SpecLoader of a Specter instance.
 func WithLoaders(loaders ...SpecLoader) Option {
 	return func(s *Specter) {
 		s.SpecLoaders = append(s.SpecLoaders, loaders...)
 	}
 }
 
-// WithLinters allows configuring the SpecLinter of a Specter instance.
+// WithLinters configures the SpecLinter of a Specter instance.
 func WithLinters(linters ...SpecLinter) Option {
 	return func(s *Specter) {
 		s.Linters = append(s.Linters, linters...)
 	}
 }
 
-// WithProcessors allows configuring the SpecProcess of a Specter instance.
+// WithProcessors configures the SpecProcess of a Specter instance.
 func WithProcessors(processors ...SpecProcessor) Option {
 	return func(s *Specter) {
 		s.Processors = append(s.Processors, processors...)
 	}
 }
 
+// WithOutputProcessors configures the OutputProcessor of a Specter instance.
 func WithOutputProcessors(processors ...OutputProcessor) Option {
 	return func(s *Specter) {
 		s.OutputProcessors = append(s.OutputProcessors, processors...)
+	}
+}
+
+// WithExecutionMode configures the ExecutionMode of a Specter instance.
+func WithExecutionMode(m ExecutionMode) Option {
+	return func(s *Specter) {
+		s.ExecutionMode = m
 	}
 }
