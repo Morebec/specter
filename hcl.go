@@ -58,7 +58,7 @@ func (l HCLGenericSpecLoader) Load(s Source) ([]Spec, error) {
 
 	body := file.Body.(*hclsyntax.Body)
 	for _, block := range body.Blocks {
-		// Ensure there is at least one label for the filename
+		// Ensure there is at least one label for the FilePath
 		if len(block.Labels) == 0 || block.Labels[0] == "" {
 			return nil, errors.NewWithMessage(
 				InvalidHCLErrorCode,
@@ -160,7 +160,7 @@ type HCLFileConfig interface {
 
 // HCLVariableConfig represents a block configuration that allows defining variables.
 type HCLVariableConfig struct {
-	Name        string    `hcl:"filename,label"`
+	Name        string    `hcl:"FilePath,label"`
 	Description string    `hcl:"description,optional"`
 	Value       cty.Value `hcl:"value"`
 }

@@ -128,7 +128,7 @@ func (g DependencyGraph) Resolve() (ResolvedDependencies, error) {
 					if _, found := specByTypeNames[dependency]; !found {
 						return nil, errors.NewWithMessage(
 							errors.InternalErrorCode,
-							fmt.Sprintf("spec with type filename \"%s\" depends on an unresolved type filename \"%s\"",
+							fmt.Sprintf("spec with type FilePath \"%s\" depends on an unresolved type FilePath \"%s\"",
 								typeName,
 								dependency,
 							),
