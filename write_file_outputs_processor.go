@@ -17,7 +17,7 @@ const WriteFileOutputsProcessorErrorCode = "write_file_outputs_processor_error"
 type OutputFileRegistry struct {
 	GeneratedAt time.Time `json:"generatedAt"`
 	Files       []string  `json:"files"`
-	filename    string
+	FilePath    string
 }
 
 // NewOutputFileRegistry returns a new output file registry.
@@ -25,13 +25,13 @@ func NewOutputFileRegistry(fileName string) OutputFileRegistry {
 	return OutputFileRegistry{
 		GeneratedAt: time.Now(),
 		Files:       nil,
-		filename:    fileName,
+		FilePath:    fileName,
 	}
 }
 
 // Load loads the registry.
 func (r *OutputFileRegistry) Load() error {
-	bytes, err := os.ReadFile(r.filename)
+	bytes, err := os.ReadFile(r.FilePath)
 
 	if err != nil {
 		return errors.WrapWithMessage(err, errors.InternalErrorCode, "failed loading output file registry")
@@ -53,7 +53,7 @@ func (r *OutputFileRegistry) Write() error {
 	if err != nil {
 		return errors.Wrap(err, "failed generating output file registry")
 	}
-	if err := ioutil.WriteFile(r.filename, js, os.ModePerm); err != nil {
+	if err := ioutil.WriteFile(r.FilePath, js, os.ModePerm); err != nil {
 		return errors.Wrap(err, "failed generating output file registry")
 	}
 
@@ -110,7 +110,7 @@ type FileOutput struct {
 }
 
 func (f WriteFileOutputsProcessor) Process(ctx OutputProcessingContext) error {
-	fmt.Println("Writing output files ...")
+	ctx.Logger.Info("Writing output files ...")
 
 	var files []FileOutput
 	for _, o := range ctx.Outputs {
@@ -130,10 +130,10 @@ func (f WriteFileOutputsProcessor) Process(ctx OutputProcessingContext) error {
 		file := file
 		go func() {
 			defer wg.Done()
-			fmt.Println(fmt.Sprintf("Writing file %s ...", file.Path))
+			ctx.Logger.Info(fmt.Sprintf("Writing file %s ...", file.Path))
 			err := os.WriteFile(file.Path, file.Data, os.ModePerm)
 			if err != nil {
-				fmt.Println(fmt.Sprintf("failed writing output file at %s", file.Path))
+				ctx.Logger.Error(fmt.Sprintf("failed writing output file at %s", file.Path))
 				errs = errs.Append(err)
 			}
 			registry.Files = append(registry.Files, file.Path)
@@ -142,18 +142,18 @@ func (f WriteFileOutputsProcessor) Process(ctx OutputProcessingContext) error {
 	wg.Wait()
 
 	if f.config.UseRegistry {
-		fmt.Println("Writing output file registry ...")
+		ctx.Logger.Trace(fmt.Sprintf("Writing output file registry to \"%s\" ...", registry.FilePath))
 		if err := registry.Write(); err != nil {
 			return errors.Wrap(err, "failed writing output files")
 		}
-		fmt.Println("Output file registry written successfully.")
+		ctx.Logger.Trace("Output file registry written successfully.")
 
 		if errs.HasErrors() {
 			return errs
 		}
 	}
 
-	fmt.Println("Output files written successfully.")
+	ctx.Logger.Success("Output files written successfully.")
 
 	return nil
 }

@@ -3,6 +3,7 @@ package specter
 type ProcessingContext struct {
 	DependencyGraph ResolvedDependencies
 	Outputs         []ProcessingOutput
+	Logger          Logger
 }
 
 // Output returns the output associated with a given processor.
@@ -26,7 +27,7 @@ type ProcessingOutput struct {
 
 // SpecProcessor are services responsible for performing work using Specs.
 type SpecProcessor interface {
-	// Name returns the unique filename of this processor.
+	// Name returns the unique FilePath of this processor.
 	Name() string
 
 	// Process processes a group of specifications.
@@ -36,6 +37,7 @@ type SpecProcessor interface {
 type OutputProcessingContext struct {
 	DependencyGraph ResolvedDependencies
 	Outputs         []ProcessingOutput
+	Logger          Logger
 }
 
 // OutputProcessor are services responsible for processing outputs of SpecProcessors.

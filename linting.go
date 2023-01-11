@@ -88,7 +88,7 @@ func CompositeLinter(linters ...SpecLinter) LinterFunc {
 	}
 }
 
-// SpecificationMustNotHaveUndefinedNames ensures that no spec has an undefined type filename
+// SpecificationMustNotHaveUndefinedNames ensures that no spec has an undefined type FilePath
 func SpecificationMustNotHaveUndefinedNames() LinterFunc {
 	return func(specs SpecGroup) LinterResultSet {
 		result := LinterResultSet{}
@@ -97,7 +97,7 @@ func SpecificationMustNotHaveUndefinedNames() LinterFunc {
 			if s.Name() == UndefinedSpecificationName {
 				result = append(result, LinterResult{
 					Severity: ErrorSeverity,
-					Message:  fmt.Sprintf("spec at \"%s\" has an undefined type filename", s.Source().Location),
+					Message:  fmt.Sprintf("spec at \"%s\" has an undefined type FilePath", s.Source().Location),
 				})
 			}
 		}
@@ -112,7 +112,7 @@ func SpecificationsMustNotHaveDuplicateTypeNames() LinterFunc {
 
 		result := LinterResultSet{}
 
-		// Where key is the type filename and the array contains all the spec file locations where it was encountered.
+		// Where key is the type FilePath and the array contains all the spec file locations where it was encountered.
 		encounteredNames := map[SpecName][]string{}
 
 		for _, s := range specs {
@@ -138,7 +138,7 @@ func SpecificationsMustNotHaveDuplicateTypeNames() LinterFunc {
 				result = append(result, LinterResult{
 					Severity: ErrorSeverity,
 					Message: fmt.Sprintf(
-						"duplicate spec filename detected for \"%s\" in the following file(s): %s",
+						"duplicate spec FilePath detected for \"%s\" in the following file(s): %s",
 						name,
 						strings.Join(fileNames, ", "),
 					),

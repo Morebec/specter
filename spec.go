@@ -15,7 +15,7 @@ type SpecName string
 // It is the responsibility of a Module to convert a spec to an appropriate data structure representing the intent of a
 // given Spec.
 type Spec interface {
-	// Name returns the unique filename of this spec.
+	// Name returns the unique FilePath of this spec.
 	Name() SpecName
 
 	// Type returns the type of this spec.
@@ -104,7 +104,7 @@ func (s GenericSpec) Dependencies() []SpecName {
 	return s.dependencies
 }
 
-// Attribute returns an attribute by its filename or nil if it was not found.
+// Attribute returns an attribute by its FilePath or nil if it was not found.
 func (s GenericSpec) Attribute(name string) *GenericSpecAttribute {
 	for _, a := range s.Attributes {
 		if a.Name == name {

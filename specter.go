@@ -3,7 +3,7 @@ package specter
 import (
 	"fmt"
 	"github.com/morebec/errors-go/errors"
-	"go.uber.org/zap"
+	"os"
 )
 
 // Specter is the service responsible to run a specter pipeline.
@@ -13,88 +13,92 @@ type Specter struct {
 	Processors       []SpecProcessor
 	Linters          []SpecLinter
 	OutputProcessors []OutputProcessor
-	Logger           zap.Logger
+	Logger           Logger
 }
 
 // Run the pipeline from start to finish.
 func (s Specter) Run(sourceLocations []string) error {
 	// Load sources
-
-	fmt.Printf("Loading sources from (%d) locations:\n", len(sourceLocations))
-	for _, sl := range sourceLocations {
-		fmt.Printf("  > %s\n", sl)
-	}
 	sources, err := s.LoadSources(sourceLocations)
 	if err != nil {
-		return errors.WrapWithMessage(err, errors.InternalErrorCode, "failed loading sources")
+		e := errors.WrapWithMessage(err, errors.InternalErrorCode, "failed loading sources")
+		s.Logger.Error(e.Error())
+		return e
 	}
-	fmt.Println()
 
 	// Load Specs
-	fmt.Println("Loading specs ...")
 	var specs []Spec
 	specs, err = s.LoadSpecs(sources)
 	if err != nil {
-		return errors.WrapWithMessage(err, errors.InternalErrorCode, "failed loading specs")
+		e := errors.WrapWithMessage(err, errors.InternalErrorCode, "failed loading specs")
+		s.Logger.Error(e.Error())
+		return e
 	}
-	fmt.Printf("(%d) Specs loaded.\n", len(specs))
-	fmt.Println()
 
 	// Resolve Dependencies
 	var deps ResolvedDependencies
 	deps, err = s.ResolveDependencies(specs)
 	if err != nil {
-		return errors.WrapWithMessage(err, errors.InternalErrorCode, "dependency resolution failed")
+		e := errors.WrapWithMessage(err, errors.InternalErrorCode, "dependency resolution failed")
+		s.Logger.Error(e.Error())
+		return e
 	}
 
 	// Lint Specs
 	lr := s.LintSpecs(deps)
-
-	if lr.HasWarnings() {
-		for _, w := range lr.Warnings() {
-			fmt.Printf("Warning: %s\n", w.Message)
-		}
-	}
-
 	if lr.HasErrors() {
+		errs := errors.NewGroup(errors.InternalErrorCode)
 		for _, e := range lr.Errors().Errors {
-			fmt.Printf("Error: %s\n", e.Error())
+			errs = errs.Append(e)
 		}
-		return errors.WrapWithMessage(err, errors.InternalErrorCode, "linting errors encountered")
+		return errors.WrapWithMessage(errs, errors.InternalErrorCode, "linting errors encountered")
 	}
 
 	// Process Specs
 	var outputs []ProcessingOutput
 	outputs, err = s.ProcessSpecs(deps)
 	if err != nil {
-		return errors.WrapWithMessage(err, errors.InternalErrorCode, "failed processing specs")
+		e := errors.WrapWithMessage(err, errors.InternalErrorCode, "failed processing specs")
+		s.Logger.Error(e.Error())
+		return e
 	}
 
 	if err = s.ProcessOutputs(deps, outputs); err != nil {
-
+		e := errors.WrapWithMessage(err, errors.InternalErrorCode, "failed processing outputs")
+		s.Logger.Error(e.Error())
+		return e
 	}
 
-	// All good!
-
+	s.Logger.Success("\nProcessing completed successfully")
 	return nil
 }
 
 // LoadSources only performs the Load sources step.
-func (s Specter) LoadSources(sourceTargets []string) ([]Source, error) {
+func (s Specter) LoadSources(sourceLocations []string) ([]Source, error) {
 	var sources []Source
 	errs := errors.NewGroup(errors.InternalErrorCode)
 
-	for _, l := range s.SourceLoaders {
-		// TODO Detect targets that were not loaded.
-		for _, src := range sourceTargets {
-			if l.Supports(src) {
-				loaded, err := l.Load(src)
+	s.Logger.Info(fmt.Sprintf("\nLoading sources from (%d) locations:", len(sourceLocations)))
+	for _, sl := range sourceLocations {
+		s.Logger.Info(fmt.Sprintf("-> \"%s\"", sl))
+	}
+
+	for _, sl := range sourceLocations {
+		loaded := false
+		for _, l := range s.SourceLoaders {
+			if l.Supports(sl) {
+				loadedSources, err := l.Load(sl)
 				if err != nil {
+					s.Logger.Error(err.Error())
 					errs = errs.Append(err)
 					continue
 				}
-				sources = append(sources, loaded...)
+				sources = append(sources, loadedSources...)
+				loaded = true
 			}
+		}
+		if !loaded {
+			s.Logger.Warning(fmt.Sprintf("source location \"%s\" was not loaded.", sl))
 		}
 	}
 
@@ -103,16 +107,19 @@ func (s Specter) LoadSources(sourceTargets []string) ([]Source, error) {
 
 // LoadSpecs performs the loading of specs.
 func (s Specter) LoadSpecs(sources []Source) ([]Spec, error) {
+	s.Logger.Info("\nLoading specs ...")
+
 	// Load specs
 	var specs []Spec
 	errs := errors.NewGroup(errors.InternalErrorCode)
 
-	for _, l := range s.SpecLoaders {
-		// TODO Detect sources that were not loaded by any loader
-		for _, src := range sources {
+	for _, src := range sources {
+		for _, l := range s.SpecLoaders {
+			// TODO Detect sources that were not loaded by any loader
 			if l.SupportsSource(src) {
 				loaded, err := l.Load(src)
 				if err != nil {
+					s.Logger.Error(err.Error())
 					errs = errs.Append(err)
 					continue
 				}
@@ -121,24 +128,44 @@ func (s Specter) LoadSpecs(sources []Source) ([]Spec, error) {
 		}
 	}
 
+	s.Logger.Info(fmt.Sprintf("(%d) Specs loaded.", len(specs)))
+
 	return specs, errors.GroupOrNil(errs)
 }
 
 // ResolveDependencies resolves the dependencies between specs.
 func (s Specter) ResolveDependencies(specs []Spec) (ResolvedDependencies, error) {
-
+	s.Logger.Info("\nResolving spec dependencies...")
 	deps, err := NewDependencyGraph(specs...).Resolve()
 	if err != nil {
 		return nil, errors.WrapWithMessage(err, errors.InternalErrorCode, "failed resolving dependencies")
 	}
-
+	s.Logger.Success("Spec dependencies resolved successfully.")
 	return deps, nil
 }
 
 // LintSpecs runes all Linters against a list of Specs.
 func (s Specter) LintSpecs(specs []Spec) LinterResultSet {
 	linter := CompositeLinter(s.Linters...)
-	return linter.Lint(specs)
+	s.Logger.Info("\nLinting specs ...")
+	lr := linter.Lint(specs)
+	if lr.HasWarnings() {
+		for _, w := range lr.Warnings() {
+			s.Logger.Warning(fmt.Sprintf("Warning: %s\n", w.Message))
+		}
+	}
+
+	if lr.HasErrors() {
+		for _, e := range lr.Errors().Errors {
+			s.Logger.Error(fmt.Sprintf("Error: %s\n", e.Error()))
+		}
+	}
+
+	if !lr.HasWarnings() && !lr.HasErrors() {
+		s.Logger.Success("Specs linted successfully")
+	}
+
+	return lr
 }
 
 // ProcessSpecs sends the specs to processors.
@@ -146,8 +173,10 @@ func (s Specter) ProcessSpecs(specs ResolvedDependencies) ([]ProcessingOutput, e
 	ctx := ProcessingContext{
 		DependencyGraph: specs,
 		Outputs:         nil,
+		Logger:          s.Logger,
 	}
 
+	s.Logger.Info("\nProcessing specs ...")
 	for _, p := range s.Processors {
 		outputs, err := p.Process(ctx)
 		if err != nil {
@@ -156,6 +185,7 @@ func (s Specter) ProcessSpecs(specs ResolvedDependencies) ([]ProcessingOutput, e
 		ctx.Outputs = append(ctx.Outputs, outputs...)
 	}
 
+	s.Logger.Success("Specs processed successfully.")
 	return ctx.Outputs, nil
 }
 
@@ -164,8 +194,10 @@ func (s Specter) ProcessOutputs(specs ResolvedDependencies, outputs []Processing
 	ctx := OutputProcessingContext{
 		DependencyGraph: specs,
 		Outputs:         outputs,
+		Logger:          s.Logger,
 	}
 
+	s.Logger.Info("\nProcessing outputs ...")
 	for _, p := range s.OutputProcessors {
 		err := p.Process(ctx)
 		if err != nil {
@@ -173,6 +205,7 @@ func (s Specter) ProcessOutputs(specs ResolvedDependencies, outputs []Processing
 		}
 	}
 
+	s.Logger.Success("Outputs processed successfully.")
 	return nil
 }
 
@@ -181,11 +214,19 @@ type Option func(s *Specter)
 
 // New allows creating a new specter instance using the provided options.
 func New(opts ...Option) *Specter {
-	s := &Specter{}
+	s := &Specter{
+		Logger: NewColoredOutputLogger(ColoredOutputLoggerConfig{EnableColors: true, Writer: os.Stdout}),
+	}
 	for _, o := range opts {
 		o(s)
 	}
 	return s
+}
+
+func WithLogger(l Logger) Option {
+	return func(s *Specter) {
+		s.Logger = l
+	}
 }
 
 // WithSourceLoaders allows configuring the SourceLoader of a Specter instance.
