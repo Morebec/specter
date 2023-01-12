@@ -6,47 +6,47 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-type SpecType string
+type SpecificationType string
 
-type SpecName string
+type SpecificationName string
 
-// Spec is a general purpose data structure to represent a spec as loaded from a file regardless of the loader
+// Specification is a general purpose data structure to represent a specification as loaded from a file regardless of the loader
 // used.
-// It is the responsibility of a Module to convert a spec to an appropriate data structure representing the intent of a
-// given Spec.
-type Spec interface {
-	// Name returns the unique FilePath of this spec.
-	Name() SpecName
+// It is the responsibility of a Module to convert a specification to an appropriate data structure representing the intent of a
+// given Specification.
+type Specification interface {
+	// Name returns the unique Name of this specification.
+	Name() SpecificationName
 
-	// Type returns the type of this spec.
-	Type() SpecType
+	// Type returns the type of this specification.
+	Type() SpecificationType
 
-	// Description of this spec.
+	// Description of this specification.
 	Description() string
 
-	// Source returns the source of this spec.
+	// Source returns the source of this specification.
 	Source() Source
 
-	// SetSource sets the source of the spec.
+	// SetSource sets the source of the specification.
 	// This method should only be used by loaders.
 	SetSource(s Source)
 
-	// Dependencies returns a list of the Names of the specs this one depends on.
-	Dependencies() []SpecName
+	// Dependencies returns a list of the Names of the specifications this one depends on.
+	Dependencies() []SpecificationName
 }
 
 type SpecBase struct {
-	typ  SpecType
-	name SpecName
+	typ  SpecificationType
+	name SpecificationName
 	desc string
 	src  Source
 }
 
-func (c SpecBase) Name() SpecName {
+func (c SpecBase) Name() SpecificationName {
 	return c.name
 }
 
-func (c SpecBase) Type() SpecType {
+func (c SpecBase) Type() SpecificationType {
 	return c.typ
 }
 
@@ -58,21 +58,21 @@ func (c SpecBase) Source() Source {
 	return c.src
 }
 
-// GenericSpec is a generic implementation of a Spec that saves its attributes in a list of attributes for introspection.
+// GenericSpecification is a generic implementation of a Specification that saves its attributes in a list of attributes for introspection.
 // these can be useful for loaders that are looser in what they allow.
-type GenericSpec struct {
-	name         SpecName
-	typ          SpecType
+type GenericSpecification struct {
+	name         SpecificationName
+	typ          SpecificationType
 	source       Source
-	dependencies []SpecName
+	dependencies []SpecificationName
 	Attributes   []GenericSpecAttribute
 }
 
-func (s GenericSpec) SetSource(src Source) {
+func (s GenericSpecification) SetSource(src Source) {
 	s.source = src
 }
 
-func (s GenericSpec) Description() string {
+func (s GenericSpecification) Description() string {
 	if s.HasAttribute("description") {
 		attr := s.Attribute("description")
 		gAttr, ok := attr.Value.(GenericValue)
@@ -84,28 +84,28 @@ func (s GenericSpec) Description() string {
 	return ""
 }
 
-func NewGenericSpec(name SpecName, typ SpecType, source Source, dependencies []SpecName) *GenericSpec {
-	return &GenericSpec{name: name, typ: typ, source: source, dependencies: dependencies}
+func NewGenericSpecification(name SpecificationName, typ SpecificationType, source Source, dependencies []SpecificationName) *GenericSpecification {
+	return &GenericSpecification{name: name, typ: typ, source: source, dependencies: dependencies}
 }
 
-func (s GenericSpec) Name() SpecName {
+func (s GenericSpecification) Name() SpecificationName {
 	return s.name
 }
 
-func (s GenericSpec) Type() SpecType {
+func (s GenericSpecification) Type() SpecificationType {
 	return s.typ
 }
 
-func (s GenericSpec) Source() Source {
+func (s GenericSpecification) Source() Source {
 	return s.source
 }
 
-func (s GenericSpec) Dependencies() []SpecName {
+func (s GenericSpecification) Dependencies() []SpecificationName {
 	return s.dependencies
 }
 
 // Attribute returns an attribute by its FilePath or nil if it was not found.
-func (s GenericSpec) Attribute(name string) *GenericSpecAttribute {
+func (s GenericSpecification) Attribute(name string) *GenericSpecAttribute {
 	for _, a := range s.Attributes {
 		if a.Name == name {
 			return &a
@@ -115,8 +115,8 @@ func (s GenericSpec) Attribute(name string) *GenericSpecAttribute {
 	return nil
 }
 
-// HasAttribute indicates if a spec has a certain attribute or not.
-func (s GenericSpec) HasAttribute(name string) bool {
+// HasAttribute indicates if a specification has a certain attribute or not.
+func (s GenericSpecification) HasAttribute(name string) bool {
 	for _, a := range s.Attributes {
 		if a.Name == name {
 			return true
@@ -133,7 +133,7 @@ const (
 	Unknown = "any"
 )
 
-// GenericSpecAttribute represents an attribute of a spec.
+// GenericSpecAttribute represents an attribute of a specification.
 // It relies on cty.Value to represent the loaded value.
 type GenericSpecAttribute struct {
 	Name  string
@@ -167,18 +167,18 @@ type ObjectValue struct {
 
 func (o ObjectValue) IsAttributeValue() {}
 
-// SpecGroup Represents a list of Spec.
-type SpecGroup []Spec
+// SpecificationGroup Represents a list of Specification.
+type SpecificationGroup []Specification
 
-func NewSpecGroup(s ...Spec) SpecGroup {
-	g := SpecGroup{}
+func NewSpecGroup(s ...Specification) SpecificationGroup {
+	g := SpecificationGroup{}
 	return append(g, s...)
 }
 
 // Merge Allows merging a group with another one.
-func (g SpecGroup) Merge(group SpecGroup) SpecGroup {
+func (g SpecificationGroup) Merge(group SpecificationGroup) SpecificationGroup {
 	merged := g
-	typeNameIndex := map[SpecName]any{}
+	typeNameIndex := map[SpecificationName]any{}
 	for _, s := range g {
 		typeNameIndex[s.Name()] = nil
 	}
@@ -193,8 +193,8 @@ func (g SpecGroup) Merge(group SpecGroup) SpecGroup {
 }
 
 // Select allows filtering the group for certain specifications.
-func (g SpecGroup) Select(p func(s Spec) bool) SpecGroup {
-	r := SpecGroup{}
+func (g SpecificationGroup) Select(p func(s Specification) bool) SpecificationGroup {
+	r := SpecificationGroup{}
 	for _, s := range g {
 		if p(s) {
 			r = append(r, s)
@@ -204,13 +204,13 @@ func (g SpecGroup) Select(p func(s Spec) bool) SpecGroup {
 	return r
 }
 
-func (g SpecGroup) SelectType(t SpecType) SpecGroup {
-	return g.Select(func(s Spec) bool {
+func (g SpecificationGroup) SelectType(t SpecificationType) SpecificationGroup {
+	return g.Select(func(s Specification) bool {
 		return s.Type() == t
 	})
 }
 
-func (g SpecGroup) SelectName(t SpecName) Spec {
+func (g SpecificationGroup) SelectName(t SpecificationName) Specification {
 	for _, s := range g {
 		if s.Name() == t {
 			return s
@@ -220,8 +220,8 @@ func (g SpecGroup) SelectName(t SpecName) Spec {
 	return nil
 }
 
-func (g SpecGroup) Exclude(p func(s Spec) bool) SpecGroup {
-	r := SpecGroup{}
+func (g SpecificationGroup) Exclude(p func(s Specification) bool) SpecificationGroup {
+	r := SpecificationGroup{}
 	for _, s := range g {
 		if !p(s) {
 			r = append(r, s)
@@ -231,14 +231,14 @@ func (g SpecGroup) Exclude(p func(s Spec) bool) SpecGroup {
 	return r
 }
 
-func (g SpecGroup) ExcludeType(t SpecType) SpecGroup {
-	return g.Exclude(func(s Spec) bool {
+func (g SpecificationGroup) ExcludeType(t SpecificationType) SpecificationGroup {
+	return g.Exclude(func(s Specification) bool {
 		return s.Type() == t
 	})
 }
 
-// MapSpecGroup performs a map operation on a SpecGroup
-func MapSpecGroup[T any](g SpecGroup, p func(s Spec) T) []T {
+// MapSpecGroup performs a map operation on a SpecificationGroup
+func MapSpecGroup[T any](g SpecificationGroup, p func(s Specification) T) []T {
 	var mapped []T
 	for _, s := range g {
 		mapped = append(mapped, p(s))
@@ -247,6 +247,6 @@ func MapSpecGroup[T any](g SpecGroup, p func(s Spec) T) []T {
 	return mapped
 }
 
-func UnexpectedSpecTypeError(actual SpecType, expected SpecType) error {
-	return errors.NewWithMessage(errors.InternalErrorCode, fmt.Sprintf("expected spec of type %s, got %s", expected, actual))
+func UnexpectedSpecTypeError(actual SpecificationType, expected SpecificationType) error {
+	return errors.NewWithMessage(errors.InternalErrorCode, fmt.Sprintf("expected specification of type %s, got %s", expected, actual))
 }

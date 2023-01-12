@@ -16,12 +16,12 @@ const (
 
 const InvalidHCLErrorCode = "invalid_hcl"
 
-// HCLGenericSpecLoader this spec loader loads Specs as GenericSpec.
+// HCLGenericSpecLoader this SpecificationLoader loads Specifications as GenericSpecification.
 type HCLGenericSpecLoader struct {
 	hclparse.Parser
 }
 
-// NewHCLGenericSpecLoader this loader will load all specs to instances of GenericSpec.
+// NewHCLGenericSpecLoader this  SpecificationLoader will load all Specifications to instances of GenericSpecification.
 func NewHCLGenericSpecLoader() *HCLGenericSpecLoader {
 	return &HCLGenericSpecLoader{
 		Parser: *hclparse.NewParser(),
@@ -32,7 +32,7 @@ func (l HCLGenericSpecLoader) SupportsSource(s Source) bool {
 	return s.Format == HCLSourceFormat
 }
 
-func (l HCLGenericSpecLoader) Load(s Source) ([]Spec, error) {
+func (l HCLGenericSpecLoader) Load(s Source) ([]Specification, error) {
 	ctx := &hcl.EvalContext{
 		Variables: map[string]cty.Value{},
 	}
@@ -40,9 +40,9 @@ func (l HCLGenericSpecLoader) Load(s Source) ([]Spec, error) {
 	// Although the caller is responsible for calling HCLGenericSpecLoader.SupportsSource, guard against it.
 	if !l.SupportsSource(s) {
 		return nil, errors.NewWithMessage(
-			UnsupportedSpecLoaderCode,
+			UnsupportedSpecificationLoaderCode,
 			fmt.Sprintf(
-				"invalid spec source \"%s\", unsupported format \"%s\"",
+				"invalid specification source \"%s\", unsupported format \"%s\"",
 				s.Location,
 				s.Format,
 			),
@@ -54,7 +54,7 @@ func (l HCLGenericSpecLoader) Load(s Source) ([]Spec, error) {
 		return nil, errors.Wrap(diags, InvalidHCLErrorCode)
 	}
 
-	var specs []Spec
+	var specifications []Specification
 
 	body := file.Body.(*hclsyntax.Body)
 	for _, block := range body.Blocks {
@@ -63,7 +63,7 @@ func (l HCLGenericSpecLoader) Load(s Source) ([]Spec, error) {
 			return nil, errors.NewWithMessage(
 				InvalidHCLErrorCode,
 				fmt.Sprintf(
-					"invalid spec source \"%s\" at line %d:%d, block \"%s\" should contain a name",
+					"invalid specification source \"%s\" at line %d:%d, block \"%s\" should contain a name",
 					s.Location,
 					block.Range().Start.Line,
 					block.Range().Start.Column,
@@ -79,7 +79,7 @@ func (l HCLGenericSpecLoader) Load(s Source) ([]Spec, error) {
 				err,
 				InvalidHCLErrorCode,
 				fmt.Sprintf(
-					"invalid spec source \"%s\" at line %d:%d for block \"%s\"",
+					"invalid specification source \"%s\" at line %d:%d for block \"%s\"",
 					s.Location,
 					block.Range().Start.Line,
 					block.Range().Start.Column,
@@ -88,11 +88,11 @@ func (l HCLGenericSpecLoader) Load(s Source) ([]Spec, error) {
 			)
 		}
 
-		// Create spec and add to list
+		// Create specification and add to list
 		//goland:noinspection GoRedundantConversion
-		specs = append(specs, GenericSpec{
-			name:       SpecName(block.Labels[0]),
-			typ:        SpecType(block.Type),
+		specifications = append(specifications, GenericSpecification{
+			name:       SpecificationName(block.Labels[0]),
+			typ:        SpecificationType(block.Type),
 			source:     s,
 			Attributes: specAttributes,
 		})
@@ -105,7 +105,7 @@ func (l HCLGenericSpecLoader) Load(s Source) ([]Spec, error) {
 		}
 	}
 
-	return specs, errors.GroupOrNil(group)
+	return specifications, errors.GroupOrNil(group)
 }
 
 func (l HCLGenericSpecLoader) extractAttributesFromBlock(ctx *hcl.EvalContext, block *hclsyntax.Block) ([]GenericSpecAttribute, hcl.Diagnostics) {
@@ -155,7 +155,7 @@ func (l HCLGenericSpecLoader) extractAttributesFromBlock(ctx *hcl.EvalContext, b
 type HCLSpecLoaderFileConfigurationProvider func() HCLFileConfig
 
 type HCLFileConfig interface {
-	Specs() []Spec
+	Specifications() []Specification
 }
 
 // HCLVariableConfig represents a block configuration that allows defining variables.
@@ -165,7 +165,7 @@ type HCLVariableConfig struct {
 	Value       cty.Value `hcl:"value"`
 }
 
-// HCLSpecLoader this loader allows to load Specs to typed structs by providing a HCLFileConfig.
+// HCLSpecLoader this loader allows to load Specifications to typed structs by providing a HCLFileConfig.
 type HCLSpecLoader struct {
 	// represents the structure of a file that this HCL loader should support.
 	parser             *hclparse.Parser
@@ -183,15 +183,15 @@ func NewHCLFileConfigSpecLoader(fileConfigProvider HCLSpecLoaderFileConfiguratio
 	}
 }
 
-func (l HCLSpecLoader) Load(s Source) ([]Spec, error) {
+func (l HCLSpecLoader) Load(s Source) ([]Specification, error) {
 	ctx := l.evalCtx
 
 	// Although the caller is responsible for calling HCLGenericSpecLoader.SupportsSource, guard against it.
 	if !l.SupportsSource(s) {
 		return nil, errors.NewWithMessage(
-			UnsupportedSpecLoaderCode,
+			UnsupportedSpecificationLoaderCode,
 			fmt.Sprintf(
-				"invalid spec source \"%s\", unsupported format \"%s\"",
+				"invalid specification source \"%s\", unsupported format \"%s\"",
 				s.Location,
 				s.Format,
 			),
@@ -228,12 +228,12 @@ func (l HCLSpecLoader) Load(s Source) ([]Spec, error) {
 		return nil, diags
 	}
 
-	// Set source for all specs
-	specs := fileConf.Specs()
-	for _, sp := range specs {
+	// Set source for all specifications
+	specifications := fileConf.Specifications()
+	for _, sp := range specifications {
 		sp.SetSource(s)
 	}
-	return specs, nil
+	return specifications, nil
 }
 
 func (l HCLSpecLoader) SupportsSource(s Source) bool {

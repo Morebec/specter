@@ -12,7 +12,7 @@ import (
 
 type SourceFormat string
 
-// Source represents the source code that was used to load a given spec.
+// Source represents the source code that was used to load a given specification.
 type Source struct {
 	// Location of the source, this can be a local file or a remote file.
 	Location string
@@ -57,13 +57,13 @@ func (l LocalFileSourceLoader) Load(location string) ([]Source, error) {
 	var err error
 	location, err = filepath.Abs(location)
 	if err != nil {
-		return nil, errors.WrapWithMessage(err, UnsupportedSpecLoaderCode, fmt.Sprintf("failed loading file %s", location))
+		return nil, errors.WrapWithMessage(err, UnsupportedSpecificationLoaderCode, fmt.Sprintf("failed loading file %s", location))
 	}
 
 	// Make sure file exists.
 	stat, err := os.Stat(location)
 	if os.IsNotExist(err) {
-		return nil, errors.WrapWithMessage(err, UnsupportedSpecLoaderCode, fmt.Sprintf("failed loading file %s", location))
+		return nil, errors.WrapWithMessage(err, UnsupportedSpecificationLoaderCode, fmt.Sprintf("failed loading file %s", location))
 	}
 
 	if stat.IsDir() {

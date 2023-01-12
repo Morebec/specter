@@ -20,9 +20,9 @@ import (
 	"strings"
 )
 
-type DependencySet map[SpecName]struct{}
+type DependencySet map[SpecificationName]struct{}
 
-func newDependencySetForSpec(s Spec) DependencySet {
+func newDependencySetForSpecification(s Specification) DependencySet {
 	set := DependencySet{}
 	for _, d := range s.Dependencies() {
 		set[d] = struct{}{}
@@ -43,8 +43,8 @@ func (s DependencySet) diff(o DependencySet) DependencySet {
 	return diff
 }
 
-func (s DependencySet) Names() []SpecName {
-	var typeNames []SpecName
+func (s DependencySet) Names() []SpecificationName {
+	var typeNames []SpecificationName
 
 	for k := range s {
 		typeNames = append(typeNames, k)
@@ -53,7 +53,7 @@ func (s DependencySet) Names() []SpecName {
 	return typeNames
 }
 
-func NewDependencySet(dependencies ...SpecName) DependencySet {
+func NewDependencySet(dependencies ...SpecificationName) DependencySet {
 	deps := DependencySet{}
 	for _, d := range dependencies {
 		deps[d] = struct{}{}
@@ -62,16 +62,12 @@ func NewDependencySet(dependencies ...SpecName) DependencySet {
 	return deps
 }
 
-// DependencyProvider are functions responsible for providing the dependencies of a list of Spec as a list of Spec.
-// Generally providers are specialized for a specific SpecType.
-type DependencyProvider func(systemSpec Spec, specs SpecGroup) ([]Spec, error)
-
-type DependencyGraph []Spec
+type DependencyGraph []Specification
 
 // Merge Allows merging this dependency graph with another one and returns the result.
 func (g DependencyGraph) Merge(o DependencyGraph) DependencyGraph {
-	var lookup = make(map[SpecName]bool)
-	var merge []Spec
+	var lookup = make(map[SpecificationName]bool)
+	var merge []Specification
 
 	for _, node := range g {
 		merge = append(merge, node)
@@ -88,21 +84,21 @@ func (g DependencyGraph) Merge(o DependencyGraph) DependencyGraph {
 	return NewDependencyGraph(merge...)
 }
 
-func NewDependencyGraph(specs ...Spec) DependencyGraph {
-	return append(DependencyGraph{}, specs...)
+func NewDependencyGraph(specifications ...Specification) DependencyGraph {
+	return append(DependencyGraph{}, specifications...)
 }
 
 func (g DependencyGraph) Resolve() (ResolvedDependencies, error) {
-	var resolved []Spec
+	var resolved []Specification
 
 	// Look up of nodes to their typeName Names.
-	specByTypeNames := map[SpecName]Spec{}
+	specByTypeNames := map[SpecificationName]Specification{}
 
 	// Map nodes to dependencies
-	dependenciesByTypeNames := map[SpecName]DependencySet{}
+	dependenciesByTypeNames := map[SpecificationName]DependencySet{}
 	for _, n := range g {
 		specByTypeNames[n.Name()] = n
-		dependenciesByTypeNames[n.Name()] = newDependencySetForSpec(n)
+		dependenciesByTypeNames[n.Name()] = newDependencySetForSpecification(n)
 	}
 
 	// The algorithm simply processes all nodes and tries to find the ones that have no dependencies.
@@ -110,7 +106,7 @@ func (g DependencyGraph) Resolve() (ResolvedDependencies, error) {
 	// If no unresolvable or circular dependency is found, the node is considered resolved.
 	// And processing retries with the remaining dependent nodes.
 	for len(dependenciesByTypeNames) != 0 {
-		var typeNamesWithNoDependencies []SpecName
+		var typeNamesWithNoDependencies []SpecificationName
 		for typeName, dependencies := range dependenciesByTypeNames {
 			if len(dependencies) == 0 {
 				typeNamesWithNoDependencies = append(typeNamesWithNoDependencies, typeName)
@@ -128,7 +124,7 @@ func (g DependencyGraph) Resolve() (ResolvedDependencies, error) {
 					if _, found := specByTypeNames[dependency]; !found {
 						return nil, errors.NewWithMessage(
 							errors.InternalErrorCode,
-							fmt.Sprintf("spec with type FilePath \"%s\" depends on an unresolved type FilePath \"%s\"",
+							fmt.Sprintf("specification with type FilePath \"%s\" depends on an unresolved type FilePath \"%s\"",
 								typeName,
 								dependency,
 							),
@@ -168,7 +164,7 @@ func (g DependencyGraph) Resolve() (ResolvedDependencies, error) {
 	return append(ResolvedDependencies{}, resolved...), nil
 }
 
-// ResolvedDependencies represents an ordered list of Spec that should be processed in that specific order to avoid
+// ResolvedDependencies represents an ordered list of Specification that should be processed in that specific order to avoid
 // unresolved types.
-// TODO Remove spec group and add its methods here.
-type ResolvedDependencies SpecGroup
+// TODO Remove specification group and add its methods here.
+type ResolvedDependencies SpecificationGroup

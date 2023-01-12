@@ -15,15 +15,15 @@ const LintMode ExecutionMode = "lint"
 // PreviewMode will cause a Specter instance to run until the processing step only, no output will be processed.
 const PreviewMode ExecutionMode = "preview"
 
-// FullMode will cause a Specter instance to be ran fully.
+// FullMode will cause a Specter instance to be run fully.
 const FullMode ExecutionMode = "full"
 
 // Specter is the service responsible to run a specter pipeline.
 type Specter struct {
 	SourceLoaders    []SourceLoader
-	SpecLoaders      []SpecLoader
-	Processors       []SpecProcessor
-	Linters          []SpecLinter
+	Loaders          []SpecificationLoader
+	Processors       []SpecificationProcessor
+	Linters          []SpecificationLinter
 	OutputProcessors []OutputProcessor
 	Logger           Logger
 	ExecutionMode    ExecutionMode
@@ -34,7 +34,7 @@ type Stats struct {
 	EndedAt           time.Time
 	NbSourceLocations int
 	NbSources         int
-	NbSpecs           int
+	NbSpecifications  int
 	NbOutputs         int
 }
 
@@ -50,7 +50,7 @@ func (s Specter) Run(sourceLocations []string) error {
 		s.Logger.Info(fmt.Sprintf("\nStarted At: %s, ended at: %s, execution time: %s", stats.StartedAt, stats.EndedAt, stats.ExecutionTime()))
 		s.Logger.Info(fmt.Sprintf("Number of source locations: %d", stats.NbSourceLocations))
 		s.Logger.Info(fmt.Sprintf("Number of sources: %d", stats.NbSources))
-		s.Logger.Info(fmt.Sprintf("Number of specs: %d", stats.NbSpecs))
+		s.Logger.Info(fmt.Sprintf("Number of specifications: %d", stats.NbSpecifications))
 		s.Logger.Info(fmt.Sprintf("Number of outputs: %d", stats.NbOutputs))
 	}()
 
@@ -64,27 +64,27 @@ func (s Specter) Run(sourceLocations []string) error {
 		return e
 	}
 
-	// Load Specs
-	var specs []Spec
-	specs, err = s.LoadSpecs(sources)
-	stats.NbSpecs = len(specs)
+	// Load Specifications
+	var specifications []Specification
+	specifications, err = s.LoadSpecifications(sources)
+	stats.NbSpecifications = len(specifications)
 	if err != nil {
-		e := errors.WrapWithMessage(err, errors.InternalErrorCode, "failed loading specs")
+		e := errors.WrapWithMessage(err, errors.InternalErrorCode, "failed loading specifications")
 		s.Logger.Error(e.Error())
 		return e
 	}
 
 	// Resolve Dependencies
 	var deps ResolvedDependencies
-	deps, err = s.ResolveDependencies(specs)
+	deps, err = s.ResolveDependencies(specifications)
 	if err != nil {
 		e := errors.WrapWithMessage(err, errors.InternalErrorCode, "dependency resolution failed")
 		s.Logger.Error(e.Error())
 		return e
 	}
 
-	// Lint Specs
-	lr := s.LintSpecs(deps)
+	// Lint Specifications
+	lr := s.LintSpecifications(deps)
 	if lr.HasErrors() {
 		errs := errors.NewGroup(errors.InternalErrorCode)
 		for _, e := range lr.Errors().Errors {
@@ -97,12 +97,12 @@ func (s Specter) Run(sourceLocations []string) error {
 		return nil
 	}
 
-	// Process Specs
+	// Process Specifications
 	var outputs []ProcessingOutput
-	outputs, err = s.ProcessSpecs(deps)
+	outputs, err = s.ProcessSpecifications(deps)
 	stats.NbOutputs = len(outputs)
 	if err != nil {
-		e := errors.WrapWithMessage(err, errors.InternalErrorCode, "failed processing specs")
+		e := errors.WrapWithMessage(err, errors.InternalErrorCode, "failed processing specifications")
 		s.Logger.Error(e.Error())
 		return e
 	}
@@ -153,16 +153,16 @@ func (s Specter) LoadSources(sourceLocations []string) ([]Source, error) {
 	return sources, errors.GroupOrNil(errs)
 }
 
-// LoadSpecs performs the loading of specs.
-func (s Specter) LoadSpecs(sources []Source) ([]Spec, error) {
-	s.Logger.Info("\nLoading specs ...")
+// LoadSpecifications performs the loading of Specifications.
+func (s Specter) LoadSpecifications(sources []Source) ([]Specification, error) {
+	s.Logger.Info("\nLoading specifications ...")
 
-	// Load specs
-	var specs []Spec
+	// Load specifications
+	var specifications []Specification
 	errs := errors.NewGroup(errors.InternalErrorCode)
 
 	for _, src := range sources {
-		for _, l := range s.SpecLoaders {
+		for _, l := range s.Loaders {
 			// TODO Detect sources that were not loaded by any loader
 			if l.SupportsSource(src) {
 				loaded, err := l.Load(src)
@@ -171,20 +171,20 @@ func (s Specter) LoadSpecs(sources []Source) ([]Spec, error) {
 					errs = errs.Append(err)
 					continue
 				}
-				specs = append(specs, loaded...)
+				specifications = append(specifications, loaded...)
 			}
 		}
 	}
 
-	s.Logger.Info(fmt.Sprintf("%d specs loaded.", len(specs)))
+	s.Logger.Info(fmt.Sprintf("%d specifications loaded.", len(specifications)))
 
-	return specs, errors.GroupOrNil(errs)
+	return specifications, errors.GroupOrNil(errs)
 }
 
-// ResolveDependencies resolves the dependencies between specs.
-func (s Specter) ResolveDependencies(specs []Spec) (ResolvedDependencies, error) {
+// ResolveDependencies resolves the dependencies between specifications.
+func (s Specter) ResolveDependencies(specifications []Specification) (ResolvedDependencies, error) {
 	s.Logger.Info("\nResolving dependencies...")
-	deps, err := NewDependencyGraph(specs...).Resolve()
+	deps, err := NewDependencyGraph(specifications...).Resolve()
 	if err != nil {
 		return nil, errors.WrapWithMessage(err, errors.InternalErrorCode, "failed resolving dependencies")
 	}
@@ -192,11 +192,11 @@ func (s Specter) ResolveDependencies(specs []Spec) (ResolvedDependencies, error)
 	return deps, nil
 }
 
-// LintSpecs runes all Linters against a list of Specs.
-func (s Specter) LintSpecs(specs []Spec) LinterResultSet {
-	linter := CompositeLinter(s.Linters...)
-	s.Logger.Info("\nLinting specs ...")
-	lr := linter.Lint(specs)
+// LintSpecifications runes all Linters against a list of Specifications.
+func (s Specter) LintSpecifications(specifications []Specification) LinterResultSet {
+	linter := CompositeSpecificationLinter(s.Linters...)
+	s.Logger.Info("\nLinting specifications ...")
+	lr := linter.Lint(specifications)
 	if lr.HasWarnings() {
 		for _, w := range lr.Warnings() {
 			s.Logger.Warning(fmt.Sprintf("Warning: %s\n", w.Message))
@@ -210,21 +210,21 @@ func (s Specter) LintSpecs(specs []Spec) LinterResultSet {
 	}
 
 	if !lr.HasWarnings() && !lr.HasErrors() {
-		s.Logger.Success("Specs linted successfully.")
+		s.Logger.Success("Specifications linted successfully.")
 	}
 
 	return lr
 }
 
-// ProcessSpecs sends the specs to processors.
-func (s Specter) ProcessSpecs(specs ResolvedDependencies) ([]ProcessingOutput, error) {
+// ProcessSpecifications sends the specifications to processors.
+func (s Specter) ProcessSpecifications(specifications ResolvedDependencies) ([]ProcessingOutput, error) {
 	ctx := ProcessingContext{
-		DependencyGraph: specs,
+		DependencyGraph: specifications,
 		Outputs:         nil,
 		Logger:          s.Logger,
 	}
 
-	s.Logger.Info("\nProcessing specs ...")
+	s.Logger.Info("\nProcessing specifications ...")
 	for _, p := range s.Processors {
 		outputs, err := p.Process(ctx)
 		if err != nil {
@@ -238,14 +238,14 @@ func (s Specter) ProcessSpecs(specs ResolvedDependencies) ([]ProcessingOutput, e
 		s.Logger.Info(fmt.Sprintf("-> %s", o.Name))
 	}
 
-	s.Logger.Success("Specs processed successfully.")
+	s.Logger.Success("Specifications processed successfully.")
 	return ctx.Outputs, nil
 }
 
 // ProcessOutputs sends a list of ProcessingOutputs to the registered OutputProcessors.
-func (s Specter) ProcessOutputs(specs ResolvedDependencies, outputs []ProcessingOutput) error {
+func (s Specter) ProcessOutputs(specifications ResolvedDependencies, outputs []ProcessingOutput) error {
 	ctx := OutputProcessingContext{
-		DependencyGraph: specs,
+		DependencyGraph: specifications,
 		Outputs:         outputs,
 		Logger:          s.Logger,
 	}
@@ -291,22 +291,22 @@ func WithSourceLoaders(loaders ...SourceLoader) Option {
 	}
 }
 
-// WithLoaders configures the SpecLoader of a Specter instance.
-func WithLoaders(loaders ...SpecLoader) Option {
+// WithLoaders configures the SpecificationLoader of a Specter instance.
+func WithLoaders(loaders ...SpecificationLoader) Option {
 	return func(s *Specter) {
-		s.SpecLoaders = append(s.SpecLoaders, loaders...)
+		s.Loaders = append(s.Loaders, loaders...)
 	}
 }
 
-// WithLinters configures the SpecLinter of a Specter instance.
-func WithLinters(linters ...SpecLinter) Option {
+// WithLinters configures the SpecificationLinter of a Specter instance.
+func WithLinters(linters ...SpecificationLinter) Option {
 	return func(s *Specter) {
 		s.Linters = append(s.Linters, linters...)
 	}
 }
 
 // WithProcessors configures the SpecProcess of a Specter instance.
-func WithProcessors(processors ...SpecProcessor) Option {
+func WithProcessors(processors ...SpecificationProcessor) Option {
 	return func(s *Specter) {
 		s.Processors = append(s.Processors, processors...)
 	}

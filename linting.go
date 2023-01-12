@@ -6,8 +6,8 @@ import (
 	"strings"
 )
 
-// UndefinedSpecificationName constant used to test against undefined SpecName.
-const UndefinedSpecificationName SpecName = ""
+// UndefinedSpecificationName constant used to test against undefined SpecificationName.
+const UndefinedSpecificationName SpecificationName = ""
 
 const LintingErrorCode = "linting_error"
 
@@ -64,40 +64,40 @@ func (s LinterResultSet) HasWarnings() bool {
 	return len(s.Warnings()) != 0
 }
 
-// SpecLinter represents a function responsible for linting specs.
-type SpecLinter interface {
-	Lint(specs SpecGroup) LinterResultSet
+// SpecificationLinter represents a function responsible for linting specifications.
+type SpecificationLinter interface {
+	Lint(specifications SpecificationGroup) LinterResultSet
 }
 
-// LinterFunc implementation of a SpecLinter that relies on a func
-type LinterFunc func(specs SpecGroup) LinterResultSet
+// SpecificationLinterFunc implementation of a SpecificationLinter that relies on a func
+type SpecificationLinterFunc func(specifications SpecificationGroup) LinterResultSet
 
-func (l LinterFunc) Lint(specs SpecGroup) LinterResultSet {
-	return l(specs)
+func (l SpecificationLinterFunc) Lint(specifications SpecificationGroup) LinterResultSet {
+	return l(specifications)
 }
 
-// CompositeLinter A Composite linter is responsible for running multiple linters as one.
-func CompositeLinter(linters ...SpecLinter) LinterFunc {
-	return func(specs SpecGroup) LinterResultSet {
+// CompositeSpecificationLinter A Composite linter is responsible for running multiple linters as one.
+func CompositeSpecificationLinter(linters ...SpecificationLinter) SpecificationLinterFunc {
+	return func(specifications SpecificationGroup) LinterResultSet {
 		result := LinterResultSet{}
 		for _, linter := range linters {
-			lr := linter.Lint(specs)
+			lr := linter.Lint(specifications)
 			result = append(result, lr...)
 		}
 		return result
 	}
 }
 
-// SpecificationMustNotHaveUndefinedNames ensures that no spec has an undefined type FilePath
-func SpecificationMustNotHaveUndefinedNames() LinterFunc {
-	return func(specs SpecGroup) LinterResultSet {
+// SpecificationMustNotHaveUndefinedNames ensures that no specification has an undefined type FilePath
+func SpecificationMustNotHaveUndefinedNames() SpecificationLinterFunc {
+	return func(specifications SpecificationGroup) LinterResultSet {
 		result := LinterResultSet{}
 
-		for _, s := range specs {
+		for _, s := range specifications {
 			if s.Name() == UndefinedSpecificationName {
 				result = append(result, LinterResult{
 					Severity: ErrorSeverity,
-					Message:  fmt.Sprintf("spec at \"%s\" has an undefined type FilePath", s.Source().Location),
+					Message:  fmt.Sprintf("specification at \"%s\" has an undefined type FilePath", s.Source().Location),
 				})
 			}
 		}
@@ -106,16 +106,16 @@ func SpecificationMustNotHaveUndefinedNames() LinterFunc {
 	}
 }
 
-// SpecificationsMustNotHaveDuplicateTypeNames ensures that type names are unique amongst specs.
-func SpecificationsMustNotHaveDuplicateTypeNames() LinterFunc {
-	return func(specs SpecGroup) LinterResultSet {
+// SpecificationsMustHaveUniqueNames ensures that names are unique amongst specifications.
+func SpecificationsMustHaveUniqueNames() SpecificationLinterFunc {
+	return func(specifications SpecificationGroup) LinterResultSet {
 
 		result := LinterResultSet{}
 
-		// Where key is the type FilePath and the array contains all the spec file locations where it was encountered.
-		encounteredNames := map[SpecName][]string{}
+		// Where key is the type FilePath and the array contains all the specification file locations where it was encountered.
+		encounteredNames := map[SpecificationName][]string{}
 
-		for _, s := range specs {
+		for _, s := range specifications {
 			if _, found := encounteredNames[s.Name()]; found {
 				encounteredNames[s.Name()] = append(encounteredNames[s.Name()], s.Source().Location)
 			} else {
@@ -138,7 +138,7 @@ func SpecificationsMustNotHaveDuplicateTypeNames() LinterFunc {
 				result = append(result, LinterResult{
 					Severity: ErrorSeverity,
 					Message: fmt.Sprintf(
-						"duplicate spec FilePath detected for \"%s\" in the following file(s): %s",
+						"duplicate specification name detected for \"%s\" in the following file(s): %s",
 						name,
 						strings.Join(fileNames, ", "),
 					),
@@ -150,15 +150,15 @@ func SpecificationsMustNotHaveDuplicateTypeNames() LinterFunc {
 	}
 }
 
-// SpecificationsMustHaveDescriptionAttribute ensures that all specs have a description.
-func SpecificationsMustHaveDescriptionAttribute() LinterFunc {
-	return func(specs SpecGroup) LinterResultSet {
+// SpecificationsMustHaveDescriptionAttribute ensures that all specifications have a description.
+func SpecificationsMustHaveDescriptionAttribute() SpecificationLinterFunc {
+	return func(specifications SpecificationGroup) LinterResultSet {
 		result := LinterResultSet{}
-		for _, s := range specs {
+		for _, s := range specifications {
 			if s.Description() == "" {
 				result = append(result, LinterResult{
 					Severity: ErrorSeverity,
-					Message:  fmt.Sprintf("spec at location \"%s\" does not have a description.", s.Source().Location),
+					Message:  fmt.Sprintf("specification at location \"%s\" does not have a description.", s.Source().Location),
 				})
 			}
 		}
@@ -166,16 +166,16 @@ func SpecificationsMustHaveDescriptionAttribute() LinterFunc {
 	}
 }
 
-// SpecificationsMustHaveLowerCaseNames ensures that all spec type names are lower case.
-func SpecificationsMustHaveLowerCaseNames() LinterFunc {
-	return func(specs SpecGroup) LinterResultSet {
+// SpecificationsMustHaveLowerCaseNames ensures that all specification type names are lower case.
+func SpecificationsMustHaveLowerCaseNames() SpecificationLinterFunc {
+	return func(specifications SpecificationGroup) LinterResultSet {
 		result := LinterResultSet{}
-		for _, s := range specs {
+		for _, s := range specifications {
 			if strings.ToLower(string(s.Name())) != string(s.Name()) {
 				result = append(result, LinterResult{
 					Severity: ErrorSeverity,
 					Message: fmt.Sprintf(
-						fmt.Sprintf("spec type names must be lowercase got \"%s\" at location \"%s\"",
+						fmt.Sprintf("specification names must be lowercase got \"%s\" at location \"%s\"",
 							s.Name(),
 							s.Source().Location,
 						),
