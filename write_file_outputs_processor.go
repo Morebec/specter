@@ -71,10 +71,10 @@ func (r *OutputFileRegistry) Clean() error {
 		f := f
 		go func() {
 			defer wg.Done()
-			if _, err := os.Stat(f); errors.Is(err, os.ErrNotExist) {
-				return
-			}
 			if err := os.Remove(f); err != nil {
+				if errors.Is(err, os.ErrNotExist) {
+					return
+				}
 				panic(errors.Wrap(err, "failed cleaning output registry files"))
 			}
 		}()
@@ -105,7 +105,7 @@ func (f WriteFileOutputsProcessor) Name() string {
 	return "file_outputs_processor"
 }
 
-// FileOutput is a data structure that can be used by a SpecProcessor to output files that can be written by tje WriteFileOutputsProcessor.
+// FileOutput is a data structure that can be used by a SpecificationProcessor to output files that can be written by tje WriteFileOutputsProcessor.
 type FileOutput struct {
 	Path string
 	Data []byte
