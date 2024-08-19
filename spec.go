@@ -1,8 +1,6 @@
 package specter
 
 import (
-	"fmt"
-	"github.com/morebec/go-errors/errors"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -12,7 +10,7 @@ type SpecificationName string
 
 // Specification is a general purpose data structure to represent a specification as loaded from a file regardless of the loader
 // used.
-// It is the responsibility of a Module to convert a specification to an appropriate data structure representing the intent of a
+// It is the responsibility of the application using specter to convert a specification to an appropriate data structure representing the intent of a
 // given Specification.
 type Specification interface {
 	// Name returns the unique Name of this specification.
@@ -33,29 +31,6 @@ type Specification interface {
 
 	// Dependencies returns a list of the Names of the specifications this one depends on.
 	Dependencies() []SpecificationName
-}
-
-type SpecBase struct {
-	typ  SpecificationType
-	name SpecificationName
-	desc string
-	src  Source
-}
-
-func (c SpecBase) Name() SpecificationName {
-	return c.name
-}
-
-func (c SpecBase) Type() SpecificationType {
-	return c.typ
-}
-
-func (c SpecBase) Description() string {
-	return c.desc
-}
-
-func (c SpecBase) Source() Source {
-	return c.src
 }
 
 // GenericSpecification is a generic implementation of a Specification that saves its attributes in a list of attributes for introspection.
@@ -125,7 +100,7 @@ func (s GenericSpecification) HasAttribute(name string) bool {
 	return false
 }
 
-// AttributeType represents the type of an attribute
+// AttributeType represents the type of attribute
 type AttributeType string
 
 const (
@@ -220,6 +195,17 @@ func (g SpecificationGroup) SelectName(t SpecificationName) Specification {
 	return nil
 }
 
+func (g SpecificationGroup) SelectNames(names ...SpecificationName) SpecificationGroup {
+	return g.Select(func(s Specification) bool {
+		for _, name := range names {
+			if s.Name() == name {
+				return true
+			}
+		}
+		return false
+	})
+}
+
 func (g SpecificationGroup) Exclude(p func(s Specification) bool) SpecificationGroup {
 	r := SpecificationGroup{}
 	for _, s := range g {
@@ -237,6 +223,17 @@ func (g SpecificationGroup) ExcludeType(t SpecificationType) SpecificationGroup 
 	})
 }
 
+func (g SpecificationGroup) ExcludeNames(names ...SpecificationName) SpecificationGroup {
+	return g.Exclude(func(s Specification) bool {
+		for _, name := range names {
+			if s.Name() == name {
+				return true
+			}
+		}
+		return false
+	})
+}
+
 // MapSpecGroup performs a map operation on a SpecificationGroup
 func MapSpecGroup[T any](g SpecificationGroup, p func(s Specification) T) []T {
 	var mapped []T
@@ -245,8 +242,4 @@ func MapSpecGroup[T any](g SpecificationGroup, p func(s Specification) T) []T {
 	}
 
 	return mapped
-}
-
-func UnexpectedSpecTypeError(actual SpecificationType, expected SpecificationType) error {
-	return errors.NewWithMessage(errors.InternalErrorCode, fmt.Sprintf("expected specification of type %s, got %s", expected, actual))
 }
