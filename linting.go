@@ -18,6 +18,42 @@ const (
 	WarningSeverity LinterResultSeverity = "warning"
 )
 
+type LintingProcessor struct {
+	linters []SpecificationLinter
+}
+
+func NewLintingProcessor(linters ...SpecificationLinter) *LintingProcessor {
+	return &LintingProcessor{linters: linters}
+}
+
+func (l LintingProcessor) Name() string {
+	return "linting_processor"
+}
+
+func (l LintingProcessor) Process(ctx ProcessingContext) ([]ProcessingOutput, error) {
+	linter := CompositeSpecificationLinter(l.linters...)
+	ctx.Logger.Info("\nLinting specifications ...")
+	lr := linter.Lint(SpecificationGroup(ctx.DependencyGraph))
+	if lr.HasWarnings() {
+		for _, w := range lr.Warnings() {
+			ctx.Logger.Warning(fmt.Sprintf("Warning: %s\n", w.Message))
+		}
+	}
+
+	if lr.HasErrors() {
+		for _, e := range lr.Errors().Errors {
+			ctx.Logger.Error(fmt.Sprintf("Error: %s\n", e.Error()))
+		}
+	}
+
+	if !lr.HasWarnings() && !lr.HasErrors() {
+		ctx.Logger.Success("Specifications linted successfully.")
+	}
+
+	return nil, nil
+
+}
+
 type LinterResult struct {
 	Severity LinterResultSeverity
 	Message  string
@@ -97,7 +133,7 @@ func SpecificationMustNotHaveUndefinedNames() SpecificationLinterFunc {
 			if s.Name() == UndefinedSpecificationName {
 				result = append(result, LinterResult{
 					Severity: ErrorSeverity,
-					Message:  fmt.Sprintf("specification at \"%s\" has an undefined type FilePath", s.Source().Location),
+					Message:  fmt.Sprintf("specification at %q has an undefined type FilePath", s.Source().Location),
 				})
 			}
 		}
@@ -138,7 +174,7 @@ func SpecificationsMustHaveUniqueNames() SpecificationLinterFunc {
 				result = append(result, LinterResult{
 					Severity: ErrorSeverity,
 					Message: fmt.Sprintf(
-						"duplicate specification name detected for \"%s\" in the following file(s): %s",
+						"duplicate specification name detected for %q in the following file(s): %s",
 						name,
 						strings.Join(fileNames, ", "),
 					),
@@ -158,7 +194,7 @@ func SpecificationsMustHaveDescriptionAttribute() SpecificationLinterFunc {
 			if s.Description() == "" {
 				result = append(result, LinterResult{
 					Severity: ErrorSeverity,
-					Message:  fmt.Sprintf("specification at location \"%s\" does not have a description.", s.Source().Location),
+					Message:  fmt.Sprintf("specification at location %q does not have a description.", s.Source().Location),
 				})
 			}
 		}
@@ -175,7 +211,7 @@ func SpecificationsMustHaveLowerCaseNames() SpecificationLinterFunc {
 				result = append(result, LinterResult{
 					Severity: ErrorSeverity,
 					Message: fmt.Sprintf(
-						fmt.Sprintf("specification names must be lowercase got \"%s\" at location \"%s\"",
+						fmt.Sprintf("specification names must be lowercase got %q at location %q",
 							s.Name(),
 							s.Source().Location,
 						),

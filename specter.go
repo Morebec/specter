@@ -23,7 +23,6 @@ type Specter struct {
 	SourceLoaders    []SourceLoader
 	Loaders          []SpecificationLoader
 	Processors       []SpecificationProcessor
-	Linters          []SpecificationLinter
 	OutputProcessors []OutputProcessor
 	Logger           Logger
 	ExecutionMode    ExecutionMode
@@ -39,7 +38,7 @@ type Stats struct {
 }
 
 func (s Stats) ExecutionTime() time.Duration {
-	return s.EndedAt.Sub(s.EndedAt)
+	return s.EndedAt.Sub(s.StartedAt)
 }
 
 // Run the pipeline from start to finish.
@@ -47,12 +46,18 @@ func (s Specter) Run(sourceLocations []string) error {
 	stats := Stats{}
 
 	defer func() {
-		s.Logger.Info(fmt.Sprintf("\nStarted At: %s, ended at: %s, execution time: %s", stats.StartedAt, stats.EndedAt, stats.ExecutionTime()))
+		stats.EndedAt = time.Now()
+
+		s.Logger.Info(fmt.Sprintf("\nStarted At: %s", stats.StartedAt))
+		s.Logger.Info(fmt.Sprintf("Ended at: %s", stats.EndedAt))
+		s.Logger.Info(fmt.Sprintf("Execution time: %s", stats.ExecutionTime()))
 		s.Logger.Info(fmt.Sprintf("Number of source locations: %d", stats.NbSourceLocations))
 		s.Logger.Info(fmt.Sprintf("Number of sources: %d", stats.NbSources))
 		s.Logger.Info(fmt.Sprintf("Number of specifications: %d", stats.NbSpecifications))
 		s.Logger.Info(fmt.Sprintf("Number of outputs: %d", stats.NbOutputs))
 	}()
+
+	stats.StartedAt = time.Now()
 
 	// Load sources
 	stats.NbSourceLocations = len(sourceLocations)
@@ -81,20 +86,6 @@ func (s Specter) Run(sourceLocations []string) error {
 		e := errors.WrapWithMessage(err, errors.InternalErrorCode, "dependency resolution failed")
 		s.Logger.Error(e.Error())
 		return e
-	}
-
-	// Lint Specifications
-	lr := s.LintSpecifications(deps)
-	if lr.HasErrors() {
-		errs := errors.NewGroup(errors.InternalErrorCode)
-		for _, e := range lr.Errors().Errors {
-			errs = errs.Append(e)
-		}
-		return errors.WrapWithMessage(errs, errors.InternalErrorCode, "linting errors encountered")
-	}
-	// stop here
-	if s.ExecutionMode == LintMode {
-		return nil
 	}
 
 	// Process Specifications
@@ -209,30 +200,6 @@ func (s Specter) ResolveDependencies(specifications []Specification) (ResolvedDe
 	return deps, nil
 }
 
-// LintSpecifications runes all Linters against a list of Specifications.
-func (s Specter) LintSpecifications(specifications []Specification) LinterResultSet {
-	linter := CompositeSpecificationLinter(s.Linters...)
-	s.Logger.Info("\nLinting specifications ...")
-	lr := linter.Lint(specifications)
-	if lr.HasWarnings() {
-		for _, w := range lr.Warnings() {
-			s.Logger.Warning(fmt.Sprintf("Warning: %s\n", w.Message))
-		}
-	}
-
-	if lr.HasErrors() {
-		for _, e := range lr.Errors().Errors {
-			s.Logger.Error(fmt.Sprintf("Error: %s\n", e.Error()))
-		}
-	}
-
-	if !lr.HasWarnings() && !lr.HasErrors() {
-		s.Logger.Success("Specifications linted successfully.")
-	}
-
-	return lr
-}
-
 // ProcessSpecifications sends the specifications to processors.
 func (s Specter) ProcessSpecifications(specifications ResolvedDependencies) ([]ProcessingOutput, error) {
 	ctx := ProcessingContext{
@@ -312,13 +279,6 @@ func WithSourceLoaders(loaders ...SourceLoader) Option {
 func WithLoaders(loaders ...SpecificationLoader) Option {
 	return func(s *Specter) {
 		s.Loaders = append(s.Loaders, loaders...)
-	}
-}
-
-// WithLinters configures the SpecificationLinter of a Specter instance.
-func WithLinters(linters ...SpecificationLinter) Option {
-	return func(s *Specter) {
-		s.Linters = append(s.Linters, linters...)
 	}
 }
 
