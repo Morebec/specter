@@ -159,21 +159,38 @@ func (s Specter) LoadSpecifications(sources []Source) ([]Specification, error) {
 
 	// Load specifications
 	var specifications []Specification
+	var sourcesNotLoaded []Source
 	errs := errors.NewGroup(errors.InternalErrorCode)
 
 	for _, src := range sources {
+		wasLoaded := false
 		for _, l := range s.Loaders {
-			// TODO Detect sources that were not loaded by any loader
-			if l.SupportsSource(src) {
-				loaded, err := l.Load(src)
-				if err != nil {
-					s.Logger.Error(err.Error())
-					errs = errs.Append(err)
-					continue
-				}
-				specifications = append(specifications, loaded...)
+			if !l.SupportsSource(src) {
+				continue
 			}
+
+			loadedSpecs, err := l.Load(src)
+			if err != nil {
+				s.Logger.Error(err.Error())
+				errs = errs.Append(err)
+				continue
+			}
+
+			specifications = append(specifications, loadedSpecs...)
+			wasLoaded = true
 		}
+
+		if !wasLoaded {
+			sourcesNotLoaded = append(sourcesNotLoaded, src)
+		}
+	}
+
+	if len(sourcesNotLoaded) > 0 {
+		for _, src := range sourcesNotLoaded {
+			s.Logger.Warning(fmt.Sprintf("%s could not be loaded.", src))
+		}
+
+		s.Logger.Warning("%d specifications were not loaded.")
 	}
 
 	s.Logger.Info(fmt.Sprintf("%d specifications loaded.", len(specifications)))
