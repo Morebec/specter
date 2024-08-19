@@ -20,19 +20,65 @@ import (
 	"strings"
 )
 
-type DependencySet map[SpecificationName]struct{}
+const DependencyGraphContextName = "_dependency_graph"
 
-func newDependencySetForSpecification(s Specification) DependencySet {
-	set := DependencySet{}
-	for _, d := range s.Dependencies() {
-		set[d] = struct{}{}
-	}
-	return set
+// ResolvedDependencies represents an ordered list of Specification that should be processed in that specific order to avoid
+// unresolved types.
+type ResolvedDependencies SpecificationGroup
+
+type DependencyProvider interface {
+	Supports(s Specification) bool
+	Provide(s Specification) []SpecificationName
 }
 
+type DependencyResolutionProcessor struct {
+	providers []DependencyProvider
+}
+
+func NewDependencyResolutionProcessor(providers ...DependencyProvider) *DependencyResolutionProcessor {
+	return &DependencyResolutionProcessor{providers: providers}
+}
+
+func (p DependencyResolutionProcessor) Name() string {
+	return "dependency_resolution_processor"
+}
+
+func (p DependencyResolutionProcessor) Process(ctx ProcessingContext) ([]ProcessingOutput, error) {
+	ctx.Logger.Info("\nResolving dependencies...")
+
+	var nodes []dependencyNode
+	for _, s := range ctx.Specifications {
+		node := dependencyNode{Specification: s, Dependencies: nil}
+		for _, provider := range p.providers {
+			if !provider.Supports(s) {
+				continue
+			}
+			deps := provider.Provide(s)
+			node.Dependencies = newDependencySet(deps...)
+			break
+		}
+		nodes = append(nodes, node)
+	}
+
+	deps, err := newDependencyGraph(nodes...).resolve()
+	if err != nil {
+		return nil, errors.WrapWithMessage(err, errors.InternalErrorCode, "failed resolving dependencies")
+	}
+	ctx.Logger.Success("Dependencies resolved successfully.")
+
+	return []ProcessingOutput{
+		{
+			Name:  DependencyGraphContextName,
+			Value: deps,
+		},
+	}, nil
+}
+
+type dependencySet map[SpecificationName]struct{}
+
 // diff Returns all elements that are in s and not in o. A / B
-func (s DependencySet) diff(o DependencySet) DependencySet {
-	diff := DependencySet{}
+func (s dependencySet) diff(o dependencySet) dependencySet {
+	diff := dependencySet{}
 
 	for d := range s {
 		if _, found := o[d]; !found {
@@ -43,18 +89,8 @@ func (s DependencySet) diff(o DependencySet) DependencySet {
 	return diff
 }
 
-func (s DependencySet) Names() []SpecificationName {
-	var typeNames []SpecificationName
-
-	for k := range s {
-		typeNames = append(typeNames, k)
-	}
-
-	return typeNames
-}
-
-func NewDependencySet(dependencies ...SpecificationName) DependencySet {
-	deps := DependencySet{}
+func newDependencySet(dependencies ...SpecificationName) dependencySet {
+	deps := dependencySet{}
 	for _, d := range dependencies {
 		deps[d] = struct{}{}
 	}
@@ -62,43 +98,52 @@ func NewDependencySet(dependencies ...SpecificationName) DependencySet {
 	return deps
 }
 
-type DependencyGraph []Specification
-
-// Merge Allows merging this dependency graph with another one and returns the result.
-func (g DependencyGraph) Merge(o DependencyGraph) DependencyGraph {
-	var lookup = make(map[SpecificationName]bool)
-	var merge []Specification
-
-	for _, node := range g {
-		merge = append(merge, node)
-		lookup[node.Name()] = true
-	}
-
-	for _, node := range o {
-		if _, found := lookup[node.Name()]; found {
-			continue
-		}
-		merge = append(merge, node)
-	}
-
-	return NewDependencyGraph(merge...)
+type dependencyNode struct {
+	Specification Specification
+	Dependencies  dependencySet
 }
 
-func NewDependencyGraph(specifications ...Specification) DependencyGraph {
-	return append(DependencyGraph{}, specifications...)
+func (d dependencyNode) SpecificationName() SpecificationName {
+	return d.Specification.Name()
 }
 
-func (g DependencyGraph) Resolve() (ResolvedDependencies, error) {
-	var resolved []Specification
+type dependencyGraph []dependencyNode
+
+//// merge Allows merging this dependency graph with another one and returns the result.
+//func (g dependencyGraph) merge(o dependencyGraph) dependencyGraph {
+//	var lookup = make(map[SpecificationName]bool)
+//	var merge []dependencyNode
+//
+//	for _, node := range g {
+//		merge = append(merge, node)
+//		lookup[node.SpecificationName()] = true
+//	}
+//
+//	for _, node := range o {
+//		if _, found := lookup[node.SpecificationName()]; found {
+//			continue
+//		}
+//		merge = append(merge, node)
+//	}
+//
+//	return newDependencyGraph(merge...)
+//}
+
+func newDependencyGraph(specifications ...dependencyNode) dependencyGraph {
+	return append(dependencyGraph{}, specifications...)
+}
+
+func (g dependencyGraph) resolve() (ResolvedDependencies, error) {
+	var resolved ResolvedDependencies
 
 	// Look up of nodes to their typeName Names.
 	specByTypeNames := map[SpecificationName]Specification{}
 
 	// Map nodes to dependencies
-	dependenciesByTypeNames := map[SpecificationName]DependencySet{}
+	dependenciesByTypeNames := map[SpecificationName]dependencySet{}
 	for _, n := range g {
-		specByTypeNames[n.Name()] = n
-		dependenciesByTypeNames[n.Name()] = newDependencySetForSpecification(n)
+		specByTypeNames[n.SpecificationName()] = n.Specification
+		dependenciesByTypeNames[n.SpecificationName()] = n.Dependencies
 	}
 
 	// The algorithm simply processes all nodes and tries to find the ones that have no dependencies.
@@ -124,7 +169,7 @@ func (g DependencyGraph) Resolve() (ResolvedDependencies, error) {
 					if _, found := specByTypeNames[dependency]; !found {
 						return nil, errors.NewWithMessage(
 							errors.InternalErrorCode,
-							fmt.Sprintf("specification with type FilePath \"%s\" depends on an unresolved type FilePath \"%s\"",
+							fmt.Sprintf("specification with type %q depends on an unresolved type %q",
 								typeName,
 								dependency,
 							),
@@ -142,7 +187,7 @@ func (g DependencyGraph) Resolve() (ResolvedDependencies, error) {
 			return nil, errors.NewWithMessage(
 				errors.InternalErrorCode,
 				fmt.Sprintf(
-					"circular dependencies found between nodes \"%s\"",
+					"circular dependencies found between nodes %q",
 					strings.Join(circularDependencies, "\", \""),
 				),
 			)
@@ -156,15 +201,10 @@ func (g DependencyGraph) Resolve() (ResolvedDependencies, error) {
 
 		// Remove the resolved nodes from the remaining dependenciesByTypeNames.
 		for typeName, dependencies := range dependenciesByTypeNames {
-			diff := dependencies.diff(NewDependencySet(typeNamesWithNoDependencies...))
+			diff := dependencies.diff(newDependencySet(typeNamesWithNoDependencies...))
 			dependenciesByTypeNames[typeName] = diff
 		}
 	}
 
-	return append(ResolvedDependencies{}, resolved...), nil
+	return resolved, nil
 }
-
-// ResolvedDependencies represents an ordered list of Specification that should be processed in that specific order to avoid
-// unresolved types.
-// TODO Remove specification group and add its methods here.
-type ResolvedDependencies SpecificationGroup

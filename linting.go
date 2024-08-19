@@ -33,7 +33,7 @@ func (l LintingProcessor) Name() string {
 func (l LintingProcessor) Process(ctx ProcessingContext) ([]ProcessingOutput, error) {
 	linter := CompositeSpecificationLinter(l.linters...)
 	ctx.Logger.Info("\nLinting specifications ...")
-	lr := linter.Lint(SpecificationGroup(ctx.DependencyGraph))
+	lr := linter.Lint(ctx.Specifications)
 	if lr.HasWarnings() {
 		for _, w := range lr.Warnings() {
 			ctx.Logger.Warning(fmt.Sprintf("Warning: %s\n", w.Message))

@@ -79,18 +79,9 @@ func (s Specter) Run(sourceLocations []string) error {
 		return e
 	}
 
-	// Resolve Dependencies
-	var deps ResolvedDependencies
-	deps, err = s.ResolveDependencies(specifications)
-	if err != nil {
-		e := errors.WrapWithMessage(err, errors.InternalErrorCode, "dependency resolution failed")
-		s.Logger.Error(e.Error())
-		return e
-	}
-
 	// Process Specifications
 	var outputs []ProcessingOutput
-	outputs, err = s.ProcessSpecifications(deps)
+	outputs, err = s.ProcessSpecifications(specifications)
 	stats.NbOutputs = len(outputs)
 	if err != nil {
 		e := errors.WrapWithMessage(err, errors.InternalErrorCode, "failed processing specifications")
@@ -102,7 +93,7 @@ func (s Specter) Run(sourceLocations []string) error {
 		return nil
 	}
 
-	if err = s.ProcessOutputs(deps, outputs); err != nil {
+	if err = s.ProcessOutputs(specifications, outputs); err != nil {
 		e := errors.WrapWithMessage(err, errors.InternalErrorCode, "failed processing outputs")
 		s.Logger.Error(e.Error())
 		return e
@@ -189,23 +180,12 @@ func (s Specter) LoadSpecifications(sources []Source) ([]Specification, error) {
 	return specifications, errors.GroupOrNil(errs)
 }
 
-// ResolveDependencies resolves the dependencies between specifications.
-func (s Specter) ResolveDependencies(specifications []Specification) (ResolvedDependencies, error) {
-	s.Logger.Info("\nResolving dependencies...")
-	deps, err := NewDependencyGraph(specifications...).Resolve()
-	if err != nil {
-		return nil, errors.WrapWithMessage(err, errors.InternalErrorCode, "failed resolving dependencies")
-	}
-	s.Logger.Success("Dependencies resolved successfully.")
-	return deps, nil
-}
-
 // ProcessSpecifications sends the specifications to processors.
-func (s Specter) ProcessSpecifications(specifications ResolvedDependencies) ([]ProcessingOutput, error) {
+func (s Specter) ProcessSpecifications(specs []Specification) ([]ProcessingOutput, error) {
 	ctx := ProcessingContext{
-		DependencyGraph: specifications,
-		Outputs:         nil,
-		Logger:          s.Logger,
+		Specifications: specs,
+		Outputs:        nil,
+		Logger:         s.Logger,
 	}
 
 	s.Logger.Info("\nProcessing specifications ...")
@@ -227,11 +207,11 @@ func (s Specter) ProcessSpecifications(specifications ResolvedDependencies) ([]P
 }
 
 // ProcessOutputs sends a list of ProcessingOutputs to the registered OutputProcessors.
-func (s Specter) ProcessOutputs(specifications ResolvedDependencies, outputs []ProcessingOutput) error {
+func (s Specter) ProcessOutputs(specifications []Specification, outputs []ProcessingOutput) error {
 	ctx := OutputProcessingContext{
-		DependencyGraph: specifications,
-		Outputs:         outputs,
-		Logger:          s.Logger,
+		Specifications: specifications,
+		Outputs:        outputs,
+		Logger:         s.Logger,
 	}
 
 	s.Logger.Info("\nProcessing outputs ...")

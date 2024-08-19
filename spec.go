@@ -1,6 +1,7 @@
 package specter
 
 import (
+	"fmt"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -28,59 +29,48 @@ type Specification interface {
 	// SetSource sets the source of the specification.
 	// This method should only be used by loaders.
 	SetSource(s Source)
-
-	// Dependencies returns a list of the Names of the specifications this one depends on.
-	Dependencies() []SpecificationName
 }
 
 // GenericSpecification is a generic implementation of a Specification that saves its attributes in a list of attributes for introspection.
 // these can be useful for loaders that are looser in what they allow.
 type GenericSpecification struct {
-	name         SpecificationName
-	typ          SpecificationType
-	source       Source
-	dependencies []SpecificationName
-	Attributes   []GenericSpecAttribute
+	name       SpecificationName
+	typ        SpecificationType
+	source     Source
+	Attributes []GenericSpecAttribute
 }
 
-func (s GenericSpecification) SetSource(src Source) {
+func NewGenericSpecification(name SpecificationName, typ SpecificationType, source Source) *GenericSpecification {
+	return &GenericSpecification{name: name, typ: typ, source: source}
+}
+
+func (s *GenericSpecification) SetSource(src Source) {
 	s.source = src
 }
 
-func (s GenericSpecification) Description() string {
-	if s.HasAttribute("description") {
-		attr := s.Attribute("description")
-		gAttr, ok := attr.Value.(GenericValue)
-		if ok {
-			return gAttr.AsString()
-		}
+func (s *GenericSpecification) Description() string {
+	if !s.HasAttribute("description") {
+		return ""
 	}
 
-	return ""
+	attr := s.Attribute("description")
+	return attr.Value.String()
 }
 
-func NewGenericSpecification(name SpecificationName, typ SpecificationType, source Source, dependencies []SpecificationName) *GenericSpecification {
-	return &GenericSpecification{name: name, typ: typ, source: source, dependencies: dependencies}
-}
-
-func (s GenericSpecification) Name() SpecificationName {
+func (s *GenericSpecification) Name() SpecificationName {
 	return s.name
 }
 
-func (s GenericSpecification) Type() SpecificationType {
+func (s *GenericSpecification) Type() SpecificationType {
 	return s.typ
 }
 
-func (s GenericSpecification) Source() Source {
+func (s *GenericSpecification) Source() Source {
 	return s.source
 }
 
-func (s GenericSpecification) Dependencies() []SpecificationName {
-	return s.dependencies
-}
-
 // Attribute returns an attribute by its FilePath or nil if it was not found.
-func (s GenericSpecification) Attribute(name string) *GenericSpecAttribute {
+func (s *GenericSpecification) Attribute(name string) *GenericSpecAttribute {
 	for _, a := range s.Attributes {
 		if a.Name == name {
 			return &a
@@ -91,7 +81,7 @@ func (s GenericSpecification) Attribute(name string) *GenericSpecAttribute {
 }
 
 // HasAttribute indicates if a specification has a certain attribute or not.
-func (s GenericSpecification) HasAttribute(name string) bool {
+func (s *GenericSpecification) HasAttribute(name string) bool {
 	for _, a := range s.Attributes {
 		if a.Name == name {
 			return true
@@ -115,24 +105,27 @@ type GenericSpecAttribute struct {
 	Value AttributeValue
 }
 
-func (a GenericSpecAttribute) AsGenericValue() GenericValue {
-	return a.Value.(GenericValue)
-}
-
-func (a GenericSpecAttribute) AsObjectValue() ObjectValue {
-	return a.Value.(ObjectValue)
-}
-
 type AttributeValue interface {
-	IsAttributeValue()
+	String() string
 }
+
+var _ AttributeValue = GenericValue{}
 
 // GenericValue represents a generic value that is mostly unknown in terms of type and intent.
 type GenericValue struct {
 	cty.Value
 }
 
-func (d GenericValue) IsAttributeValue() {}
+func (d GenericValue) String() string {
+	switch d.Type() {
+	case cty.String:
+		return d.Value.AsString()
+	default:
+		return ""
+	}
+}
+
+var _ AttributeValue = ObjectValue{}
 
 // ObjectValue represents a type of attribute value that is a nested data structure as opposed to a scalar value.
 type ObjectValue struct {
@@ -140,7 +133,9 @@ type ObjectValue struct {
 	Attributes []GenericSpecAttribute
 }
 
-func (o ObjectValue) IsAttributeValue() {}
+func (o ObjectValue) String() string {
+	return fmt.Sprintf("ObjectValue {Type: %s, Attributes: %v}", o.Type, o.Attributes)
+}
 
 // SpecificationGroup Represents a list of Specification.
 type SpecificationGroup []Specification

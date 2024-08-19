@@ -89,8 +89,7 @@ func (l HCLGenericSpecLoader) Load(s Source) ([]Specification, error) {
 		}
 
 		// Create specification and add to list
-		//goland:noinspection GoRedundantConversion
-		specifications = append(specifications, GenericSpecification{
+		specifications = append(specifications, &GenericSpecification{
 			name:       SpecificationName(block.Labels[0]),
 			typ:        SpecificationType(block.Type),
 			source:     s,
