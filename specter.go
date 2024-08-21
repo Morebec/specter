@@ -41,66 +41,74 @@ func (s Stats) ExecutionTime() time.Duration {
 	return s.EndedAt.Sub(s.StartedAt)
 }
 
+type RunResult struct {
+	Sources       []Source
+	Specification []Specification
+	Outputs       []ProcessingOutput
+	Stats         Stats
+}
+
 // Run the pipeline from start to finish.
-func (s Specter) Run(sourceLocations []string) error {
-	stats := Stats{}
+func (s Specter) Run(sourceLocations []string) (RunResult, error) {
+	var run RunResult
+	var outputs []ProcessingOutput
 
 	defer func() {
-		stats.EndedAt = time.Now()
-
-		s.Logger.Info(fmt.Sprintf("\nStarted At: %s", stats.StartedAt))
-		s.Logger.Info(fmt.Sprintf("Ended at: %s", stats.EndedAt))
-		s.Logger.Info(fmt.Sprintf("Execution time: %s", stats.ExecutionTime()))
-		s.Logger.Info(fmt.Sprintf("Number of source locations: %d", stats.NbSourceLocations))
-		s.Logger.Info(fmt.Sprintf("Number of sources: %d", stats.NbSources))
-		s.Logger.Info(fmt.Sprintf("Number of specifications: %d", stats.NbSpecifications))
-		s.Logger.Info(fmt.Sprintf("Number of outputs: %d", stats.NbOutputs))
+		run.Stats.EndedAt = time.Now()
+		s.Logger.Info(fmt.Sprintf("\nStarted At: %s", run.Stats.StartedAt))
+		s.Logger.Info(fmt.Sprintf("Ended at: %s", run.Stats.EndedAt))
+		s.Logger.Info(fmt.Sprintf("Execution time: %s", run.Stats.ExecutionTime()))
+		s.Logger.Info(fmt.Sprintf("Number of source locations: %d", run.Stats.NbSourceLocations))
+		s.Logger.Info(fmt.Sprintf("Number of sources: %d", run.Stats.NbSources))
+		s.Logger.Info(fmt.Sprintf("Number of specifications: %d", run.Stats.NbSpecifications))
+		s.Logger.Info(fmt.Sprintf("Number of outputs: %d", run.Stats.NbOutputs))
 	}()
 
-	stats.StartedAt = time.Now()
+	run.Stats.StartedAt = time.Now()
 
 	// Load sources
-	stats.NbSourceLocations = len(sourceLocations)
+	run.Stats.NbSourceLocations = len(sourceLocations)
 	sources, err := s.LoadSources(sourceLocations)
-	stats.NbSources = len(sources)
+	run.Stats.NbSources = len(sources)
+	run.Sources = sources
 	if err != nil {
 		e := errors.WrapWithMessage(err, errors.InternalErrorCode, "failed loading sources")
 		s.Logger.Error(e.Error())
-		return e
+		return run, e
 	}
 
 	// Load Specifications
 	var specifications []Specification
 	specifications, err = s.LoadSpecifications(sources)
-	stats.NbSpecifications = len(specifications)
+	run.Stats.NbSpecifications = len(specifications)
 	if err != nil {
 		e := errors.WrapWithMessage(err, errors.InternalErrorCode, "failed loading specifications")
 		s.Logger.Error(e.Error())
-		return e
+		return run, e
 	}
 
 	// Process Specifications
-	var outputs []ProcessingOutput
 	outputs, err = s.ProcessSpecifications(specifications)
-	stats.NbOutputs = len(outputs)
+	run.Stats.NbOutputs = len(outputs)
+	run.Outputs = outputs
 	if err != nil {
 		e := errors.WrapWithMessage(err, errors.InternalErrorCode, "failed processing specifications")
 		s.Logger.Error(e.Error())
-		return e
+		return run, e
 	}
 	// stop here
 	if s.ExecutionMode == PreviewMode {
-		return nil
+		return run, nil
 	}
 
 	if err = s.ProcessOutputs(specifications, outputs); err != nil {
 		e := errors.WrapWithMessage(err, errors.InternalErrorCode, "failed processing outputs")
 		s.Logger.Error(e.Error())
-		return e
+		return run, e
 	}
 
 	s.Logger.Success("\nProcessing completed successfully.")
-	return nil
+	return run, nil
 }
 
 // LoadSources only performs the Load sources step.
