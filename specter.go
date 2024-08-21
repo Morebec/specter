@@ -1,6 +1,7 @@
 package specter
 
 import (
+	"context"
 	"fmt"
 	"github.com/morebec/go-errors/errors"
 	"os"
@@ -50,7 +51,7 @@ type RunResult struct {
 }
 
 // Run the pipeline from start to finish.
-func (s Specter) Run(sourceLocations []string) (RunResult, error) {
+func (s Specter) Run(ctx context.Context, sourceLocations []string) (RunResult, error) {
 	var run RunResult
 	var outputs []ProcessingOutput
 
@@ -69,7 +70,7 @@ func (s Specter) Run(sourceLocations []string) (RunResult, error) {
 
 	// Load sources
 	run.Stats.NbSourceLocations = len(sourceLocations)
-	sources, err := s.LoadSources(sourceLocations)
+	sources, err := s.LoadSources(ctx, sourceLocations)
 	run.Stats.NbSources = len(sources)
 	run.Sources = sources
 	if err != nil {
@@ -80,7 +81,7 @@ func (s Specter) Run(sourceLocations []string) (RunResult, error) {
 
 	// Load Specifications
 	var specifications []Specification
-	specifications, err = s.LoadSpecifications(sources)
+	specifications, err = s.LoadSpecifications(ctx, sources)
 	run.Stats.NbSpecifications = len(specifications)
 	if err != nil {
 		e := errors.WrapWithMessage(err, errors.InternalErrorCode, "failed loading specifications")
@@ -89,7 +90,7 @@ func (s Specter) Run(sourceLocations []string) (RunResult, error) {
 	}
 
 	// Process Specifications
-	outputs, err = s.ProcessSpecifications(specifications)
+	outputs, err = s.ProcessSpecifications(ctx, specifications)
 	run.Stats.NbOutputs = len(outputs)
 	run.Outputs = outputs
 	if err != nil {
@@ -103,7 +104,7 @@ func (s Specter) Run(sourceLocations []string) (RunResult, error) {
 	}
 
 	// Process Output
-	if err = s.ProcessOutputs(specifications, outputs); err != nil {
+	if err = s.ProcessOutputs(ctx, specifications, outputs); err != nil {
 		e := errors.WrapWithMessage(err, errors.InternalErrorCode, "failed processing outputs")
 		s.Logger.Error(e.Error())
 		return run, e
@@ -114,7 +115,7 @@ func (s Specter) Run(sourceLocations []string) (RunResult, error) {
 }
 
 // LoadSources only performs the Load sources step.
-func (s Specter) LoadSources(sourceLocations []string) ([]Source, error) {
+func (s Specter) LoadSources(ctx context.Context, sourceLocations []string) ([]Source, error) {
 	var sources []Source
 	errs := errors.NewGroup(errors.InternalErrorCode)
 
@@ -124,6 +125,10 @@ func (s Specter) LoadSources(sourceLocations []string) ([]Source, error) {
 	}
 
 	for _, sl := range sourceLocations {
+		if err := CheckContextDone(ctx); err != nil {
+			return nil, err
+		}
+
 		loaded := false
 		for _, l := range s.SourceLoaders {
 			if l.Supports(sl) {
@@ -146,7 +151,7 @@ func (s Specter) LoadSources(sourceLocations []string) ([]Source, error) {
 }
 
 // LoadSpecifications performs the loading of Specifications.
-func (s Specter) LoadSpecifications(sources []Source) ([]Specification, error) {
+func (s Specter) LoadSpecifications(ctx context.Context, sources []Source) ([]Specification, error) {
 	s.Logger.Info("\nLoading specifications ...")
 
 	// Load specifications
@@ -155,6 +160,9 @@ func (s Specter) LoadSpecifications(sources []Source) ([]Specification, error) {
 	errs := errors.NewGroup(errors.InternalErrorCode)
 
 	for _, src := range sources {
+		if err := CheckContextDone(ctx); err != nil {
+			return nil, err
+		}
 		wasLoaded := false
 		for _, l := range s.Loaders {
 			if !l.SupportsSource(src) {
@@ -191,8 +199,9 @@ func (s Specter) LoadSpecifications(sources []Source) ([]Specification, error) {
 }
 
 // ProcessSpecifications sends the specifications to processors.
-func (s Specter) ProcessSpecifications(specs []Specification) ([]ProcessingOutput, error) {
-	ctx := ProcessingContext{
+func (s Specter) ProcessSpecifications(ctx context.Context, specs []Specification) ([]ProcessingOutput, error) {
+	pctx := ProcessingContext{
+		Context:        ctx,
 		Specifications: specs,
 		Outputs:        nil,
 		Logger:         s.Logger,
@@ -200,29 +209,33 @@ func (s Specter) ProcessSpecifications(specs []Specification) ([]ProcessingOutpu
 
 	s.Logger.Info("\nProcessing specifications ...")
 	for _, p := range s.Processors {
-		outputs, err := p.Process(ctx)
+		if err := CheckContextDone(ctx); err != nil {
+			return nil, err
+		}
+		outputs, err := p.Process(pctx)
 		if err != nil {
 			return nil, errors.WrapWithMessage(err, errors.InternalErrorCode, fmt.Sprintf("processor %q failed", p.Name()))
 		}
-		ctx.Outputs = append(ctx.Outputs, outputs...)
+		pctx.Outputs = append(pctx.Outputs, outputs...)
 	}
 
-	s.Logger.Info(fmt.Sprintf("%d outputs generated.", len(ctx.Outputs)))
-	for _, o := range ctx.Outputs {
+	s.Logger.Info(fmt.Sprintf("%d outputs generated.", len(pctx.Outputs)))
+	for _, o := range pctx.Outputs {
 		s.Logger.Info(fmt.Sprintf("-> %s", o.Name))
 	}
 
 	s.Logger.Success("Specifications processed successfully.")
-	return ctx.Outputs, nil
+	return pctx.Outputs, nil
 }
 
 // ProcessOutputs sends a list of ProcessingOutputs to the registered OutputProcessors.
-func (s Specter) ProcessOutputs(specifications []Specification, outputs []ProcessingOutput) error {
+func (s Specter) ProcessOutputs(ctx context.Context, specifications []Specification, outputs []ProcessingOutput) error {
 	if s.OutputRegistry == nil {
 		s.OutputRegistry = NoopOutputRegistry{}
 	}
 
-	ctx := OutputProcessingContext{
+	octx := OutputProcessingContext{
+		Context:        ctx,
 		Specifications: specifications,
 		Outputs:        outputs,
 		Logger:         s.Logger,
@@ -235,7 +248,10 @@ func (s Specter) ProcessOutputs(specifications []Specification, outputs []Proces
 	}
 
 	for _, p := range s.OutputProcessors {
-		err := p.Process(ctx)
+		if err := CheckContextDone(ctx); err != nil {
+			return err
+		}
+		err := p.Process(octx)
 		if err != nil {
 			return errors.WrapWithMessage(err, errors.InternalErrorCode, fmt.Sprintf("output processor %q failed", p.Name()))
 		}

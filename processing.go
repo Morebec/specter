@@ -1,6 +1,9 @@
 package specter
 
+import "context"
+
 type ProcessingContext struct {
+	context.Context
 	Specifications SpecificationGroup
 	Outputs        []ProcessingOutput
 	Logger         Logger
@@ -86,6 +89,7 @@ func (n NoopOutputRegistry) Outputs(processorName string) []string {
 }
 
 type OutputProcessingContext struct {
+	context.Context
 	Specifications SpecificationGroup
 	Outputs        []ProcessingOutput
 	Logger         Logger
