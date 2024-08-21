@@ -6,95 +6,95 @@ import (
 	"testing"
 )
 
-// MockOutputRegistry is a mock implementation of OutputRegistry
-type MockOutputRegistry struct {
+// MockArtifactRegistry is a mock implementation of ArtifactRegistry
+type MockArtifactRegistry struct {
 	mock.Mock
 }
 
-func (m *MockOutputRegistry) Load() error {
+func (m *MockArtifactRegistry) Load() error {
 	args := m.Called()
 	return args.Error(0)
 }
 
-func (m *MockOutputRegistry) Save() error {
+func (m *MockArtifactRegistry) Save() error {
 	args := m.Called()
 	return args.Error(0)
 }
 
-func (m *MockOutputRegistry) AddOutput(processorName string, outputName string) {
-	m.Called(processorName, outputName)
+func (m *MockArtifactRegistry) AddArtifact(processorName string, artifactName string) {
+	m.Called(processorName, artifactName)
 }
 
-func (m *MockOutputRegistry) RemoveOutput(processorName string, outputName string) {
-	m.Called(processorName, outputName)
+func (m *MockArtifactRegistry) RemoveArtifact(processorName string, artifactName string) {
+	m.Called(processorName, artifactName)
 }
 
-func (m *MockOutputRegistry) Outputs(processorName string) []string {
+func (m *MockArtifactRegistry) Artifacts(processorName string) []string {
 	args := m.Called(processorName)
 	return args.Get(0).([]string)
 }
 
-func TestOutputProcessingContext__AddToRegistry(t *testing.T) {
+func TestArtifactProcessingContext__AddToRegistry(t *testing.T) {
 	// Arrange
-	mockRegistry := new(MockOutputRegistry)
-	ctx := &OutputProcessingContext{
-		outputRegistry: mockRegistry,
-		processorName:  "testProcessor",
+	mockRegistry := new(MockArtifactRegistry)
+	ctx := &ArtifactProcessingContext{
+		artifactRegistry: mockRegistry,
+		processorName:    "testProcessor",
 	}
 
-	outputName := "outputFile.txt"
+	artifactName := "artifactFile.txt"
 
-	mockRegistry.On("AddOutput", "testProcessor", outputName).Return()
+	mockRegistry.On("AddArtifact", "testProcessor", artifactName).Return()
 
 	// Act
-	ctx.AddToRegistry(outputName)
+	ctx.AddToRegistry(artifactName)
 
 	// Assert
 	mockRegistry.AssertExpectations(t)
 }
 
-func TestOutputProcessingContext__RemoveFromRegistry(t *testing.T) {
+func TestArtifactProcessingContext__RemoveFromRegistry(t *testing.T) {
 	// Arrange
-	mockRegistry := new(MockOutputRegistry)
-	ctx := &OutputProcessingContext{
-		outputRegistry: mockRegistry,
-		processorName:  "testProcessor",
+	mockRegistry := new(MockArtifactRegistry)
+	ctx := &ArtifactProcessingContext{
+		artifactRegistry: mockRegistry,
+		processorName:    "testProcessor",
 	}
 
-	outputName := "outputFile.txt"
+	artifactName := "artifactFile.txt"
 
-	mockRegistry.On("RemoveOutput", "testProcessor", outputName).Return()
+	mockRegistry.On("RemoveArtifact", "testProcessor", artifactName).Return()
 
 	// Act
-	ctx.RemoveFromRegistry(outputName)
+	ctx.RemoveFromRegistry(artifactName)
 
 	// Assert
 	mockRegistry.AssertExpectations(t)
 }
 
-func TestOutputProcessingContext__RegistryOutputs(t *testing.T) {
+func TestArtifactProcessingContext__RegistryArtifacts(t *testing.T) {
 	// Arrange
-	mockRegistry := new(MockOutputRegistry)
-	ctx := &OutputProcessingContext{
-		outputRegistry: mockRegistry,
-		processorName:  "testProcessor",
+	mockRegistry := new(MockArtifactRegistry)
+	ctx := &ArtifactProcessingContext{
+		artifactRegistry: mockRegistry,
+		processorName:    "testProcessor",
 	}
 
-	expectedOutputs := []string{"file1.txt", "file2.txt"}
+	expectedArtifacts := []string{"file1.txt", "file2.txt"}
 
-	mockRegistry.On("Outputs", "testProcessor").Return(expectedOutputs)
+	mockRegistry.On("Artifacts", "testProcessor").Return(expectedArtifacts)
 
 	// Act
-	outputs := ctx.RegistryOutputs()
+	artifacts := ctx.RegistryArtifacts()
 
 	// Assert
-	assert.Equal(t, expectedOutputs, outputs)
+	assert.Equal(t, expectedArtifacts, artifacts)
 	mockRegistry.AssertExpectations(t)
 }
 
-func TestNoopOutputRegistry_Load(t *testing.T) {
+func TestNoopArtifactRegistry_Load(t *testing.T) {
 	// Arrange
-	registry := NoopOutputRegistry{}
+	registry := NoopArtifactRegistry{}
 
 	// Act
 	err := registry.Load()
@@ -103,9 +103,9 @@ func TestNoopOutputRegistry_Load(t *testing.T) {
 	assert.NoError(t, err, "Load should not return an error")
 }
 
-func TestNoopOutputRegistry_Save(t *testing.T) {
+func TestNoopArtifactRegistry_Save(t *testing.T) {
 	// Arrange
-	registry := NoopOutputRegistry{}
+	registry := NoopArtifactRegistry{}
 
 	// Act
 	err := registry.Save()
@@ -114,35 +114,35 @@ func TestNoopOutputRegistry_Save(t *testing.T) {
 	assert.NoError(t, err, "Save should not return an error")
 }
 
-func TestNoopOutputRegistry_AddOutput(t *testing.T) {
+func TestNoopArtifactRegistry_AddArtifact(t *testing.T) {
 	// Arrange
-	registry := NoopOutputRegistry{}
+	registry := NoopArtifactRegistry{}
 
 	// Act
-	registry.AddOutput("processor1", "outputFile.txt")
+	registry.AddArtifact("processor1", "artifactFile.txt")
 
 	// Assert
 	// No state to assert since it's a no-op, just ensure it doesn't panic or error.
 }
 
-func TestNoopOutputRegistry_RemoveOutput(t *testing.T) {
+func TestNoopArtifactRegistry_RemoveArtifact(t *testing.T) {
 	// Arrange
-	registry := NoopOutputRegistry{}
+	registry := NoopArtifactRegistry{}
 
 	// Act
-	registry.RemoveOutput("processor1", "outputFile.txt")
+	registry.RemoveArtifact("processor1", "artifactFile.txt")
 
 	// Assert
 	// No state to assert since it's a no-op, just ensure it doesn't panic or error.
 }
 
-func TestNoopOutputRegistry_Outputs(t *testing.T) {
+func TestNoopArtifactRegistry_Artifacts(t *testing.T) {
 	// Arrange
-	registry := NoopOutputRegistry{}
+	registry := NoopArtifactRegistry{}
 
 	// Act
-	outputs := registry.Outputs("processor1")
+	artifacts := registry.Artifacts("processor1")
 
 	// Assert
-	assert.Nil(t, outputs, "Outputs should return nil for NoopOutputRegistry")
+	assert.Nil(t, artifacts, "Artifacts should return nil for NoopArtifactRegistry")
 }

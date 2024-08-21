@@ -13,7 +13,7 @@ type ExecutionMode string
 // LintMode will cause a Specter instance to run until the lint step only.
 const LintMode ExecutionMode = "lint"
 
-// PreviewMode will cause a Specter instance to run until the processing step only, no output will be processed.
+// PreviewMode will cause a Specter instance to run until the processing step only, no artifact will be processed.
 const PreviewMode ExecutionMode = "preview"
 
 // FullMode will cause a Specter instance to be run fully.
@@ -21,13 +21,13 @@ const FullMode ExecutionMode = "full"
 
 // Specter is the service responsible to run a specter pipeline.
 type Specter struct {
-	SourceLoaders    []SourceLoader
-	Loaders          []SpecificationLoader
-	Processors       []SpecificationProcessor
-	OutputProcessors []OutputProcessor
-	OutputRegistry   OutputRegistry
-	Logger           Logger
-	ExecutionMode    ExecutionMode
+	SourceLoaders      []SourceLoader
+	Loaders            []SpecificationLoader
+	Processors         []SpecificationProcessor
+	ArtifactProcessors []ArtifactProcessor
+	ArtifactRegistry   ArtifactRegistry
+	Logger             Logger
+	ExecutionMode      ExecutionMode
 }
 
 type Stats struct {
@@ -36,7 +36,7 @@ type Stats struct {
 	NbSourceLocations int
 	NbSources         int
 	NbSpecifications  int
-	NbOutputs         int
+	NbArtifacts       int
 }
 
 func (s Stats) ExecutionTime() time.Duration {
@@ -46,14 +46,14 @@ func (s Stats) ExecutionTime() time.Duration {
 type RunResult struct {
 	Sources       []Source
 	Specification []Specification
-	Outputs       []ProcessingOutput
+	Artifacts     []Artifact
 	Stats         Stats
 }
 
 // Run the pipeline from start to finish.
 func (s Specter) Run(ctx context.Context, sourceLocations []string) (RunResult, error) {
 	var run RunResult
-	var outputs []ProcessingOutput
+	var artifacts []Artifact
 
 	defer func() {
 		run.Stats.EndedAt = time.Now()
@@ -63,7 +63,7 @@ func (s Specter) Run(ctx context.Context, sourceLocations []string) (RunResult, 
 		s.Logger.Info(fmt.Sprintf("Number of source locations: %d", run.Stats.NbSourceLocations))
 		s.Logger.Info(fmt.Sprintf("Number of sources: %d", run.Stats.NbSources))
 		s.Logger.Info(fmt.Sprintf("Number of specifications: %d", run.Stats.NbSpecifications))
-		s.Logger.Info(fmt.Sprintf("Number of outputs: %d", run.Stats.NbOutputs))
+		s.Logger.Info(fmt.Sprintf("Number of artifacts: %d", run.Stats.NbArtifacts))
 	}()
 
 	run.Stats.StartedAt = time.Now()
@@ -90,9 +90,9 @@ func (s Specter) Run(ctx context.Context, sourceLocations []string) (RunResult, 
 	}
 
 	// Process Specifications
-	outputs, err = s.ProcessSpecifications(ctx, specifications)
-	run.Stats.NbOutputs = len(outputs)
-	run.Outputs = outputs
+	artifacts, err = s.ProcessSpecifications(ctx, specifications)
+	run.Stats.NbArtifacts = len(artifacts)
+	run.Artifacts = artifacts
 	if err != nil {
 		e := errors.WrapWithMessage(err, errors.InternalErrorCode, "failed processing specifications")
 		s.Logger.Error(e.Error())
@@ -103,9 +103,9 @@ func (s Specter) Run(ctx context.Context, sourceLocations []string) (RunResult, 
 		return run, nil
 	}
 
-	// Process Output
-	if err = s.ProcessOutputs(ctx, specifications, outputs); err != nil {
-		e := errors.WrapWithMessage(err, errors.InternalErrorCode, "failed processing outputs")
+	// Process Artifact
+	if err = s.ProcessArtifacts(ctx, specifications, artifacts); err != nil {
+		e := errors.WrapWithMessage(err, errors.InternalErrorCode, "failed processing artifacts")
 		s.Logger.Error(e.Error())
 		return run, e
 	}
@@ -199,11 +199,11 @@ func (s Specter) LoadSpecifications(ctx context.Context, sources []Source) ([]Sp
 }
 
 // ProcessSpecifications sends the specifications to processors.
-func (s Specter) ProcessSpecifications(ctx context.Context, specs []Specification) ([]ProcessingOutput, error) {
+func (s Specter) ProcessSpecifications(ctx context.Context, specs []Specification) ([]Artifact, error) {
 	pctx := ProcessingContext{
 		Context:        ctx,
 		Specifications: specs,
-		Outputs:        nil,
+		Artifacts:      nil,
 		Logger:         s.Logger,
 	}
 
@@ -212,56 +212,58 @@ func (s Specter) ProcessSpecifications(ctx context.Context, specs []Specificatio
 		if err := CheckContextDone(ctx); err != nil {
 			return nil, err
 		}
-		outputs, err := p.Process(pctx)
+		artifacts, err := p.Process(pctx)
 		if err != nil {
 			return nil, errors.WrapWithMessage(err, errors.InternalErrorCode, fmt.Sprintf("processor %q failed", p.Name()))
 		}
-		pctx.Outputs = append(pctx.Outputs, outputs...)
+		pctx.Artifacts = append(pctx.Artifacts, artifacts...)
 	}
 
-	s.Logger.Info(fmt.Sprintf("%d outputs generated.", len(pctx.Outputs)))
-	for _, o := range pctx.Outputs {
+	s.Logger.Info(fmt.Sprintf("%d artifacts generated.", len(pctx.Artifacts)))
+	for _, o := range pctx.Artifacts {
 		s.Logger.Info(fmt.Sprintf("-> %s", o.Name))
 	}
 
 	s.Logger.Success("Specifications processed successfully.")
-	return pctx.Outputs, nil
+	return pctx.Artifacts, nil
 }
 
-// ProcessOutputs sends a list of ProcessingOutputs to the registered OutputProcessors.
-func (s Specter) ProcessOutputs(ctx context.Context, specifications []Specification, outputs []ProcessingOutput) error {
-	if s.OutputRegistry == nil {
-		s.OutputRegistry = NoopOutputRegistry{}
+// ProcessArtifacts sends a list of ProcessingArtifacts to the registered ArtifactProcessors.
+func (s Specter) ProcessArtifacts(ctx context.Context, specifications []Specification, artifacts []Artifact) error {
+	if s.ArtifactRegistry == nil {
+		s.ArtifactRegistry = NoopArtifactRegistry{}
 	}
 
-	octx := OutputProcessingContext{
-		Context:        ctx,
-		Specifications: specifications,
-		Outputs:        outputs,
-		Logger:         s.Logger,
-		outputRegistry: s.OutputRegistry,
+	s.Logger.Info("\nProcessing artifacts ...")
+	if err := s.ArtifactRegistry.Load(); err != nil {
+		return fmt.Errorf("failed loading artifact registry: %w", err)
 	}
 
-	s.Logger.Info("\nProcessing outputs ...")
-	if err := s.OutputRegistry.Load(); err != nil {
-		return fmt.Errorf("failed loading output registry: %w", err)
-	}
-
-	for _, p := range s.OutputProcessors {
+	for _, p := range s.ArtifactProcessors {
 		if err := CheckContextDone(ctx); err != nil {
 			return err
 		}
+
+		octx := ArtifactProcessingContext{
+			Context:          ctx,
+			Specifications:   specifications,
+			Artifacts:        artifacts,
+			Logger:           s.Logger,
+			artifactRegistry: s.ArtifactRegistry,
+			processorName:    p.Name(),
+		}
+
 		err := p.Process(octx)
 		if err != nil {
-			return errors.WrapWithMessage(err, errors.InternalErrorCode, fmt.Sprintf("output processor %q failed", p.Name()))
+			return errors.WrapWithMessage(err, errors.InternalErrorCode, fmt.Sprintf("artifact processor %q failed", p.Name()))
 		}
 	}
 
-	if err := s.OutputRegistry.Save(); err != nil {
-		return fmt.Errorf("failed saving output registry: %w", err)
+	if err := s.ArtifactRegistry.Save(); err != nil {
+		return fmt.Errorf("failed saving artifact registry: %w", err)
 	}
 
-	s.Logger.Success("Outputs processed successfully.")
+	s.Logger.Success("Artifacts processed successfully.")
 	return nil
 }
 
@@ -308,10 +310,10 @@ func WithProcessors(processors ...SpecificationProcessor) Option {
 	}
 }
 
-// WithOutputProcessors configures the OutputProcessor of a Specter instance.
-func WithOutputProcessors(processors ...OutputProcessor) Option {
+// WithArtifactProcessors configures the ArtifactProcessor of a Specter instance.
+func WithArtifactProcessors(processors ...ArtifactProcessor) Option {
 	return func(s *Specter) {
-		s.OutputProcessors = append(s.OutputProcessors, processors...)
+		s.ArtifactProcessors = append(s.ArtifactProcessors, processors...)
 	}
 }
 
@@ -321,9 +323,9 @@ func WithExecutionMode(m ExecutionMode) Option {
 		s.ExecutionMode = m
 	}
 }
-func WithOutputRegistry(r OutputRegistry) Option {
+func WithArtifactRegistry(r ArtifactRegistry) Option {
 	return func(s *Specter) {
-		s.OutputRegistry = r
+		s.ArtifactRegistry = r
 	}
 }
 

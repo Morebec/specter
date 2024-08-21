@@ -175,15 +175,15 @@ func TestDependencyResolutionProcessor_Process(t *testing.T) {
 			}
 
 			var err error
-			ctx.Outputs, err = processor.Process(ctx)
+			ctx.Artifacts, err = processor.Process(ctx)
 			if tt.expectedError != nil {
 				require.Error(t, err)
 				assert.ErrorContains(t, err, tt.expectedError.Error())
 				return
 			}
 
-			output := ctx.Output(ResolvedDependencyContextOutputName).Value
-			graph := output.(ResolvedDependencies)
+			artifact := ctx.Artifact(ResolvedDependencyContextArtifactName).Value
+			graph := artifact.(ResolvedDependencies)
 
 			require.NoError(t, err)
 			require.Equal(t, tt.then, graph)
@@ -200,9 +200,9 @@ func TestGetResolvedDependenciesFromContext(t *testing.T) {
 		{
 			name: "GIVEN a context with resolved dependencies THEN return resolved dependencies",
 			given: ProcessingContext{
-				Outputs: []ProcessingOutput{
+				Artifacts: []Artifact{
 					{
-						Name: ResolvedDependencyContextOutputName,
+						Name: ResolvedDependencyContextArtifactName,
 						Value: ResolvedDependencies{
 							NewGenericSpecification("name", "type", Source{}),
 						},
@@ -216,9 +216,9 @@ func TestGetResolvedDependenciesFromContext(t *testing.T) {
 		{
 			name: "GIVEN a context with resolved dependencies with wrong type THEN return nil",
 			given: ProcessingContext{
-				Outputs: []ProcessingOutput{
+				Artifacts: []Artifact{
 					{
-						Name:  ResolvedDependencyContextOutputName,
+						Name:  ResolvedDependencyContextArtifactName,
 						Value: "this is not the right value",
 					},
 				},

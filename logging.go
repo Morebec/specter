@@ -9,7 +9,7 @@ import (
 )
 
 // Logger interface to be used by specter and processors to perform logging.
-// implementations can be made for different scenarios, such as outputting to a file, stderr, silencing the logger etc.
+// implementations can be made for different scenarios, such as artifactting to a file, stderr, silencing the logger etc.
 // The logger only provides contextual logging.
 type Logger interface {
 	// Trace should only be used for debugging purposes.

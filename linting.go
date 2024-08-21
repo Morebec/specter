@@ -7,7 +7,7 @@ import (
 	"unicode"
 )
 
-const LintingProcessingContextOutputName = "_linting_processor_results"
+const LintingProcessingContextArtifactName = "_linting_processor_results"
 
 // UndefinedSpecificationName constant used to test against undefined SpecificationName.
 const UndefinedSpecificationName SpecificationName = ""
@@ -33,14 +33,14 @@ func (l LintingProcessor) Name() string {
 	return "linting_processor"
 }
 
-func (l LintingProcessor) Process(ctx ProcessingContext) (outputs []ProcessingOutput, err error) {
+func (l LintingProcessor) Process(ctx ProcessingContext) (artifacts []Artifact, err error) {
 	linter := CompositeSpecificationLinter(l.linters...)
 	ctx.Logger.Info("\nLinting specifications ...")
 
 	lr := linter.Lint(ctx.Specifications)
 
-	outputs = append(outputs, ProcessingOutput{
-		Name:  LintingProcessingContextOutputName,
+	artifacts = append(artifacts, Artifact{
+		Name:  LintingProcessingContextArtifactName,
 		Value: lr,
 	})
 
@@ -61,12 +61,12 @@ func (l LintingProcessor) Process(ctx ProcessingContext) (outputs []ProcessingOu
 		ctx.Logger.Success("Specifications linted successfully.")
 	}
 
-	return outputs, err
+	return artifacts, err
 
 }
 
 func GetLintingResultsFromContext(ctx ProcessingContext) LinterResultSet {
-	return GetContextOutput[LinterResultSet](ctx, LintingProcessingContextOutputName)
+	return GetContextArtifact[LinterResultSet](ctx, LintingProcessingContextArtifactName)
 }
 
 type LinterResult struct {

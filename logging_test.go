@@ -23,7 +23,7 @@ func TestNewDefaultLogger(t *testing.T) {
 				require.NotNil(t, l)
 				require.Equal(t, os.Stdout, l.writer)
 
-				// Check colors enabled by capturing output
+				// Check colors enabled by capturing artifact
 				buffer := bytes.Buffer{}
 				l.writer = &buffer
 				l.Success("hello world")

@@ -5,11 +5,11 @@ import (
 	"testing"
 )
 
-func TestWithOutputRegistry(t *testing.T) {
+func TestWithArtifactRegistry(t *testing.T) {
 	s := &Specter{}
-	r := &JSONOutputRegistry{}
-	WithOutputRegistry(r)(s)
-	assert.Equal(t, r, s.OutputRegistry)
+	r := &JSONArtifactRegistry{}
+	WithArtifactRegistry(r)(s)
+	assert.Equal(t, r, s.ArtifactRegistry)
 }
 
 func TestWithDefaultLogger(t *testing.T) {

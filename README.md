@@ -4,7 +4,7 @@
 
 Specter is a development toolkit in Go that allows you to develop configuration file processors based on 
 HashiCorp Configuration Language (HCL). With Specter, you can define your own Domain-Specific Language (DSL) 
-using HCL and create a processing pipeline to validate, lint, resolve dependencies, and generate code or output 
+using HCL and create a processing pipeline to validate, lint, resolve dependencies, and generate code or artifact 
 files from these DSL configuration files.
 
 ## Features
@@ -12,7 +12,7 @@ files from these DSL configuration files.
 - Develop your own DSL using HCL
 - Validate and lint configuration files
 - Resolve dependencies between configuration files
-- Generate code or output files from configuration files
+- Generate code or artifact files from configuration files
 
 ## Getting Started
 
