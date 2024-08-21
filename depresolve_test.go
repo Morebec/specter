@@ -27,6 +27,8 @@ func TestDependencyResolutionProcessor_Process(t *testing.T) {
 		specifications []Specification
 		providers      []DependencyProvider
 	}
+	spec1 := NewGenericSpecification("spec1", "type", Source{})
+	spec2 := NewGenericSpecification("spec2", "type", Source{})
 	tests := []struct {
 		name          string
 		given         args
@@ -58,13 +60,13 @@ func TestDependencyResolutionProcessor_Process(t *testing.T) {
 					},
 				},
 				specifications: SpecificationGroup{
-					NewGenericSpecification("spec1", "type", Source{}),
-					NewGenericSpecification("spec2", "type", Source{}),
+					spec1,
+					spec2,
 				},
 			},
 			then: ResolvedDependencies{
-				NewGenericSpecification("spec1", "type", Source{}),
-				NewGenericSpecification("spec2", "type", Source{}),
+				spec1,
+				spec2,
 			},
 			expectedError: nil,
 		},
@@ -102,13 +104,13 @@ func TestDependencyResolutionProcessor_Process(t *testing.T) {
 					},
 				},
 				specifications: SpecificationGroup{
-					NewGenericSpecification("spec1", "type", Source{}),
-					NewGenericSpecification("spec2", "type", Source{}),
+					spec1,
+					spec2,
 				},
 			},
 			then: ResolvedDependencies{
-				NewGenericSpecification("spec2", "type", Source{}), // topological sort
-				NewGenericSpecification("spec1", "type", Source{}),
+				spec2, // topological sort
+				spec1,
 			},
 			expectedError: nil,
 		},
@@ -131,8 +133,8 @@ func TestDependencyResolutionProcessor_Process(t *testing.T) {
 					},
 				},
 				specifications: SpecificationGroup{
-					NewGenericSpecification("spec1", "type", Source{}),
-					NewGenericSpecification("spec2", "type", Source{}),
+					spec1,
+					spec2,
 				},
 			},
 			then:          nil,
@@ -152,12 +154,12 @@ func TestDependencyResolutionProcessor_Process(t *testing.T) {
 					},
 				},
 				specifications: SpecificationGroup{
-					NewGenericSpecification("spec1", "type", Source{}),
-					NewGenericSpecification("spec2", "type", Source{}), // spec2 is not provided
+					spec1,
+					spec2, // spec2 is not provided
 				},
 			},
 			then:          nil,
-			expectedError: errors.NewWithMessage(errors.InternalErrorCode, "specification with type \"spec1\" depends on an unresolved type \"spec3\""),
+			expectedError: errors.NewWithMessage(errors.InternalErrorCode, "depends on an unresolved type \"spec3\""),
 		},
 	}
 	for _, tt := range tests {
@@ -166,9 +168,9 @@ func TestDependencyResolutionProcessor_Process(t *testing.T) {
 
 			ctx := ProcessingContext{
 				Specifications: tt.given.specifications,
-				Logger: NewColoredOutputLogger(ColoredOutputLoggerConfig{
-					EnableColors: true,
-					Writer:       os.Stdout,
+				Logger: NewDefaultLogger(DefaultLoggerConfig{
+					DisableColors: true,
+					Writer:        os.Stdout,
 				}),
 			}
 
@@ -180,11 +182,64 @@ func TestDependencyResolutionProcessor_Process(t *testing.T) {
 				return
 			}
 
-			output := ctx.Output(DependencyGraphContextName).Value
+			output := ctx.Output(ResolvedDependencyContextOutputName).Value
 			graph := output.(ResolvedDependencies)
 
 			require.NoError(t, err)
 			require.Equal(t, tt.then, graph)
 		})
 	}
+}
+
+func TestGetResolvedDependenciesFromContext(t *testing.T) {
+	tests := []struct {
+		name  string
+		given ProcessingContext
+		want  ResolvedDependencies
+	}{
+		{
+			name: "GIVEN a context with resolved dependencies THEN return resolved dependencies",
+			given: ProcessingContext{
+				Outputs: []ProcessingOutput{
+					{
+						Name: ResolvedDependencyContextOutputName,
+						Value: ResolvedDependencies{
+							NewGenericSpecification("name", "type", Source{}),
+						},
+					},
+				},
+			},
+			want: ResolvedDependencies{
+				NewGenericSpecification("name", "type", Source{}),
+			},
+		},
+		{
+			name: "GIVEN a context with resolved dependencies with wrong type THEN return nil",
+			given: ProcessingContext{
+				Outputs: []ProcessingOutput{
+					{
+						Name:  ResolvedDependencyContextOutputName,
+						Value: "this is not the right value",
+					},
+				},
+			},
+			want: nil,
+		},
+		{
+			name:  "GIVEN a context without resolved dependencies THEN return nil",
+			given: ProcessingContext{},
+			want:  nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			deps := GetResolvedDependenciesFromContext(tt.given)
+			assert.Equal(t, tt.want, deps)
+		})
+	}
+}
+
+func TestDependencyResolutionProcessor_Name(t *testing.T) {
+	p := DependencyResolutionProcessor{}
+	assert.NotEqual(t, "", p.Name())
 }

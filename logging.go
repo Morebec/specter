@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/logrusorgru/aurora"
 	"io"
+	"os"
 	"sync"
 )
 
@@ -28,46 +29,51 @@ type Logger interface {
 	Success(msg string)
 }
 
-type ColoredOutputLoggerConfig struct {
-	EnableColors bool
-	Writer       io.Writer
+type DefaultLoggerConfig struct {
+	DisableColors bool
+	Writer        io.Writer
 }
 
-type ColoredOutputLogger struct {
+type DefaultLogger struct {
 	color  aurora.Aurora
 	writer io.Writer
 	mux    sync.Mutex
 }
 
-func NewColoredOutputLogger(c ColoredOutputLoggerConfig) *ColoredOutputLogger {
-	return &ColoredOutputLogger{
-		color:  aurora.NewAurora(c.EnableColors),
-		writer: c.Writer,
+func NewDefaultLogger(c DefaultLoggerConfig) *DefaultLogger {
+	writer := c.Writer
+	if writer == nil {
+		writer = os.Stdout
+	}
+
+	return &DefaultLogger{
+		color:  aurora.NewAurora(!c.DisableColors),
+		writer: writer,
 	}
 }
 
-func (l ColoredOutputLogger) Trace(msg string) {
+func (l *DefaultLogger) Trace(msg string) {
 	l.Log(l.color.Faint(msg).String())
 }
 
-func (l ColoredOutputLogger) Info(msg string) {
+func (l *DefaultLogger) Info(msg string) {
 	l.Log(msg)
 }
 
-func (l ColoredOutputLogger) Warning(msg string) {
+func (l *DefaultLogger) Warning(msg string) {
 	l.Log(l.color.Bold(l.color.Yellow(msg)).String())
 }
 
-func (l ColoredOutputLogger) Error(msg string) {
+func (l *DefaultLogger) Error(msg string) {
 	l.Log(l.color.Bold(l.color.Red(msg)).String())
 }
 
-func (l ColoredOutputLogger) Success(msg string) {
+func (l *DefaultLogger) Success(msg string) {
 	l.Log(l.color.Green(msg).String())
 }
 
-func (l ColoredOutputLogger) Log(msg string) {
+func (l *DefaultLogger) Log(msg string) {
 	defer l.mux.Unlock()
 	l.mux.Lock()
-	fmt.Fprintln(l.writer, msg)
+	_, _ = fmt.Fprintln(l.writer, msg)
 }

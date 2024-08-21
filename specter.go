@@ -229,7 +229,7 @@ func (s Specter) ProcessOutputs(specifications []Specification, outputs []Proces
 // New allows creating a new specter instance using the provided options.
 func New(opts ...Option) *Specter {
 	s := &Specter{
-		Logger:        NewColoredOutputLogger(ColoredOutputLoggerConfig{EnableColors: true, Writer: os.Stdout}),
+		Logger:        NewDefaultLogger(DefaultLoggerConfig{DisableColors: true, Writer: os.Stdout}),
 		ExecutionMode: FullMode,
 	}
 	for _, o := range opts {

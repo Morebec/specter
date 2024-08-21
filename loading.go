@@ -1,7 +1,7 @@
 package specter
 
-// UnsupportedSpecificationLoaderCode ErrorSeverity code returned by a SpecificationLoader when a given loader does not support a certain source.
-const UnsupportedSpecificationLoaderCode = "unsupported_spec_loader"
+// UnsupportedSourceErrorCode ErrorSeverity code returned by a SpecificationLoader when a given loader does not support a certain source.
+const UnsupportedSourceErrorCode = "unsupported_source"
 
 // SpecificationLoader is a service responsible for loading Specifications from Sources.
 type SpecificationLoader interface {

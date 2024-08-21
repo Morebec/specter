@@ -560,3 +560,10 @@ func TestMapSpecGroup(t *testing.T) {
 		})
 	}
 }
+
+func TestObjectValue_String(t *testing.T) {
+	o := ObjectValue{Type: "hello", Attributes: []GenericSpecAttribute{
+		{Name: "hello", Value: GenericValue{cty.StringVal("world")}},
+	}}
+	assert.Equal(t, "ObjectValue{Type: hello, Attributes: [{hello world}]}", o.String())
+}

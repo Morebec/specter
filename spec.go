@@ -134,7 +134,7 @@ type ObjectValue struct {
 }
 
 func (o ObjectValue) String() string {
-	return fmt.Sprintf("ObjectValue {Type: %s, Attributes: %v}", o.Type, o.Attributes)
+	return fmt.Sprintf("ObjectValue{Type: %s, Attributes: %v}", o.Type, o.Attributes)
 }
 
 // SpecificationGroup Represents a list of Specification.

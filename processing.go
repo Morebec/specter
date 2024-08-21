@@ -48,3 +48,9 @@ type OutputProcessor interface {
 	// Name returns the name of this processor.
 	Name() string
 }
+
+func GetContextOutput[T any](ctx ProcessingContext, name string) (v T) {
+	output := ctx.Output(name)
+	v, _ = output.Value.(T)
+	return v
+}

@@ -20,7 +20,7 @@ import (
 	"strings"
 )
 
-const DependencyGraphContextName = "_dependency_graph"
+const ResolvedDependencyContextOutputName = "_resolved_dependencies"
 
 // ResolvedDependencies represents an ordered list of Specification that should be processed in that specific order to avoid
 // unresolved types.
@@ -30,6 +30,8 @@ type DependencyProvider interface {
 	Supports(s Specification) bool
 	Provide(s Specification) []SpecificationName
 }
+
+var _ SpecificationProcessor = DependencyResolutionProcessor{}
 
 type DependencyResolutionProcessor struct {
 	providers []DependencyProvider
@@ -68,15 +70,28 @@ func (p DependencyResolutionProcessor) Process(ctx ProcessingContext) ([]Process
 
 	return []ProcessingOutput{
 		{
-			Name:  DependencyGraphContextName,
+			Name:  ResolvedDependencyContextOutputName,
 			Value: deps,
 		},
 	}, nil
 }
 
+func GetResolvedDependenciesFromContext(ctx ProcessingContext) ResolvedDependencies {
+	return GetContextOutput[ResolvedDependencies](ctx, ResolvedDependencyContextOutputName)
+}
+
 type dependencySet map[SpecificationName]struct{}
 
-// diff Returns all elements that are in s and not in o. A / B
+func newDependencySet(dependencies ...SpecificationName) dependencySet {
+	deps := dependencySet{}
+	for _, d := range dependencies {
+		deps[d] = struct{}{}
+	}
+
+	return deps
+}
+
+// diff Returns all elements that are in s but not in o. A / B
 func (s dependencySet) diff(o dependencySet) dependencySet {
 	diff := dependencySet{}
 
@@ -87,15 +102,6 @@ func (s dependencySet) diff(o dependencySet) dependencySet {
 	}
 
 	return diff
-}
-
-func newDependencySet(dependencies ...SpecificationName) dependencySet {
-	deps := dependencySet{}
-	for _, d := range dependencies {
-		deps[d] = struct{}{}
-	}
-
-	return deps
 }
 
 type dependencyNode struct {

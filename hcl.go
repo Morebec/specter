@@ -40,7 +40,7 @@ func (l HCLGenericSpecLoader) Load(s Source) ([]Specification, error) {
 	// Although the caller is responsible for calling HCLGenericSpecLoader.SupportsSource, guard against it.
 	if !l.SupportsSource(s) {
 		return nil, errors.NewWithMessage(
-			UnsupportedSpecificationLoaderCode,
+			UnsupportedSourceErrorCode,
 			fmt.Sprintf(
 				"invalid specification source \"%s\", unsupported format \"%s\"",
 				s.Location,
@@ -188,7 +188,7 @@ func (l HCLSpecLoader) Load(s Source) ([]Specification, error) {
 	// Although the caller is responsible for calling HCLGenericSpecLoader.SupportsSource, guard against it.
 	if !l.SupportsSource(s) {
 		return nil, errors.NewWithMessage(
-			UnsupportedSpecificationLoaderCode,
+			UnsupportedSourceErrorCode,
 			fmt.Sprintf(
 				"invalid specification source \"%s\", unsupported format \"%s\"",
 				s.Location,
