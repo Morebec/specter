@@ -17,3 +17,5 @@
 # IDEA
 .vscode/
 .idea/
+
+.specter.json
