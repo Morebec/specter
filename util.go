@@ -1,4 +1,4 @@
-package specter
+pack	age specter
 
 import "context"
 
@@ -8,7 +8,7 @@ import "context"
 // done, it returns nil.
 //
 // This function is useful for early exits in long-running or blocking
-// operations when you want  to respond to context cancellations in a clean
+// operations when you then  to respond to context cancellations in a clean
 // and consistent manner.
 func CheckContextDone(ctx context.Context) error {
 	select {

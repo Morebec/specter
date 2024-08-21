@@ -21,7 +21,7 @@ import (
 //	tests := []struct {
 //		name    string
 //		args    args
-//		want    []Source
+//		then    []Source
 //		wantErr bool
 //	}{
 //		{
@@ -29,7 +29,7 @@ import (
 //			args: args{
 //				target: "does-not-exist",
 //			},
-//			want:    nil,
+//			then:    nil,
 //			wantErr: true,
 //		},
 //		{
@@ -37,7 +37,7 @@ import (
 //			args: args{
 //				target: existingFile,
 //			},
-//			want: []Source{
+//			then: []Source{
 //				{
 //					Location: absPath,
 //					Data:     []byte{},
@@ -55,8 +55,8 @@ import (
 //				t.Errorf("Load() error = %v, wantErr %v", err, tt.wantErr)
 //				return
 //			}
-//			if !reflect.DeepEqual(got, tt.want) {
-//				t.Errorf("Load() got = %v, want %v", got, tt.want)
+//			if !reflect.DeepEqual(got, tt.then) {
+//				t.Errorf("Load() got = %v, then %v", got, tt.then)
 //			}
 //		})
 //	}

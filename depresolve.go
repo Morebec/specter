@@ -115,26 +115,6 @@ func (d dependencyNode) SpecificationName() SpecificationName {
 
 type dependencyGraph []dependencyNode
 
-//// merge Allows merging this dependency graph with another one and returns the result.
-//func (g dependencyGraph) merge(o dependencyGraph) dependencyGraph {
-//	var lookup = make(map[SpecificationName]bool)
-//	var merge []dependencyNode
-//
-//	for _, node := range g {
-//		merge = append(merge, node)
-//		lookup[node.SpecificationName()] = true
-//	}
-//
-//	for _, node := range o {
-//		if _, found := lookup[node.SpecificationName()]; found {
-//			continue
-//		}
-//		merge = append(merge, node)
-//	}
-//
-//	return newDependencyGraph(merge...)
-//}
-
 func newDependencyGraph(specifications ...dependencyNode) dependencyGraph {
 	return append(dependencyGraph{}, specifications...)
 }
@@ -213,4 +193,28 @@ func (g dependencyGraph) resolve() (ResolvedDependencies, error) {
 	}
 
 	return resolved, nil
+}
+
+// HasDependencies is an interface that can be implemented by specifications
+// that define their dependencies from their field values.
+// This interface can be used in conjunction with the HasDependenciesProvider
+// to easily resolve dependencies.
+type HasDependencies interface {
+	Specification
+	Dependencies() []SpecificationName
+}
+
+type HasDependenciesProvider struct{}
+
+func (h HasDependenciesProvider) Supports(s Specification) bool {
+	_, ok := s.(HasDependencies)
+	return ok
+}
+
+func (h HasDependenciesProvider) Provide(s Specification) []SpecificationName {
+	d, ok := s.(HasDependencies)
+	if !ok {
+		return nil
+	}
+	return d.Dependencies()
 }

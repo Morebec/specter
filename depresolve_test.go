@@ -243,3 +243,82 @@ func TestDependencyResolutionProcessor_Name(t *testing.T) {
 	p := DependencyResolutionProcessor{}
 	assert.NotEqual(t, "", p.Name())
 }
+
+type hasDependencySpec struct {
+	source       Source
+	dependencies []SpecificationName
+}
+
+func (h *hasDependencySpec) Name() SpecificationName {
+	return "spec"
+}
+
+func (h *hasDependencySpec) Type() SpecificationType {
+	return "spec"
+}
+
+func (h *hasDependencySpec) Description() string {
+	return "description"
+}
+
+func (h *hasDependencySpec) Source() Source {
+	return h.source
+}
+
+func (h *hasDependencySpec) SetSource(s Source) {
+	h.source = s
+}
+
+func (h *hasDependencySpec) Dependencies() []SpecificationName {
+	return h.dependencies
+}
+
+func TestHasDependenciesProvider_Supports(t *testing.T) {
+	tests := []struct {
+		name  string
+		given Specification
+		then  bool
+	}{
+		{
+			name:  "GIVEN specification not implementing HasDependencies THEN return false",
+			given: &GenericSpecification{},
+			then:  false,
+		},
+		{
+			name:  "GIVEN specification implementing HasDependencies THEN return false",
+			given: &hasDependencySpec{},
+			then:  true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := HasDependenciesProvider{}
+			assert.Equal(t, tt.then, h.Supports(tt.given))
+		})
+	}
+}
+
+func TestHasDependenciesProvider_Provide(t *testing.T) {
+	tests := []struct {
+		name  string
+		given Specification
+		then  []SpecificationName
+	}{
+		{
+			name:  "GIVEN specification not implementing HasDependencies THEN return nil",
+			given: &GenericSpecification{},
+			then:  nil,
+		},
+		{
+			name:  "GIVEN specification implementing HasDependencies THEN return dependencies",
+			given: &hasDependencySpec{dependencies: []SpecificationName{"spec1"}},
+			then:  []SpecificationName{"spec1"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := HasDependenciesProvider{}
+			assert.Equal(t, tt.then, h.Provide(tt.given))
+		})
+	}
+}
