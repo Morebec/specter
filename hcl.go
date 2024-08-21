@@ -42,7 +42,7 @@ func (l HCLGenericSpecLoader) Load(s Source) ([]Specification, error) {
 		return nil, errors.NewWithMessage(
 			UnsupportedSourceErrorCode,
 			fmt.Sprintf(
-				"invalid specification source \"%s\", unsupported format \"%s\"",
+				"invalid specification source %q, unsupported format %q",
 				s.Location,
 				s.Format,
 			),
@@ -63,7 +63,7 @@ func (l HCLGenericSpecLoader) Load(s Source) ([]Specification, error) {
 			return nil, errors.NewWithMessage(
 				InvalidHCLErrorCode,
 				fmt.Sprintf(
-					"invalid specification source \"%s\" at line %d:%d, block \"%s\" should contain a name",
+					"invalid specification source %q at line %d:%d, block %q should contain a name",
 					s.Location,
 					block.Range().Start.Line,
 					block.Range().Start.Column,
@@ -79,7 +79,7 @@ func (l HCLGenericSpecLoader) Load(s Source) ([]Specification, error) {
 				err,
 				InvalidHCLErrorCode,
 				fmt.Sprintf(
-					"invalid specification source \"%s\" at line %d:%d for block \"%s\"",
+					"invalid specification source %q at line %d:%d for block %q",
 					s.Location,
 					block.Range().Start.Line,
 					block.Range().Start.Column,
@@ -190,7 +190,7 @@ func (l HCLSpecLoader) Load(s Source) ([]Specification, error) {
 		return nil, errors.NewWithMessage(
 			UnsupportedSourceErrorCode,
 			fmt.Sprintf(
-				"invalid specification source \"%s\", unsupported format \"%s\"",
+				"invalid specification source %q, unsupported format %q",
 				s.Location,
 				s.Format,
 			),

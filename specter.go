@@ -24,6 +24,7 @@ type Specter struct {
 	Loaders          []SpecificationLoader
 	Processors       []SpecificationProcessor
 	OutputProcessors []OutputProcessor
+	OutputRegistry   OutputRegistry
 	Logger           Logger
 	ExecutionMode    ExecutionMode
 }
@@ -101,6 +102,7 @@ func (s Specter) Run(sourceLocations []string) (RunResult, error) {
 		return run, nil
 	}
 
+	// Process Output
 	if err = s.ProcessOutputs(specifications, outputs); err != nil {
 		e := errors.WrapWithMessage(err, errors.InternalErrorCode, "failed processing outputs")
 		s.Logger.Error(e.Error())
@@ -118,7 +120,7 @@ func (s Specter) LoadSources(sourceLocations []string) ([]Source, error) {
 
 	s.Logger.Info(fmt.Sprintf("\nLoading sources from (%d) locations:", len(sourceLocations)))
 	for _, sl := range sourceLocations {
-		s.Logger.Info(fmt.Sprintf("-> \"%s\"", sl))
+		s.Logger.Info(fmt.Sprintf("-> %q", sl))
 	}
 
 	for _, sl := range sourceLocations {
@@ -136,7 +138,7 @@ func (s Specter) LoadSources(sourceLocations []string) ([]Source, error) {
 			}
 		}
 		if !loaded {
-			s.Logger.Warning(fmt.Sprintf("source location \"%s\" was not loaded.", sl))
+			s.Logger.Warning(fmt.Sprintf("source location %q was not loaded.", sl))
 		}
 	}
 
@@ -177,7 +179,7 @@ func (s Specter) LoadSpecifications(sources []Source) ([]Specification, error) {
 
 	if len(sourcesNotLoaded) > 0 {
 		for _, src := range sourcesNotLoaded {
-			s.Logger.Warning(fmt.Sprintf("%s could not be loaded.", src))
+			s.Logger.Warning(fmt.Sprintf("%q could not be loaded.", src))
 		}
 
 		s.Logger.Warning("%d specifications were not loaded.")
@@ -200,7 +202,7 @@ func (s Specter) ProcessSpecifications(specs []Specification) ([]ProcessingOutpu
 	for _, p := range s.Processors {
 		outputs, err := p.Process(ctx)
 		if err != nil {
-			return nil, errors.WrapWithMessage(err, errors.InternalErrorCode, fmt.Sprintf("processor \"%s\" failed", p.Name()))
+			return nil, errors.WrapWithMessage(err, errors.InternalErrorCode, fmt.Sprintf("processor %q failed", p.Name()))
 		}
 		ctx.Outputs = append(ctx.Outputs, outputs...)
 	}
@@ -216,18 +218,31 @@ func (s Specter) ProcessSpecifications(specs []Specification) ([]ProcessingOutpu
 
 // ProcessOutputs sends a list of ProcessingOutputs to the registered OutputProcessors.
 func (s Specter) ProcessOutputs(specifications []Specification, outputs []ProcessingOutput) error {
+	if s.OutputRegistry == nil {
+		s.OutputRegistry = NoopOutputRegistry{}
+	}
+
 	ctx := OutputProcessingContext{
 		Specifications: specifications,
 		Outputs:        outputs,
 		Logger:         s.Logger,
+		outputRegistry: s.OutputRegistry,
 	}
 
 	s.Logger.Info("\nProcessing outputs ...")
+	if err := s.OutputRegistry.Load(); err != nil {
+		return fmt.Errorf("failed loading output registry: %w", err)
+	}
+
 	for _, p := range s.OutputProcessors {
 		err := p.Process(ctx)
 		if err != nil {
-			return errors.WrapWithMessage(err, errors.InternalErrorCode, fmt.Sprintf("output processor \"%s\" failed", p.Name()))
+			return errors.WrapWithMessage(err, errors.InternalErrorCode, fmt.Sprintf("output processor %q failed", p.Name()))
 		}
+	}
+
+	if err := s.OutputRegistry.Save(); err != nil {
+		return fmt.Errorf("failed saving output registry: %w", err)
 	}
 
 	s.Logger.Success("Outputs processed successfully.")
@@ -289,4 +304,15 @@ func WithExecutionMode(m ExecutionMode) Option {
 	return func(s *Specter) {
 		s.ExecutionMode = m
 	}
+}
+func WithOutputRegistry(r OutputRegistry) Option {
+	return func(s *Specter) {
+		s.OutputRegistry = r
+	}
+}
+
+// Defaults
+
+func WithDefaultLogger() Option {
+	return WithLogger(NewDefaultLogger(DefaultLoggerConfig{DisableColors: false, Writer: os.Stdout}))
 }
