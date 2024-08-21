@@ -6,7 +6,6 @@ import (
 	"io/fs"
 	"os"
 	"path"
-	"path/filepath"
 	"strings"
 )
 
@@ -36,37 +35,6 @@ type SourceLoader interface {
 	// Implementations of this function can take for granted that this loader supports the given location.
 	// Therefore, the Supports method should always be called on the location before it can be passed to the Load method.
 	Load(location string) ([]Source, error)
-}
-
-// FileSystem represents a file system that can be used by the FileSystemLoader.
-// This abstraction allows different types of file systems to be supported, such as the local file system,
-// a remote file system, a virtual file system or a remote git repository.
-type FileSystem interface {
-	Abs(location string) (string, error)
-	StatPath(location string) (os.FileInfo, error)
-	WalkDir(dirPath string, f func(path string, d fs.DirEntry, err error) error) error
-	ReadFile(filePath string) ([]byte, error)
-}
-
-var _ FileSystem = LocalFileSystem{}
-
-// LocalFileSystem is an implementation of a FileSystem that works on the local file system where this program is running.
-type LocalFileSystem struct{}
-
-func (l LocalFileSystem) ReadFile(filePath string) ([]byte, error) {
-	return os.ReadFile(filePath)
-}
-
-func (l LocalFileSystem) WalkDir(dirPath string, f func(path string, d fs.DirEntry, err error) error) error {
-	return filepath.WalkDir(dirPath, f)
-}
-
-func (l LocalFileSystem) StatPath(location string) (os.FileInfo, error) {
-	return os.Stat(location)
-}
-
-func (l LocalFileSystem) Abs(location string) (string, error) {
-	return filepath.Abs(location)
 }
 
 // FileSystemLoader is an implementation of a SourceLoader that loads files from a FileSystem.
