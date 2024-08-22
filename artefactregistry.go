@@ -10,10 +10,12 @@ import (
 
 // JSONArtifactRegistry implementation of a ArtifactRegistry that is saved as a JSON file.
 type JSONArtifactRegistry struct {
-	GeneratedAt time.Time                                 `json:"generatedAt"`
-	ArtifactMap map[string]*JSONArtifactRegistryProcessor `json:"files"`
-	FilePath    string
-	mu          sync.RWMutex // Mutex to protect concurrent access
+	GeneratedAt         time.Time                                 `json:"generatedAt"`
+	ArtifactMap         map[string]*JSONArtifactRegistryProcessor `json:"files"`
+	FilePath            string                                    `json:"-"`
+	FileSystem          FileSystem                                `json:"-"`
+	mu                  sync.RWMutex                              // Mutex to protect concurrent access
+	CurrentTimeProvider func() time.Time
 }
 
 type JSONArtifactRegistryProcessor struct {
@@ -21,11 +23,14 @@ type JSONArtifactRegistryProcessor struct {
 }
 
 // NewJSONArtifactRegistry returns a new artifact file registry.
-func NewJSONArtifactRegistry(fileName string) *JSONArtifactRegistry {
+func NewJSONArtifactRegistry(fileName string, fs FileSystem) *JSONArtifactRegistry {
 	return &JSONArtifactRegistry{
-		GeneratedAt: time.Now(),
 		ArtifactMap: nil,
 		FilePath:    fileName,
+		CurrentTimeProvider: func() time.Time {
+			return time.Now()
+		},
+		FileSystem: fs,
 	}
 }
 
@@ -33,7 +38,7 @@ func (r *JSONArtifactRegistry) Load() error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	bytes, err := os.ReadFile(r.FilePath)
+	bytes, err := r.FileSystem.ReadFile(r.FilePath)
 
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -41,6 +46,12 @@ func (r *JSONArtifactRegistry) Load() error {
 		}
 		return errors.WrapWithMessage(err, errors.InternalErrorCode, "failed loading artifact file registry")
 	}
+
+	// empty file is okay
+	if len(bytes) == 0 {
+		return nil
+	}
+
 	if err := json.Unmarshal(bytes, r); err != nil {
 		return errors.WrapWithMessage(err, errors.InternalErrorCode, "failed loading artifact file registry")
 	}
@@ -52,15 +63,14 @@ func (r *JSONArtifactRegistry) Save() error {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	if r.ArtifactMap == nil {
-		return nil
-	}
+	r.GeneratedAt = r.CurrentTimeProvider()
+
 	// Generate a JSON file containing all artifact files for clean up later on
 	js, err := json.MarshalIndent(r, "", "  ")
 	if err != nil {
 		return errors.Wrap(err, "failed generating artifact file registry")
 	}
-	if err := os.WriteFile(r.FilePath, js, os.ModePerm); err != nil {
+	if err := r.FileSystem.WriteFile(r.FilePath, js, os.ModePerm); err != nil {
 		return errors.Wrap(err, "failed generating artifact file registry")
 	}
 

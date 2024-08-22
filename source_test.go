@@ -249,14 +249,30 @@ func (m mockFileInfo) Mode() os.FileMode { return m.mode }
 func (m mockFileInfo) IsDir() bool       { return m.isDir }
 func (m mockFileInfo) Sys() interface{}  { return nil }
 
+var _ FileSystem = (*mockFileSystem)(nil)
+
 type mockFileSystem struct {
 	files map[string][]byte
 	dirs  map[string]bool
 
-	absErr      error
-	statErr     error
-	walkDirErr  error
-	readFileErr error
+	absErr       error
+	statErr      error
+	walkDirErr   error
+	readFileErr  error
+	writeFileErr error
+}
+
+func (m *mockFileSystem) WriteFile(filePath string, data []byte, _ fs.FileMode) error {
+	if m.writeFileErr != nil {
+		return m.writeFileErr
+	}
+
+	if m.files == nil {
+		m.files = map[string][]byte{}
+	}
+
+	m.files[filePath] = data
+	return nil
 }
 
 func (m *mockFileSystem) Abs(location string) (string, error) {

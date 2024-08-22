@@ -46,12 +46,17 @@ type FileSystem interface {
 	StatPath(location string) (os.FileInfo, error)
 	WalkDir(dirPath string, f func(path string, d fs.DirEntry, err error) error) error
 	ReadFile(filePath string) ([]byte, error)
+	WriteFile(filePath string, data []byte, perm fs.FileMode) error
 }
 
 var _ FileSystem = LocalFileSystem{}
 
 // LocalFileSystem is an implementation of a FileSystem that works on the local file system where this program is running.
 type LocalFileSystem struct{}
+
+func (l LocalFileSystem) WriteFile(filePath string, data []byte, perm fs.FileMode) error {
+	return os.WriteFile(filePath, data, perm)
+}
 
 func (l LocalFileSystem) ReadFile(filePath string) ([]byte, error) {
 	return os.ReadFile(filePath)

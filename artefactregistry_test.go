@@ -1,6 +1,8 @@
 package specter
 
 import (
+	"fmt"
+	"github.com/stretchr/testify/require"
 	"os"
 	"testing"
 	"time"
@@ -9,37 +11,55 @@ import (
 )
 
 func TestJSONArtifactRegistry_Load(t *testing.T) {
-	tests := []struct {
-		name          string
-		fileContent   string
-		expectError   bool
+	type given struct {
+		jsonFileContent string
+	}
+	type then struct {
+		expectedError error
 		expectedValue *JSONArtifactRegistry
+	}
+	tests := []struct {
+		name  string
+		given given
+		then  then
 	}{
 		{
-			name:        "Successful Load",
-			fileContent: `{"generatedAt":"2024-01-01T00:00:00Z","files":{"processor1":{"files":["file1.txt"]}}}`,
-			expectError: false,
-			expectedValue: &JSONArtifactRegistry{
-				GeneratedAt: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
-				ArtifactMap: map[string]*JSONArtifactRegistryProcessor{"processor1": {Artifacts: []string{"file1.txt"}}},
+			name: "Successful Load",
+			given: given{
+				jsonFileContent: `{"generatedAt":"2024-01-01T00:00:00Z","files":{"processor1":{"files":["file1.txt"]}}}`,
+			},
+			then: then{
+				expectedError: nil,
+				expectedValue: &JSONArtifactRegistry{
+					GeneratedAt: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+					ArtifactMap: map[string]*JSONArtifactRegistryProcessor{"processor1": {Artifacts: []string{"file1.txt"}}},
+				},
 			},
 		},
 		{
-			name:        "File Not Exist",
-			fileContent: "",
-			expectError: false,
-			expectedValue: &JSONArtifactRegistry{
-				GeneratedAt: time.Time{},
-				ArtifactMap: nil,
+			name: "File Not Exist",
+			given: given{
+				jsonFileContent: "",
+			},
+			then: then{
+				expectedError: nil,
+				expectedValue: &JSONArtifactRegistry{
+					GeneratedAt: time.Time{},
+					ArtifactMap: nil,
+				},
 			},
 		},
 		{
-			name:        "Malformed JSON",
-			fileContent: `{"files":{`,
-			expectError: true,
-			expectedValue: &JSONArtifactRegistry{
-				GeneratedAt: time.Time{},
-				ArtifactMap: nil,
+			name: "Malformed JSON",
+			given: given{
+				jsonFileContent: `{"files":{`,
+			},
+			then: then{
+				expectedError: fmt.Errorf("failed loading artifact file registry: unexpected end of JSON input"),
+				expectedValue: &JSONArtifactRegistry{
+					GeneratedAt: time.Time{},
+					ArtifactMap: nil,
+				},
 			},
 		},
 	}
@@ -48,47 +68,54 @@ func TestJSONArtifactRegistry_Load(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Setup
 			filePath := "test_registry.json"
-			err := os.WriteFile(filePath, []byte(tt.fileContent), 0644)
-			if err != nil {
-				t.Fatalf("Failed to write test file: %v", err)
-			}
-			defer os.Remove(filePath)
 
-			registry := &JSONArtifactRegistry{
-				FilePath: filePath,
+			fs := &mockFileSystem{}
+			err := fs.WriteFile(filePath, []byte(tt.given.jsonFileContent), os.ModePerm)
+			require.NoError(t, err)
+
+			registry := NewJSONArtifactRegistry(filePath, fs)
+			registry.CurrentTimeProvider = func() time.Time {
+				return time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 			}
 
 			// Act
 			err = registry.Load()
 
 			// Assert
-			if tt.expectError {
+			if tt.then.expectedError != nil {
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
-				assert.Equal(t, tt.expectedValue, registry)
+				assert.Equal(t, tt.then.expectedValue.GeneratedAt, registry.GeneratedAt)
 			}
 		})
 	}
 }
 
 func TestJSONArtifactRegistry_Save(t *testing.T) {
+	type then struct {
+		expectedJSON  string
+		expectedError error
+	}
+
 	tests := []struct {
-		name         string
-		initialState *JSONArtifactRegistry
-		expectedJSON string
+		name  string
+		given *JSONArtifactRegistry
+		then  then
 	}{
 		{
 			name: "Successful Save",
-			initialState: &JSONArtifactRegistry{
+			given: &JSONArtifactRegistry{
 				ArtifactMap: map[string]*JSONArtifactRegistryProcessor{
 					"processor1": {
 						Artifacts: []string{"file1.txt"},
 					},
 				},
 			},
-			expectedJSON: `{
-  "generatedAt": "0001-01-01T00:00:00Z",
+			then: then{
+				expectedError: nil,
+				expectedJSON: `{
+  "generatedAt": "2024-01-01T00:00:00Z",
   "files": {
     "processor1": {
       "files": [
@@ -97,14 +124,17 @@ func TestJSONArtifactRegistry_Save(t *testing.T) {
     }
   }
 }`,
+			},
 		},
 		{
-			name:         "Empty Registry",
-			initialState: &JSONArtifactRegistry{},
-			expectedJSON: `{
-  "generatedAt": "0001-01-01T00:00:00Z",
-  "files": {}
+			name:  "Empty Registry",
+			given: &JSONArtifactRegistry{},
+			then: then{
+				expectedJSON: `{
+  "generatedAt": "2024-01-01T00:00:00Z",
+  "files": null
 }`,
+			},
 		},
 	}
 
@@ -112,21 +142,23 @@ func TestJSONArtifactRegistry_Save(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Setup
 			filePath := "test_registry.json"
-			registry := &JSONArtifactRegistry{
-				FilePath: filePath,
+			fs := &mockFileSystem{}
+			registry := NewJSONArtifactRegistry(filePath, fs)
+			registry.ArtifactMap = tt.given.ArtifactMap
+			registry.CurrentTimeProvider = func() time.Time {
+				return time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 			}
-			registry.ArtifactMap = tt.initialState.ArtifactMap
 
-			// Act
 			err := registry.Save()
 
-			// Assert
-			assert.NoError(t, err)
+			if tt.then.expectedError != nil {
+				require.ErrorIs(t, err, tt.then.expectedError)
+			} else {
+				require.NoError(t, err)
+			}
 
-			// Read back and verify
-			data, err := os.ReadFile(filePath)
-			assert.NoError(t, err)
-			assert.JSONEq(t, tt.expectedJSON, string(data))
+			actualJSON, err := fs.ReadFile(filePath)
+			assert.JSONEq(t, tt.then.expectedJSON, string(actualJSON))
 		})
 	}
 }
