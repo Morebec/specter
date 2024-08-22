@@ -1,6 +1,8 @@
 package specter
 
-import "context"
+import (
+	"context"
+)
 
 // CheckContextDone checks if the context has been canceled or timed out.
 // If the context is done, it returns the context error, which can be either
