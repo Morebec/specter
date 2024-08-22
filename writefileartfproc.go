@@ -66,6 +66,10 @@ func (p WriteFileArtifactProcessor) Process(ctx ArtifactProcessingContext) error
 	}
 	wg.Wait()
 
+	if errs.HasErrors() {
+		return errs
+	}
+
 	ctx.Logger.Success("Artifact files written successfully.")
 
 	return nil
