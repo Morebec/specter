@@ -8,6 +8,63 @@ import (
 	"time"
 )
 
+var _ ArtifactRegistry = (*InMemoryArtifactRegistry)(nil)
+
+type InMemoryArtifactRegistry struct {
+	ArtifactMap map[string][]string
+	mu          sync.RWMutex // Mutex to protect concurrent access
+}
+
+func (r *InMemoryArtifactRegistry) Load() error { return nil }
+
+func (r *InMemoryArtifactRegistry) Save() error { return nil }
+
+func (r *InMemoryArtifactRegistry) AddArtifact(processorName string, artifactName string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.ArtifactMap == nil {
+		r.ArtifactMap = map[string][]string{}
+	}
+
+	if _, ok := r.ArtifactMap[processorName]; !ok {
+		r.ArtifactMap[processorName] = make([]string, 0)
+	}
+	r.ArtifactMap[processorName] = append(r.ArtifactMap[processorName], artifactName)
+}
+
+func (r *InMemoryArtifactRegistry) RemoveArtifact(processorName string, artifactName string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if _, ok := r.ArtifactMap[processorName]; !ok {
+		return
+	}
+	if r.ArtifactMap == nil {
+		r.ArtifactMap = map[string][]string{}
+	}
+
+	var artifacts []string
+	for _, file := range r.ArtifactMap[processorName] {
+		if file != artifactName {
+			artifacts = append(artifacts, file)
+		}
+	}
+
+	r.ArtifactMap[processorName] = artifacts
+}
+
+func (r *InMemoryArtifactRegistry) Artifacts(processorName string) []string {
+	if r.ArtifactMap == nil {
+		r.ArtifactMap = map[string][]string{}
+	}
+
+	values, ok := r.ArtifactMap[processorName]
+	if !ok {
+		return nil
+	}
+
+	return values
+}
+
 // JSONArtifactRegistry implementation of a ArtifactRegistry that is saved as a JSON file.
 type JSONArtifactRegistry struct {
 	GeneratedAt         time.Time                                 `json:"generatedAt"`
@@ -15,7 +72,7 @@ type JSONArtifactRegistry struct {
 	FilePath            string                                    `json:"-"`
 	FileSystem          FileSystem                                `json:"-"`
 	mu                  sync.RWMutex                              // Mutex to protect concurrent access
-	CurrentTimeProvider func() time.Time
+	CurrentTimeProvider func() time.Time                          `json:"-"`
 }
 
 type JSONArtifactRegistryProcessor struct {
