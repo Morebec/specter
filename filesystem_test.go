@@ -53,10 +53,17 @@ type mockFileSystem struct {
 	rmErr        error
 }
 
-func (m *mockFileSystem) WriteFile(_ string, _ []byte, _ fs.FileMode) error {
+func (m *mockFileSystem) WriteFile(filePath string, data []byte, _ fs.FileMode) error {
 	if m.writeFileErr != nil {
 		return m.writeFileErr
 	}
+
+	if m.files == nil {
+		m.files = map[string][]byte{}
+	}
+
+	m.files[filePath] = data
+
 	return nil
 }
 

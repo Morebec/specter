@@ -72,7 +72,7 @@ type JSONArtifactRegistry struct {
 	FilePath            string                                    `json:"-"`
 	FileSystem          FileSystem                                `json:"-"`
 	mu                  sync.RWMutex                              // Mutex to protect concurrent access
-	CurrentTimeProvider func() time.Time
+	CurrentTimeProvider func() time.Time                          `json:"-"`
 }
 
 type JSONArtifactRegistryProcessor struct {
