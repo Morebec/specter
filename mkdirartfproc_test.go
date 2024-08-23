@@ -23,11 +23,11 @@ func TestMakeDirectoryArtifactsProcessor_Process(t *testing.T) {
 			artifacts: []Artifact{
 				{
 					Name:  "dir1",
-					Value: DirectoryArtifact{Path: "/path/to/dir1", Mode: 0755},
+					Value: DirectoryArtifact{Path: "/path/to/dir1", FileMode: 0755},
 				},
 				{
 					Name:  "dir2",
-					Value: DirectoryArtifact{Path: "/path/to/dir2", Mode: 0755},
+					Value: DirectoryArtifact{Path: "/path/to/dir2", FileMode: 0755},
 				},
 			},
 			expectedDirs: []string{"/path/to/dir1", "/path/to/dir2"},
@@ -41,7 +41,7 @@ func TestMakeDirectoryArtifactsProcessor_Process(t *testing.T) {
 			artifacts: []Artifact{
 				{
 					Name:  "dir1",
-					Value: DirectoryArtifact{Path: "/path/to/dir1", Mode: 0755},
+					Value: DirectoryArtifact{Path: "/path/to/dir1", FileMode: 0755},
 				},
 				{
 					Name:  "not_a_dir",
@@ -60,11 +60,27 @@ func TestMakeDirectoryArtifactsProcessor_Process(t *testing.T) {
 			artifacts: []Artifact{
 				{
 					Name:  "dir1",
-					Value: DirectoryArtifact{Path: "/path/to/dir1", Mode: 0755},
+					Value: DirectoryArtifact{Path: "/path/to/dir1", FileMode: 0755},
 				},
 			},
 			expectedDirs: []string{},
 			expectError:  assert.AnError,
+		},
+		{
+			name: "GIVEN file already exists WHEN write mode is Once THEN do not write file",
+			mockFS: &mockFileSystem{
+				dirs: map[string]bool{
+					"/dir": true,
+				},
+			},
+			artifacts: []Artifact{
+				{
+					Name:  "file1",
+					Value: DirectoryArtifact{Path: "/dir", WriteMode: WriteOnceMode},
+				},
+			},
+			expectedDirs: []string{},
+			expectError:  nil,
 		},
 	}
 

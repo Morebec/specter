@@ -82,7 +82,7 @@ type JSONArtifactRegistryProcessor struct {
 // NewJSONArtifactRegistry returns a new artifact file registry.
 func NewJSONArtifactRegistry(fileName string, fs FileSystem) *JSONArtifactRegistry {
 	return &JSONArtifactRegistry{
-		ArtifactMap: nil,
+		ArtifactMap: map[string]*JSONArtifactRegistryProcessor{},
 		FilePath:    fileName,
 		CurrentTimeProvider: func() time.Time {
 			return time.Now()
@@ -137,6 +137,10 @@ func (r *JSONArtifactRegistry) Save() error {
 func (r *JSONArtifactRegistry) AddArtifact(processorName string, artifactName string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+
+	if r.ArtifactMap == nil {
+		r.ArtifactMap = map[string]*JSONArtifactRegistryProcessor{}
+	}
 
 	if _, ok := r.ArtifactMap[processorName]; !ok {
 		r.ArtifactMap[processorName] = &JSONArtifactRegistryProcessor{}

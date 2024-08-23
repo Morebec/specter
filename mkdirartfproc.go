@@ -10,8 +10,9 @@ import (
 // DirectoryArtifact is a data structure that can be used by a SpecificationProcessor to directory artifacts
 // that can be written by the MakeDirectoryArtifactsProcessor.
 type DirectoryArtifact struct {
-	Path string
-	Mode os.FileMode
+	Path      string
+	FileMode  os.FileMode
+	WriteMode WriteMode
 }
 
 type MakeDirectoryArtifactsProcessor struct {
@@ -42,15 +43,43 @@ func (p MakeDirectoryArtifactsProcessor) Process(ctx ArtifactProcessingContext) 
 		if !ok {
 			continue
 		}
+		if dir.WriteMode == "" {
+			dir.WriteMode = WriteOnceMode
+		}
+
 		wg.Add(1)
 		go func(ctx ArtifactProcessingContext, artifactName string, dir DirectoryArtifact) {
 			defer wg.Done()
-			ctx.Logger.Info(fmt.Sprintf("Creating directory %q ...", dir.Path))
-
-			err := p.FileSystem.Mkdir(dir.Path, dir.Mode)
+			dirPath, err := p.FileSystem.Abs(dir.Path)
 			if err != nil {
 				ctx.Logger.Error(fmt.Sprintf("failed creating directory at %q", dir.Path))
 				errs = errs.Append(err)
+				return
+			}
+
+			dirExists := true
+			if _, err := p.FileSystem.StatPath(dirPath); err != nil {
+				if !os.IsNotExist(err) {
+					ctx.Logger.Error(fmt.Sprintf("failed writing artifact file at %q", dirPath))
+					errs = errs.Append(err)
+					return
+				}
+				dirExists = false
+			}
+
+			if dir.WriteMode == WriteOnceMode && dirExists {
+				ctx.Logger.Info(fmt.Sprintf("Directory %q already exists ... skipping", dirPath))
+				return
+			}
+
+			ctx.Logger.Info(fmt.Sprintf("Creating directory %q ...", dirPath))
+			if err = p.FileSystem.Mkdir(dirPath, dir.FileMode); err != nil {
+				ctx.Logger.Error(fmt.Sprintf("failed creating directory at %q", dirPath))
+				errs = errs.Append(err)
+				return
+			}
+
+			if dir.WriteMode != WriteOnceMode {
 				ctx.AddToRegistry(artifactName)
 			}
 		}(ctx, artifact.Name, dir)

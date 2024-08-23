@@ -60,6 +60,22 @@ func TestWriteFileArtifactProcessor_Process(t *testing.T) {
 			expectedFiles: []string{},
 			expectError:   assert.AnError,
 		},
+		{
+			name: "GIVEN file already exists WHEN write mode is Once THEN do not write file",
+			mockFS: &mockFileSystem{
+				files: map[string][]byte{
+					"/path/to/file1": []byte("file content"),
+				},
+			},
+			artifacts: []Artifact{
+				{
+					Name:  "file1",
+					Value: FileArtifact{Path: "/path/to/file1", Mode: 0755, WriteMode: WriteOnceMode},
+				},
+			},
+			expectedFiles: []string{},
+			expectError:   nil,
+		},
 	}
 
 	for _, tt := range tests {

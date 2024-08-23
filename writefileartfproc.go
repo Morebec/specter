@@ -9,12 +9,20 @@ import (
 
 const WriteFileArtifactsProcessorErrorCode = "write_file_artifacts_processor_error"
 
+type WriteMode string
+
+const (
+	RecreateMode  WriteMode = "recreate"
+	WriteOnceMode WriteMode = "once"
+)
+
 // FileArtifact is a data structure that can be used by a SpecificationProcessor to generate file artifacts
 // that can be written by the WriteFileArtifactProcessor.
 type FileArtifact struct {
-	Path string
-	Data []byte
-	Mode os.FileMode
+	Path      string
+	Data      []byte
+	Mode      os.FileMode
+	WriteMode WriteMode
 }
 
 // WriteFileArtifactProcessor is a processor responsible for writing Artifact referring to files.
@@ -52,16 +60,50 @@ func (p WriteFileArtifactProcessor) Process(ctx ArtifactProcessingContext) error
 		if err := CheckContextDone(ctx); err != nil {
 			return err
 		}
+		if file.WriteMode == "" {
+			file.WriteMode = WriteOnceMode
+		}
+
 		wg.Add(1)
 		go func(ctx ArtifactProcessingContext, file FileArtifact) {
 			defer wg.Done()
-			ctx.Logger.Info(fmt.Sprintf("Writing file %q ...", file.Path))
-			err := p.FileSystem.WriteFile(file.Path, file.Data, os.ModePerm)
+
+			filePath, err := p.FileSystem.Abs(file.Path)
 			if err != nil {
-				ctx.Logger.Error(fmt.Sprintf("failed writing artifact file at %q", file.Path))
+				ctx.Logger.Error(fmt.Sprintf("failed writing artifact file at %q", filePath))
 				errs = errs.Append(err)
+				return
 			}
-			ctx.AddToRegistry(file.Path)
+
+			fileExists := true
+			if _, err := p.FileSystem.StatPath(filePath); err != nil {
+				if !os.IsNotExist(err) {
+					ctx.Logger.Error(fmt.Sprintf("failed writing artifact file at %q", filePath))
+					errs = errs.Append(err)
+					return
+				}
+				fileExists = false
+			}
+
+			if file.WriteMode == WriteOnceMode && fileExists {
+				ctx.Logger.Info(fmt.Sprintf("File %q already exists ... skipping", filePath))
+				return
+			}
+
+			// At this point if the file still already exists, this means that the clean step has not
+			// been executed properly.
+
+			ctx.Logger.Info(fmt.Sprintf("Writing file %q ...", filePath))
+			if err := p.FileSystem.WriteFile(filePath, file.Data, os.ModePerm); err != nil {
+				ctx.Logger.Error(fmt.Sprintf("failed writing artifact file at %q", filePath))
+				errs = errs.Append(err)
+				return
+			}
+
+			if file.WriteMode != WriteOnceMode {
+				ctx.AddToRegistry(file.Path)
+			}
+
 		}(ctx, file)
 	}
 	wg.Wait()
