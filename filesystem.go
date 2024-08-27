@@ -17,6 +17,11 @@ type FileSystem interface {
 	// differ depending on the underlying file system.
 	Abs(location string) (string, error)
 
+	// Rel a relative path that is lexically equivalent to targetPath when joined to basepath with an
+	// intervening separator.
+	// [Join](basepath, Rel(basepath, targpath)) is equivalent to targpath itself.
+	Rel(basePath, targetPath string) (string, error)
+
 	// StatPath returns file information for the specified location. This typically
 	// includes details like size, modification time, and whether the path is a file
 	// or directory.
@@ -53,6 +58,10 @@ var _ FileSystem = LocalFileSystem{}
 
 // LocalFileSystem is an implementation of a FileSystem that works on the local file system where this program is running.
 type LocalFileSystem struct{}
+
+func (l LocalFileSystem) Rel(basePath, targetPath string) (string, error) {
+	return filepath.Rel(basePath, targetPath)
+}
 
 func (l LocalFileSystem) Remove(path string) error {
 	return os.Remove(path)

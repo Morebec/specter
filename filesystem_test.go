@@ -53,6 +53,10 @@ type mockFileSystem struct {
 	rmErr        error
 }
 
+func (m *mockFileSystem) Rel(basePath, targetPath string) (string, error) {
+	return strings.ReplaceAll(targetPath, basePath, "./"), nil
+}
+
 func (m *mockFileSystem) WriteFile(filePath string, data []byte, _ fs.FileMode) error {
 	if m.writeFileErr != nil {
 		return m.writeFileErr
