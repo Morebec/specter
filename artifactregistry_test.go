@@ -32,7 +32,7 @@ func TestJSONArtifactRegistry_Load(t *testing.T) {
 				expectedError: nil,
 				expectedValue: &JSONArtifactRegistry{
 					GeneratedAt: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
-					ArtifactMap: map[string]*JSONArtifactRegistryProcessor{"processor1": {Artifacts: []string{"file1.txt"}}},
+					ArtifactMap: map[string]*JSONArtifactRegistryProcessor{"processor1": {Artifacts: []ArtifactID{"file1.txt"}}},
 				},
 			},
 		},
@@ -106,9 +106,10 @@ func TestJSONArtifactRegistry_Save(t *testing.T) {
 		{
 			name: "Successful Save",
 			given: &JSONArtifactRegistry{
+				UseAbsolutePaths: false,
 				ArtifactMap: map[string]*JSONArtifactRegistryProcessor{
 					"processor1": {
-						Artifacts: []string{"file1.txt"},
+						Artifacts: []ArtifactID{"file1.txt"},
 					},
 				},
 			},
@@ -168,17 +169,17 @@ func TestJSONArtifactRegistry_AddArtifact(t *testing.T) {
 		name          string
 		initialMap    map[string]*JSONArtifactRegistryProcessor
 		processorName string
-		artifactName  string
+		artifactID    ArtifactID
 		expectedMap   map[string]*JSONArtifactRegistryProcessor
 	}{
 		{
 			name:          "Add New Artifact",
 			initialMap:    map[string]*JSONArtifactRegistryProcessor{},
 			processorName: "processor1",
-			artifactName:  "file1.txt",
+			artifactID:    "file1.txt",
 			expectedMap: map[string]*JSONArtifactRegistryProcessor{
 				"processor1": {
-					Artifacts: []string{"file1.txt"},
+					Artifacts: []ArtifactID{"file1.txt"},
 				},
 			},
 		},
@@ -186,14 +187,14 @@ func TestJSONArtifactRegistry_AddArtifact(t *testing.T) {
 			name: "Add Artifact to Existing Processor",
 			initialMap: map[string]*JSONArtifactRegistryProcessor{
 				"processor1": {
-					Artifacts: []string{"file2.txt"},
+					Artifacts: []ArtifactID{"file2.txt"},
 				},
 			},
 			processorName: "processor1",
-			artifactName:  "file1.txt",
+			artifactID:    "file1.txt",
 			expectedMap: map[string]*JSONArtifactRegistryProcessor{
 				"processor1": {
-					Artifacts: []string{"file2.txt", "file1.txt"},
+					Artifacts: []ArtifactID{"file2.txt", "file1.txt"},
 				},
 			},
 		},
@@ -206,7 +207,7 @@ func TestJSONArtifactRegistry_AddArtifact(t *testing.T) {
 			}
 
 			// Act
-			registry.AddArtifact(tt.processorName, tt.artifactName)
+			registry.AddArtifact(tt.processorName, tt.artifactID)
 
 			// Assert
 			assert.Equal(t, tt.expectedMap, registry.ArtifactMap)
@@ -219,21 +220,21 @@ func TestJSONArtifactRegistry_RemoveArtifact(t *testing.T) {
 		name          string
 		initialMap    map[string]*JSONArtifactRegistryProcessor
 		processorName string
-		artifactName  string
+		artifactID    ArtifactID
 		expectedMap   map[string]*JSONArtifactRegistryProcessor
 	}{
 		{
 			name: "Remove Existing Artifact",
 			initialMap: map[string]*JSONArtifactRegistryProcessor{
 				"processor1": {
-					Artifacts: []string{"file1.txt", "file2.txt"},
+					Artifacts: []ArtifactID{"file1.txt", "file2.txt"},
 				},
 			},
 			processorName: "processor1",
-			artifactName:  "file1.txt",
+			artifactID:    "file1.txt",
 			expectedMap: map[string]*JSONArtifactRegistryProcessor{
 				"processor1": {
-					Artifacts: []string{"file2.txt"},
+					Artifacts: []ArtifactID{"file2.txt"},
 				},
 			},
 		},
@@ -241,14 +242,14 @@ func TestJSONArtifactRegistry_RemoveArtifact(t *testing.T) {
 			name: "Remove Non-Existing Artifact",
 			initialMap: map[string]*JSONArtifactRegistryProcessor{
 				"processor1": {
-					Artifacts: []string{"file1.txt"},
+					Artifacts: []ArtifactID{"file1.txt"},
 				},
 			},
 			processorName: "processor1",
-			artifactName:  "file2.txt",
+			artifactID:    "file2.txt",
 			expectedMap: map[string]*JSONArtifactRegistryProcessor{
 				"processor1": {
-					Artifacts: []string{"file1.txt"},
+					Artifacts: []ArtifactID{"file1.txt"},
 				},
 			},
 		},
@@ -256,14 +257,14 @@ func TestJSONArtifactRegistry_RemoveArtifact(t *testing.T) {
 			name: "Remove From Non-Existing Processor",
 			initialMap: map[string]*JSONArtifactRegistryProcessor{
 				"processor1": {
-					Artifacts: []string{"file1.txt"},
+					Artifacts: []ArtifactID{"file1.txt"},
 				},
 			},
 			processorName: "processor2",
-			artifactName:  "file1.txt",
+			artifactID:    "file1.txt",
 			expectedMap: map[string]*JSONArtifactRegistryProcessor{
 				"processor1": {
-					Artifacts: []string{"file1.txt"},
+					Artifacts: []ArtifactID{"file1.txt"},
 				},
 			},
 		},
@@ -276,7 +277,7 @@ func TestJSONArtifactRegistry_RemoveArtifact(t *testing.T) {
 			}
 
 			// Act
-			registry.RemoveArtifact(tt.processorName, tt.artifactName)
+			registry.RemoveArtifact(tt.processorName, tt.artifactID)
 
 			// Assert
 			assert.Equal(t, tt.expectedMap, registry.ArtifactMap)
@@ -289,23 +290,23 @@ func TestJSONArtifactRegistry_Artifacts(t *testing.T) {
 		name              string
 		initialMap        map[string]*JSONArtifactRegistryProcessor
 		processorName     string
-		expectedArtifacts []string
+		expectedArtifacts []ArtifactID
 	}{
 		{
 			name: "Get Artifacts for Existing Processor",
 			initialMap: map[string]*JSONArtifactRegistryProcessor{
 				"processor1": {
-					Artifacts: []string{"file1.txt", "file2.txt"},
+					Artifacts: []ArtifactID{"file1.txt", "file2.txt"},
 				},
 			},
 			processorName:     "processor1",
-			expectedArtifacts: []string{"file1.txt", "file2.txt"},
+			expectedArtifacts: []ArtifactID{"file1.txt", "file2.txt"},
 		},
 		{
 			name: "Get Artifacts for Non-Existing Processor",
 			initialMap: map[string]*JSONArtifactRegistryProcessor{
 				"processor1": {
-					Artifacts: []string{"file1.txt"},
+					Artifacts: []ArtifactID{"file1.txt"},
 				},
 			},
 			processorName:     "processor2",

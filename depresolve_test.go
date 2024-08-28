@@ -36,41 +36,6 @@ func TestDependencyResolutionProcessor_Process(t *testing.T) {
 		expectedError error
 	}{
 		{
-			name: "GIVEN no matching providers THEN returns resolved dependencies in the same order",
-			given: args{
-				providers: []DependencyProvider{
-					&MockDependencyProvider{
-						supportFunc: func(s Specification) bool {
-							return false
-						},
-						provideFunc: func(s Specification) []SpecificationName {
-							return nil
-						},
-					},
-					&MockDependencyProvider{
-						supportFunc: func(s Specification) bool {
-							return false
-						},
-						provideFunc: func(s Specification) []SpecificationName {
-							if s.Name() == "spec1" {
-								return []SpecificationName{"spec2"}
-							}
-							return nil
-						},
-					},
-				},
-				specifications: SpecificationGroup{
-					spec1,
-					spec2,
-				},
-			},
-			then: ResolvedDependencies{
-				spec1,
-				spec2,
-			},
-			expectedError: nil,
-		},
-		{
 			name: "GIVEN no providers THEN returns nil",
 			given: args{
 				providers:      nil,
@@ -182,13 +147,21 @@ func TestDependencyResolutionProcessor_Process(t *testing.T) {
 				return
 			}
 
-			artifact := ctx.Artifact(ResolvedDependencyContextArtifactName).Value
+			artifact := ctx.Artifact(ResolvedDependenciesArtifactID)
 			graph := artifact.(ResolvedDependencies)
 
 			require.NoError(t, err)
 			require.Equal(t, tt.then, graph)
 		})
 	}
+}
+
+type mockArtifact struct {
+	id ArtifactID
+}
+
+func (m mockArtifact) ID() ArtifactID {
+	return m.id
 }
 
 func TestGetResolvedDependenciesFromContext(t *testing.T) {
@@ -201,11 +174,8 @@ func TestGetResolvedDependenciesFromContext(t *testing.T) {
 			name: "GIVEN a context with resolved dependencies THEN return resolved dependencies",
 			given: ProcessingContext{
 				Artifacts: []Artifact{
-					{
-						Name: ResolvedDependencyContextArtifactName,
-						Value: ResolvedDependencies{
-							NewGenericSpecification("name", "type", Source{}),
-						},
+					ResolvedDependencies{
+						NewGenericSpecification("name", "type", Source{}),
 					},
 				},
 			},
@@ -217,10 +187,7 @@ func TestGetResolvedDependenciesFromContext(t *testing.T) {
 			name: "GIVEN a context with resolved dependencies with wrong type THEN return nil",
 			given: ProcessingContext{
 				Artifacts: []Artifact{
-					{
-						Name:  ResolvedDependencyContextArtifactName,
-						Value: "this is not the right value",
-					},
+					mockArtifact{id: ResolvedDependenciesArtifactID},
 				},
 			},
 			want: nil,

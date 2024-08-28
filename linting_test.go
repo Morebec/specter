@@ -481,10 +481,7 @@ func TestLintingProcessor_Process(t *testing.T) {
 				},
 			},
 			then: []Artifact{
-				{
-					Name:  LintingProcessingContextArtifactName,
-					Value: LinterResultSet(nil),
-				},
+				LinterResultSet(nil),
 			},
 			expectedError: nil,
 		},
@@ -502,10 +499,7 @@ func TestLintingProcessor_Process(t *testing.T) {
 				},
 			},
 			then: []Artifact{
-				{
-					Name:  LintingProcessingContextArtifactName,
-					Value: LinterResultSet{{Severity: WarningSeverity, Message: "a warning"}},
-				},
+				LinterResultSet{{Severity: WarningSeverity, Message: "a warning"}},
 			},
 		},
 		{
@@ -522,10 +516,7 @@ func TestLintingProcessor_Process(t *testing.T) {
 				},
 			},
 			then: []Artifact{
-				{
-					Name:  LintingProcessingContextArtifactName,
-					Value: LinterResultSet{{Severity: ErrorSeverity, Message: assert.AnError.Error()}},
-				},
+				LinterResultSet{{Severity: ErrorSeverity, Message: assert.AnError.Error()}},
 			},
 			expectedError: assert.AnError,
 		},
@@ -550,15 +541,12 @@ func TestLintingProcessor_Process(t *testing.T) {
 				},
 			},
 			then: []Artifact{
-				{
-					Name: LintingProcessingContextArtifactName,
-					Value: LinterResultSet{
-						{
-							Severity: ErrorSeverity, Message: assert.AnError.Error(),
-						},
-						{
-							Severity: WarningSeverity, Message: "a warning",
-						},
+				LinterResultSet{
+					{
+						Severity: ErrorSeverity, Message: assert.AnError.Error(),
+					},
+					{
+						Severity: WarningSeverity, Message: "a warning",
 					},
 				},
 			},
@@ -591,10 +579,7 @@ func TestGetLintingResultsFromContext(t *testing.T) {
 			name: "GIVEN context with linting results THEN return linting results",
 			given: ProcessingContext{
 				Artifacts: []Artifact{
-					{
-						Name:  LintingProcessingContextArtifactName,
-						Value: LinterResultSet{{Severity: WarningSeverity, Message: "a warning"}},
-					},
+					LinterResultSet{{Severity: WarningSeverity, Message: "a warning"}},
 				},
 			},
 			then: LinterResultSet{{Severity: WarningSeverity, Message: "a warning"}},
@@ -608,10 +593,7 @@ func TestGetLintingResultsFromContext(t *testing.T) {
 			name: "GIVEN a context with wrong value for artifact name THEN return nil",
 			given: ProcessingContext{
 				Artifacts: []Artifact{
-					{
-						Name:  LintingProcessingContextArtifactName,
-						Value: "this is not the right value",
-					},
+					mockArtifact{LinterResultArtifactID},
 				},
 			},
 			then: LinterResultSet(nil),

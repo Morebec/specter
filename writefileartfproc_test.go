@@ -18,14 +18,8 @@ func TestWriteFileArtifactProcessor_Process(t *testing.T) {
 			name:   "GIVEN file artifacts THEN successful file creation",
 			mockFS: &mockFileSystem{},
 			artifacts: []Artifact{
-				{
-					Name:  "file1",
-					Value: FileArtifact{Path: "/path/to/file1", Mode: 0755},
-				},
-				{
-					Name:  "file2",
-					Value: FileArtifact{Path: "/path/to/file2", Mode: 0755},
-				},
+				FileArtifact{Path: "/path/to/file1", Mode: 0755},
+				FileArtifact{Path: "/path/to/file2", Mode: 0755},
 			},
 			expectedFiles: []string{"/path/to/file1", "/path/to/file2"},
 			expectError:   nil,
@@ -34,14 +28,8 @@ func TestWriteFileArtifactProcessor_Process(t *testing.T) {
 			name:   "GIVEN non-file artifacts THEN skip and return no error",
 			mockFS: &mockFileSystem{},
 			artifacts: []Artifact{
-				{
-					Name:  "file1",
-					Value: FileArtifact{Path: "/path/to/file1", Mode: 0755},
-				},
-				{
-					Name:  "not_a_file",
-					Value: "this is not a file",
-				},
+				FileArtifact{Path: "/path/to/file1", Mode: 0755},
+				mockArtifact{},
 			},
 			expectedFiles: []string{"/path/to/file1"},
 			expectError:   nil,
@@ -52,10 +40,7 @@ func TestWriteFileArtifactProcessor_Process(t *testing.T) {
 				writeFileErr: assert.AnError,
 			},
 			artifacts: []Artifact{
-				{
-					Name:  "file1",
-					Value: FileArtifact{Path: "/path/to/file1", Mode: 0755},
-				},
+				FileArtifact{Path: "/path/to/file1", Mode: 0755},
 			},
 			expectedFiles: []string{},
 			expectError:   assert.AnError,
@@ -68,10 +53,7 @@ func TestWriteFileArtifactProcessor_Process(t *testing.T) {
 				},
 			},
 			artifacts: []Artifact{
-				{
-					Name:  "file1",
-					Value: FileArtifact{Path: "/path/to/file1", Mode: 0755, WriteMode: WriteOnceMode},
-				},
+				FileArtifact{Path: "/path/to/file1", Mode: 0755, WriteMode: WriteOnceMode},
 			},
 			expectedFiles: []string{},
 			expectError:   nil,

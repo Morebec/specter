@@ -25,6 +25,10 @@ type FileArtifact struct {
 	WriteMode WriteMode
 }
 
+func (a FileArtifact) ID() ArtifactID {
+	return ArtifactID(a.Path)
+}
+
 // WriteFileArtifactProcessor is a processor responsible for writing Artifact referring to files.
 // To perform its work this processor looks at the processing context for any FileArtifact.
 type WriteFileArtifactProcessor struct {
@@ -40,7 +44,7 @@ func (p WriteFileArtifactProcessor) Process(ctx ArtifactProcessingContext) error
 
 	var files []FileArtifact
 	for _, o := range ctx.Artifacts {
-		fo, ok := o.Value.(FileArtifact)
+		fo, ok := o.(FileArtifact)
 		if !ok {
 			continue
 		}
@@ -101,7 +105,7 @@ func (p WriteFileArtifactProcessor) Process(ctx ArtifactProcessingContext) error
 			}
 
 			if file.WriteMode != WriteOnceMode {
-				ctx.AddToRegistry(file.Path)
+				ctx.AddToRegistry(file.ID())
 			}
 
 		}(ctx, file)
@@ -121,9 +125,9 @@ func (p WriteFileArtifactProcessor) cleanRegistry(ctx ArtifactProcessingContext)
 	var wg sync.WaitGroup
 	for _, o := range ctx.RegistryArtifacts() {
 		wg.Add(1)
-		go func(ctx ArtifactProcessingContext, o string) {
+		go func(ctx ArtifactProcessingContext, o ArtifactID) {
 			defer wg.Done()
-			if err := p.FileSystem.Remove(o); err != nil {
+			if err := p.FileSystem.Remove(string(o)); err != nil {
 				if errors.Is(err, os.ErrNotExist) {
 					return
 				}

@@ -21,14 +21,8 @@ func TestMakeDirectoryArtifactsProcessor_Process(t *testing.T) {
 				dirs: make(map[string]bool),
 			},
 			artifacts: []Artifact{
-				{
-					Name:  "dir1",
-					Value: DirectoryArtifact{Path: "/path/to/dir1", FileMode: 0755},
-				},
-				{
-					Name:  "dir2",
-					Value: DirectoryArtifact{Path: "/path/to/dir2", FileMode: 0755},
-				},
+				DirectoryArtifact{Path: "/path/to/dir1", FileMode: 0755},
+				DirectoryArtifact{Path: "/path/to/dir2", FileMode: 0755},
 			},
 			expectedDirs: []string{"/path/to/dir1", "/path/to/dir2"},
 			expectError:  nil,
@@ -39,14 +33,8 @@ func TestMakeDirectoryArtifactsProcessor_Process(t *testing.T) {
 				dirs: make(map[string]bool),
 			},
 			artifacts: []Artifact{
-				{
-					Name:  "dir1",
-					Value: DirectoryArtifact{Path: "/path/to/dir1", FileMode: 0755},
-				},
-				{
-					Name:  "not_a_dir",
-					Value: "this is not a directory",
-				},
+				DirectoryArtifact{Path: "/path/to/dir1", FileMode: 0755},
+				mockArtifact{id: "not_a_dir"},
 			},
 			expectedDirs: []string{"/path/to/dir1"},
 			expectError:  nil,
@@ -58,10 +46,7 @@ func TestMakeDirectoryArtifactsProcessor_Process(t *testing.T) {
 				mkdirErr: assert.AnError,
 			},
 			artifacts: []Artifact{
-				{
-					Name:  "dir1",
-					Value: DirectoryArtifact{Path: "/path/to/dir1", FileMode: 0755},
-				},
+				DirectoryArtifact{Path: "/path/to/dir1", FileMode: 0755},
 			},
 			expectedDirs: []string{},
 			expectError:  assert.AnError,
@@ -74,10 +59,7 @@ func TestMakeDirectoryArtifactsProcessor_Process(t *testing.T) {
 				},
 			},
 			artifacts: []Artifact{
-				{
-					Name:  "file1",
-					Value: DirectoryArtifact{Path: "/dir", WriteMode: WriteOnceMode},
-				},
+				DirectoryArtifact{Path: "/dir", WriteMode: WriteOnceMode},
 			},
 			expectedDirs: []string{},
 			expectError:  nil,

@@ -15,6 +15,10 @@ type DirectoryArtifact struct {
 	WriteMode WriteMode
 }
 
+func (d DirectoryArtifact) ID() ArtifactID {
+	return ArtifactID(d.Path)
+}
+
 type MakeDirectoryArtifactsProcessor struct {
 	FileSystem FileSystem
 }
@@ -39,7 +43,7 @@ func (p MakeDirectoryArtifactsProcessor) Process(ctx ArtifactProcessingContext) 
 			return err
 		}
 
-		dir, ok := artifact.Value.(DirectoryArtifact)
+		dir, ok := artifact.(DirectoryArtifact)
 		if !ok {
 			continue
 		}
@@ -48,7 +52,7 @@ func (p MakeDirectoryArtifactsProcessor) Process(ctx ArtifactProcessingContext) 
 		}
 
 		wg.Add(1)
-		go func(ctx ArtifactProcessingContext, artifactName string, dir DirectoryArtifact) {
+		go func(ctx ArtifactProcessingContext, dir DirectoryArtifact) {
 			defer wg.Done()
 			dirPath, err := p.FileSystem.Abs(dir.Path)
 			if err != nil {
@@ -80,9 +84,9 @@ func (p MakeDirectoryArtifactsProcessor) Process(ctx ArtifactProcessingContext) 
 			}
 
 			if dir.WriteMode != WriteOnceMode {
-				ctx.AddToRegistry(artifactName)
+				ctx.AddToRegistry(dir.ID())
 			}
-		}(ctx, artifact.Name, dir)
+		}(ctx, dir)
 	}
 	wg.Wait()
 
@@ -103,9 +107,9 @@ func (p MakeDirectoryArtifactsProcessor) cleanRegistry(ctx ArtifactProcessingCon
 		}
 
 		wg.Add(1)
-		go func(ctx ArtifactProcessingContext, o string) {
+		go func(ctx ArtifactProcessingContext, o ArtifactID) {
 			defer wg.Done()
-			if err := p.FileSystem.Remove(o); err != nil {
+			if err := p.FileSystem.Remove(string(o)); err != nil {
 				if errors.Is(err, os.ErrNotExist) {
 					return
 				}
