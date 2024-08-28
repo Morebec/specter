@@ -107,7 +107,6 @@ func TestJSONArtifactRegistry_Save(t *testing.T) {
 		{
 			name: "Successful Save",
 			given: &JSONArtifactRegistry{
-				UseAbsolutePaths: false,
 				Entries: map[string][]JsonArtifactRegistryEntry{
 					"processor1": {
 						{ArtifactID: "file1.txt"},

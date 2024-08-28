@@ -94,7 +94,6 @@ var _ ArtifactRegistry = (*JSONArtifactRegistry)(nil)
 
 // JSONArtifactRegistry implementation of a ArtifactRegistry that is saved as a JSON file.
 type JSONArtifactRegistry struct {
-	UseAbsolutePaths    bool             `json:"-"`
 	FileSystem          FileSystem       `json:"-"`
 	FilePath            string           `json:"-"`
 	CurrentTimeProvider func() time.Time `json:"-"`
