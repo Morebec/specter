@@ -7,7 +7,7 @@ import (
 
 func TestWithArtifactRegistry(t *testing.T) {
 	s := &Specter{}
-	r := &JSONArtifactRegistry{}
+	r := &NoopArtifactRegistry{}
 	WithArtifactRegistry(r)(s)
 	assert.Equal(t, r, s.ArtifactRegistry)
 }

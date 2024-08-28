@@ -59,37 +59,70 @@ type ArtifactRegistry interface {
 	// error occurs, it should be returned to indicate the failure of the saving operation.
 	Save() error
 
-	// AddArtifact registers an ArtifactID under a specific processor name. This method
+	// Add registers an ArtifactID under a specific processor name. This method
 	// should ensure that the file path is associated with the given processor name
 	// in the registry.
-	AddArtifact(processorName string, artifactID ArtifactID)
+	Add(processorName string, e ArtifactRegistryEntry) error
 
-	// RemoveArtifact removes a given ArtifactID artifact registration for a specific processor name. This
+	// Remove a given ArtifactID artifact registration for a specific processor name. This
 	// method should ensure that the file path is disassociated from the given
 	// processor name in the registry.
-	RemoveArtifact(processorName string, artifactID ArtifactID)
+	Remove(processorName string, artifactID ArtifactID) error
 
-	// Artifacts returns the artifacts for a given processor.
-	Artifacts(processorName string) []ArtifactID
+	// FindByID finds an entry by its ArtifactID.
+	FindByID(processorName string, artifactID ArtifactID) (entry ArtifactRegistryEntry, found bool, err error)
+
+	// FindAll returns all the entries in the registry.
+	FindAll(processorName string) ([]ArtifactRegistryEntry, error)
 }
 
-type NoopArtifactRegistry struct {
+type ArtifactRegistryEntry struct {
+	ArtifactID ArtifactID
+	Metadata   map[string]any
 }
 
-func (n NoopArtifactRegistry) Load() error {
-	return nil
+var _ ArtifactRegistry = NoopArtifactRegistry{}
+
+type NoopArtifactRegistry struct{}
+
+func (n NoopArtifactRegistry) Add(processorName string, e ArtifactRegistryEntry) error { return nil }
+
+func (n NoopArtifactRegistry) Remove(processorName string, artifactID ArtifactID) error { return nil }
+
+func (n NoopArtifactRegistry) FindByID(processorName string, artifactID ArtifactID) (_ ArtifactRegistryEntry, _ bool, _ error) {
+	return ArtifactRegistryEntry{}, false, nil
 }
 
-func (n NoopArtifactRegistry) Save() error {
-	return nil
+func (n NoopArtifactRegistry) FindAll(processorName string) ([]ArtifactRegistryEntry, error) {
+	return nil, nil
 }
 
-func (n NoopArtifactRegistry) AddArtifact(_ string, _ ArtifactID) {}
+func (n NoopArtifactRegistry) Load() error { return nil }
 
-func (n NoopArtifactRegistry) RemoveArtifact(_ string, _ ArtifactID) {}
+func (n NoopArtifactRegistry) Save() error { return nil }
 
-func (n NoopArtifactRegistry) Artifacts(_ string) []ArtifactID {
-	return nil
+type ProcessorArtifactRegistry struct {
+	processorName string
+	registry      ArtifactRegistry
+}
+
+func (n ProcessorArtifactRegistry) Add(artifactID ArtifactID, metadata map[string]any) error {
+	return n.registry.Add(n.processorName, ArtifactRegistryEntry{
+		ArtifactID: artifactID,
+		Metadata:   metadata,
+	})
+}
+
+func (n ProcessorArtifactRegistry) Remove(artifactID ArtifactID) error {
+	return n.registry.Remove(n.processorName, artifactID)
+}
+
+func (n ProcessorArtifactRegistry) FindByID(artifactID ArtifactID) (_ ArtifactRegistryEntry, _ bool, _ error) {
+	return n.registry.FindByID(n.processorName, artifactID)
+}
+
+func (n ProcessorArtifactRegistry) FindAll() ([]ArtifactRegistryEntry, error) {
+	return n.registry.FindAll(n.processorName)
 }
 
 type ArtifactProcessingContext struct {
@@ -98,20 +131,8 @@ type ArtifactProcessingContext struct {
 	Artifacts      []Artifact
 	Logger         Logger
 
-	artifactRegistry ArtifactRegistry
+	ArtifactRegistry ProcessorArtifactRegistry
 	processorName    string
-}
-
-func (c *ArtifactProcessingContext) AddToRegistry(artifactID ArtifactID) {
-	c.artifactRegistry.AddArtifact(c.processorName, artifactID)
-}
-
-func (c *ArtifactProcessingContext) RemoveFromRegistry(artifactID ArtifactID) {
-	c.artifactRegistry.RemoveArtifact(c.processorName, artifactID)
-}
-
-func (c *ArtifactProcessingContext) RegistryArtifacts() []ArtifactID {
-	return c.artifactRegistry.Artifacts(c.processorName)
 }
 
 // ArtifactProcessor are services responsible for processing artifacts of SpecProcessors.

@@ -244,16 +244,19 @@ func (s Specter) ProcessArtifacts(ctx context.Context, specifications []Specific
 			return err
 		}
 
-		octx := ArtifactProcessingContext{
-			Context:          ctx,
-			Specifications:   specifications,
-			Artifacts:        artifacts,
-			Logger:           s.Logger,
-			artifactRegistry: s.ArtifactRegistry,
-			processorName:    p.Name(),
+		artifactCtx := ArtifactProcessingContext{
+			Context:        ctx,
+			Specifications: specifications,
+			Artifacts:      artifacts,
+			Logger:         s.Logger,
+			ArtifactRegistry: ProcessorArtifactRegistry{
+				processorName: p.Name(),
+				registry:      s.ArtifactRegistry,
+			},
+			processorName: p.Name(),
 		}
 
-		err := p.Process(octx)
+		err := p.Process(artifactCtx)
 		if err != nil {
 			return errors.WrapWithMessage(err, errors.InternalErrorCode, fmt.Sprintf("artifact processor %q failed", p.Name()))
 		}
@@ -263,7 +266,7 @@ func (s Specter) ProcessArtifacts(ctx context.Context, specifications []Specific
 		return fmt.Errorf("failed saving artifact registry: %w", err)
 	}
 
-	s.Logger.Success("Artifacts processed successfully.")
+	s.Logger.Success("FindAll processed successfully.")
 	return nil
 }
 

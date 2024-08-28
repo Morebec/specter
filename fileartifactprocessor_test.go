@@ -66,11 +66,14 @@ func TestWriteFileArtifactProcessor_Process(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			processor := FileArtifactProcessor{FileSystem: tt.mockFS}
 			ctx := ArtifactProcessingContext{
-				Context:          context.Background(),
-				Artifacts:        tt.artifacts,
-				Logger:           NewDefaultLogger(DefaultLoggerConfig{}),
-				artifactRegistry: &InMemoryArtifactRegistry{},
-				processorName:    processor.Name(),
+				Context:   context.Background(),
+				Artifacts: tt.artifacts,
+				Logger:    NewDefaultLogger(DefaultLoggerConfig{}),
+				ArtifactRegistry: ProcessorArtifactRegistry{
+					processorName: "unit_tester",
+					registry:      &InMemoryArtifactRegistry{},
+				},
+				processorName: processor.Name(),
 			}
 			err := processor.Process(ctx)
 

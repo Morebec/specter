@@ -11,81 +11,179 @@ import (
 var _ ArtifactRegistry = (*InMemoryArtifactRegistry)(nil)
 
 type InMemoryArtifactRegistry struct {
-	ArtifactMap map[string][]ArtifactID
+	ArtifactMap map[string][]ArtifactRegistryEntry
 	mu          sync.RWMutex // Mutex to protect concurrent access
+}
+
+func (r *InMemoryArtifactRegistry) Add(processorName string, e ArtifactRegistryEntry) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.ArtifactMap == nil {
+		r.ArtifactMap = map[string][]ArtifactRegistryEntry{}
+	}
+
+	if _, ok := r.ArtifactMap[processorName]; !ok {
+		r.ArtifactMap[processorName] = make([]ArtifactRegistryEntry, 0)
+	}
+	r.ArtifactMap[processorName] = append(r.ArtifactMap[processorName], e)
+
+	return nil
+}
+
+func (r *InMemoryArtifactRegistry) Remove(processorName string, artifactID ArtifactID) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if _, ok := r.ArtifactMap[processorName]; !ok {
+		return nil
+	}
+	if r.ArtifactMap == nil {
+		r.ArtifactMap = map[string][]ArtifactRegistryEntry{}
+	}
+
+	var artifacts []ArtifactRegistryEntry
+	for _, entry := range r.ArtifactMap[processorName] {
+		if entry.ArtifactID != artifactID {
+			artifacts = append(artifacts, entry)
+		}
+	}
+
+	r.ArtifactMap[processorName] = artifacts
+
+	return nil
+}
+
+func (r *InMemoryArtifactRegistry) FindByID(processorName string, artifactID ArtifactID) (entry ArtifactRegistryEntry, found bool, err error) {
+	all, err := r.FindAll(processorName)
+	if err != nil {
+		return ArtifactRegistryEntry{}, false, err
+	}
+
+	for _, e := range all {
+		if e.ArtifactID == artifactID {
+			return e, true, nil
+		}
+	}
+
+	return ArtifactRegistryEntry{}, false, nil
+}
+
+func (r *InMemoryArtifactRegistry) FindAll(processorName string) ([]ArtifactRegistryEntry, error) {
+	if r.ArtifactMap == nil {
+		r.ArtifactMap = map[string][]ArtifactRegistryEntry{}
+	}
+
+	values, ok := r.ArtifactMap[processorName]
+	if !ok {
+		return nil, nil
+	}
+
+	return values, nil
 }
 
 func (r *InMemoryArtifactRegistry) Load() error { return nil }
 
 func (r *InMemoryArtifactRegistry) Save() error { return nil }
 
-func (r *InMemoryArtifactRegistry) AddArtifact(processorName string, artifactID ArtifactID) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	if r.ArtifactMap == nil {
-		r.ArtifactMap = map[string][]ArtifactID{}
-	}
-
-	if _, ok := r.ArtifactMap[processorName]; !ok {
-		r.ArtifactMap[processorName] = make([]ArtifactID, 0)
-	}
-	r.ArtifactMap[processorName] = append(r.ArtifactMap[processorName], artifactID)
+type JsonArtifactRegistryEntry struct {
+	ArtifactID ArtifactID     `json:"artifactId"`
+	Metadata   map[string]any `json:"metadata"`
 }
 
-func (r *InMemoryArtifactRegistry) RemoveArtifact(processorName string, artifactID ArtifactID) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	if _, ok := r.ArtifactMap[processorName]; !ok {
-		return
-	}
-	if r.ArtifactMap == nil {
-		r.ArtifactMap = map[string][]ArtifactID{}
-	}
-
-	var artifacts []ArtifactID
-	for _, file := range r.ArtifactMap[processorName] {
-		if file != artifactID {
-			artifacts = append(artifacts, file)
-		}
-	}
-
-	r.ArtifactMap[processorName] = artifacts
-}
-
-func (r *InMemoryArtifactRegistry) Artifacts(processorName string) []ArtifactID {
-	if r.ArtifactMap == nil {
-		r.ArtifactMap = map[string][]ArtifactID{}
-	}
-
-	values, ok := r.ArtifactMap[processorName]
-	if !ok {
-		return nil
-	}
-
-	return values
-}
+var _ ArtifactRegistry = (*JSONArtifactRegistry)(nil)
 
 // JSONArtifactRegistry implementation of a ArtifactRegistry that is saved as a JSON file.
 type JSONArtifactRegistry struct {
-	UseAbsolutePaths bool `json:"-"`
+	UseAbsolutePaths    bool             `json:"-"`
+	FileSystem          FileSystem       `json:"-"`
+	FilePath            string           `json:"-"`
+	CurrentTimeProvider func() time.Time `json:"-"`
 
-	GeneratedAt         time.Time                                 `json:"generatedAt"`
-	ArtifactMap         map[string]*JSONArtifactRegistryProcessor `json:"files"`
-	FilePath            string                                    `json:"-"`
-	FileSystem          FileSystem                                `json:"-"`
-	mu                  sync.RWMutex                              // Mutex to protect concurrent access
-	CurrentTimeProvider func() time.Time                          `json:"-"`
+	GeneratedAt time.Time                              `json:"generatedAt"`
+	Entries     map[string][]JsonArtifactRegistryEntry `json:"entries"`
+	mu          sync.RWMutex                           // Mutex to protect concurrent access
 }
 
-type JSONArtifactRegistryProcessor struct {
-	Artifacts []ArtifactID `json:"files"`
+func (r *JSONArtifactRegistry) Add(processorName string, e ArtifactRegistryEntry) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if _, ok := r.Entries[processorName]; !ok {
+		r.Entries[processorName] = make([]JsonArtifactRegistryEntry, 0)
+	}
+
+	r.Entries[processorName] = append(r.Entries[processorName], JsonArtifactRegistryEntry{
+		ArtifactID: e.ArtifactID,
+		Metadata:   e.Metadata,
+	})
+
+	return nil
+}
+
+func (r *JSONArtifactRegistry) Remove(processorName string, artifactID ArtifactID) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if _, ok := r.Entries[processorName]; !ok {
+		return nil
+	}
+
+	var entries []JsonArtifactRegistryEntry
+	for _, entry := range r.Entries[processorName] {
+		if entry.ArtifactID != artifactID {
+			entries = append(entries, entry)
+		}
+	}
+
+	r.Entries[processorName] = entries
+
+	return nil
+}
+
+func (r *JSONArtifactRegistry) FindByID(processorName string, artifactID ArtifactID) (ArtifactRegistryEntry, bool, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	if _, ok := r.Entries[processorName]; !ok {
+		return ArtifactRegistryEntry{}, false, nil
+	}
+
+	for _, entry := range r.Entries[processorName] {
+		if entry.ArtifactID == artifactID {
+			return ArtifactRegistryEntry{
+				ArtifactID: entry.ArtifactID,
+				Metadata:   entry.Metadata,
+			}, true, nil
+		}
+	}
+
+	return ArtifactRegistryEntry{}, false, nil
+}
+
+func (r *JSONArtifactRegistry) FindAll(processorName string) ([]ArtifactRegistryEntry, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	if _, ok := r.Entries[processorName]; !ok {
+		return nil, nil
+	}
+
+	var entries []ArtifactRegistryEntry
+	for _, entry := range r.Entries[processorName] {
+		entries = append(entries, ArtifactRegistryEntry{
+			ArtifactID: entry.ArtifactID,
+			Metadata:   entry.Metadata,
+		})
+	}
+
+	return entries, nil
 }
 
 // NewJSONArtifactRegistry returns a new artifact file registry.
 func NewJSONArtifactRegistry(fileName string, fs FileSystem) *JSONArtifactRegistry {
 	return &JSONArtifactRegistry{
-		ArtifactMap: map[string]*JSONArtifactRegistryProcessor{},
-		FilePath:    fileName,
+		Entries:  make(map[string][]JsonArtifactRegistryEntry),
+		FilePath: fileName,
 		CurrentTimeProvider: func() time.Time {
 			return time.Now()
 		},
@@ -134,47 +232,4 @@ func (r *JSONArtifactRegistry) Save() error {
 	}
 
 	return nil
-}
-
-func (r *JSONArtifactRegistry) AddArtifact(processorName string, artifactID ArtifactID) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	if r.ArtifactMap == nil {
-		r.ArtifactMap = map[string]*JSONArtifactRegistryProcessor{}
-	}
-
-	if _, ok := r.ArtifactMap[processorName]; !ok {
-		r.ArtifactMap[processorName] = &JSONArtifactRegistryProcessor{}
-	}
-	r.ArtifactMap[processorName].Artifacts = append(r.ArtifactMap[processorName].Artifacts, artifactID)
-}
-
-func (r *JSONArtifactRegistry) RemoveArtifact(processorName string, artifactID ArtifactID) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	if _, ok := r.ArtifactMap[processorName]; !ok {
-		return
-	}
-
-	var files []ArtifactID
-	for _, file := range r.ArtifactMap[processorName].Artifacts {
-		if file != artifactID {
-			files = append(files, file)
-		}
-	}
-
-	r.ArtifactMap[processorName].Artifacts = files
-}
-
-func (r *JSONArtifactRegistry) Artifacts(processorName string) []ArtifactID {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	artifacts, ok := r.ArtifactMap[processorName]
-	if !ok {
-		return nil
-	}
-	return artifacts.Artifacts
 }
