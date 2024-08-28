@@ -166,30 +166,68 @@ func (p FileArtifactProcessor) processFileArtifact(ctx ArtifactProcessingContext
 	}
 
 	if fa.WriteMode != WriteOnceMode {
-		ctx.AddToRegistry(fa.ID())
+		meta := map[string]any{
+			"path":      fa.Path,
+			"writeMode": fa.WriteMode,
+		}
+		if err := ctx.ArtifactRegistry.Add(fa.ID(), meta); err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
 func (p FileArtifactProcessor) cleanRegistry(ctx ArtifactProcessingContext) error {
+	var mu sync.Mutex
 	var wg sync.WaitGroup
-	cleanFile := func(ctx ArtifactProcessingContext, o ArtifactID) {
-		defer wg.Done()
-		if err := p.FileSystem.Remove(string(o)); err != nil {
-			if errors.Is(err, os.ErrNotExist) {
-				return
-			}
-			panic(errors.Wrap(err, "failed cleaning artifact registry files"))
-		}
-		ctx.RemoveFromRegistry(o)
+	var errs errors.Group
+
+	entries, err := ctx.ArtifactRegistry.FindAll()
+	if err != nil {
+		return err
 	}
 
-	for _, o := range ctx.RegistryArtifacts() {
+	for _, entry := range entries {
+		if entry.Metadata == nil {
+			continue // TODO Error (?)
+		}
+
+		writeMode, ok := entry.Metadata["writeMode"]
+		if !ok || writeMode != RecreateMode {
+			continue
+		}
 		wg.Add(1)
-		go cleanFile(ctx, o)
+		go func(entry ArtifactRegistryEntry) {
+			defer wg.Done()
+			if err := p.cleanArtifact(ctx, entry); err != nil {
+				mu.Lock()
+				defer mu.Unlock()
+				errs = errs.Append(err)
+			}
+		}(entry)
 	}
 	wg.Wait()
+
+	return nil
+}
+
+func (p FileArtifactProcessor) cleanArtifact(ctx ArtifactProcessingContext, entry ArtifactRegistryEntry) error {
+	if entry.Metadata == nil {
+		return nil // TODO Error (?)
+	}
+	path, ok := entry.Metadata["path"].(string)
+	if !ok || path == "" {
+		return nil
+	}
+
+	if err := p.FileSystem.Remove(path); err != nil {
+		return err
+	}
+
+	if err := ctx.ArtifactRegistry.Remove(entry.ArtifactID); err != nil {
+		return err
+	}
 
 	return nil
 }

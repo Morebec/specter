@@ -3,6 +3,7 @@ package specter
 import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -21,75 +22,17 @@ func (m *MockArtifactRegistry) Save() error {
 	return args.Error(0)
 }
 
-func (m *MockArtifactRegistry) AddArtifact(processorName string, artifactID ArtifactID) {
+func (m *MockArtifactRegistry) Add(processorName string, artifactID ArtifactID) {
 	m.Called(processorName, artifactID)
 }
 
-func (m *MockArtifactRegistry) RemoveArtifact(processorName string, artifactID ArtifactID) {
+func (m *MockArtifactRegistry) Remove(processorName string, artifactID ArtifactID) {
 	m.Called(processorName, artifactID)
 }
 
 func (m *MockArtifactRegistry) Artifacts(processorName string) []ArtifactID {
 	args := m.Called(processorName)
 	return args.Get(0).([]ArtifactID)
-}
-
-func TestArtifactProcessingContext__AddToRegistry(t *testing.T) {
-	// Arrange
-	mockRegistry := &MockArtifactRegistry{}
-	ctx := &ArtifactProcessingContext{
-		artifactRegistry: mockRegistry,
-		processorName:    "testProcessor",
-	}
-
-	artifactID := ArtifactID("artifactFile.txt")
-
-	mockRegistry.On("AddArtifact", "testProcessor", artifactID).Return()
-
-	// Act
-	ctx.AddToRegistry(artifactID)
-
-	// Assert
-	mockRegistry.AssertExpectations(t)
-}
-
-func TestArtifactProcessingContext__RemoveFromRegistry(t *testing.T) {
-	// Arrange
-	mockRegistry := new(MockArtifactRegistry)
-	ctx := &ArtifactProcessingContext{
-		artifactRegistry: mockRegistry,
-		processorName:    "testProcessor",
-	}
-
-	artifactID := ArtifactID("artifactFile.txt")
-
-	mockRegistry.On("RemoveArtifact", "testProcessor", artifactID).Return()
-
-	// Act
-	ctx.RemoveFromRegistry(artifactID)
-
-	// Assert
-	mockRegistry.AssertExpectations(t)
-}
-
-func TestArtifactProcessingContext__RegistryArtifacts(t *testing.T) {
-	// Arrange
-	mockRegistry := new(MockArtifactRegistry)
-	ctx := &ArtifactProcessingContext{
-		artifactRegistry: mockRegistry,
-		processorName:    "testProcessor",
-	}
-
-	expectedArtifacts := []ArtifactID{"file1.txt", "file2.txt"}
-
-	mockRegistry.On("Artifacts", "testProcessor").Return(expectedArtifacts)
-
-	// Act
-	artifacts := ctx.RegistryArtifacts()
-
-	// Assert
-	assert.Equal(t, expectedArtifacts, artifacts)
-	mockRegistry.AssertExpectations(t)
 }
 
 func TestNoopArtifactRegistry_Load(t *testing.T) {
@@ -114,35 +57,21 @@ func TestNoopArtifactRegistry_Save(t *testing.T) {
 	assert.NoError(t, err, "Save should not return an error")
 }
 
-func TestNoopArtifactRegistry_AddArtifact(t *testing.T) {
-	// Arrange
+func TestNoopArtifactRegistry_Add(t *testing.T) {
 	registry := NoopArtifactRegistry{}
-
-	// Act
-	registry.AddArtifact("processor1", "artifactFile.txt")
-
-	// Assert
-	// No state to assert since it's a no-op, just ensure it doesn't panic or error.
+	err := registry.Add("processor1", ArtifactRegistryEntry{})
+	require.NoError(t, err)
 }
 
-func TestNoopArtifactRegistry_RemoveArtifact(t *testing.T) {
-	// Arrange
+func TestNoopArtifactRegistry_Remove(t *testing.T) {
 	registry := NoopArtifactRegistry{}
-
-	// Act
-	registry.RemoveArtifact("processor1", "artifactFile.txt")
-
-	// Assert
-	// No state to assert since it's a no-op, just ensure it doesn't panic or error.
+	err := registry.Remove("processor1", "artifactFile.txt")
+	require.NoError(t, err)
 }
 
-func TestNoopArtifactRegistry_Artifacts(t *testing.T) {
-	// Arrange
+func TestNoopArtifactRegistry_FindAll(t *testing.T) {
 	registry := NoopArtifactRegistry{}
-
-	// Act
-	artifacts := registry.Artifacts("processor1")
-
-	// Assert
-	assert.Nil(t, artifacts, "Artifacts should return nil for NoopArtifactRegistry")
+	artifacts, err := registry.FindAll("processor1")
+	require.NoError(t, err)
+	require.Nil(t, artifacts, "FindAll should return nil for NoopArtifactRegistry")
 }
