@@ -3,6 +3,8 @@ package specter
 import (
 	"context"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"os"
 	"testing"
 )
 
@@ -18,8 +20,8 @@ func TestWriteFileArtifactProcessor_Process(t *testing.T) {
 			name:   "GIVEN file artifacts THEN successful file creation",
 			mockFS: &mockFileSystem{},
 			artifacts: []Artifact{
-				FileArtifact{Path: "/path/to/file1", Mode: 0755},
-				FileArtifact{Path: "/path/to/file2", Mode: 0755},
+				FileArtifact{Path: "/path/to/file1", FileMode: 0755},
+				FileArtifact{Path: "/path/to/file2", FileMode: 0755},
 			},
 			expectedFiles: []string{"/path/to/file1", "/path/to/file2"},
 			expectError:   nil,
@@ -28,7 +30,7 @@ func TestWriteFileArtifactProcessor_Process(t *testing.T) {
 			name:   "GIVEN non-file artifacts THEN skip and return no error",
 			mockFS: &mockFileSystem{},
 			artifacts: []Artifact{
-				FileArtifact{Path: "/path/to/file1", Mode: 0755},
+				FileArtifact{Path: "/path/to/file1", FileMode: 0755},
 				mockArtifact{},
 			},
 			expectedFiles: []string{"/path/to/file1"},
@@ -40,7 +42,7 @@ func TestWriteFileArtifactProcessor_Process(t *testing.T) {
 				writeFileErr: assert.AnError,
 			},
 			artifacts: []Artifact{
-				FileArtifact{Path: "/path/to/file1", Mode: 0755},
+				FileArtifact{Path: "/path/to/file1", FileMode: 0755},
 			},
 			expectedFiles: []string{},
 			expectError:   assert.AnError,
@@ -53,7 +55,7 @@ func TestWriteFileArtifactProcessor_Process(t *testing.T) {
 				},
 			},
 			artifacts: []Artifact{
-				FileArtifact{Path: "/path/to/file1", Mode: 0755, WriteMode: WriteOnceMode},
+				FileArtifact{Path: "/path/to/file1", FileMode: 0755, WriteMode: WriteOnceMode},
 			},
 			expectedFiles: []string{},
 			expectError:   nil,
@@ -62,7 +64,7 @@ func TestWriteFileArtifactProcessor_Process(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			processor := WriteFileArtifactProcessor{FileSystem: tt.mockFS}
+			processor := FileArtifactProcessor{FileSystem: tt.mockFS}
 			ctx := ArtifactProcessingContext{
 				Context:          context.Background(),
 				Artifacts:        tt.artifacts,
@@ -88,5 +90,22 @@ func TestWriteFileArtifactProcessor_Process(t *testing.T) {
 }
 
 func TestWriteFileArtifactProcessor_Name(t *testing.T) {
-	assert.NotEqual(t, "", WriteFileArtifactProcessor{}.Name())
+	assert.NotEqual(t, "", FileArtifactProcessor{}.Name())
+}
+
+func TestNewDirectoryArtifact(t *testing.T) {
+	dir := NewDirectoryArtifact("/dir", os.ModePerm, RecreateMode)
+	require.NotNil(t, dir)
+	assert.Equal(t, dir.Path, "/dir")
+	assert.Equal(t, dir.FileMode, os.ModePerm|os.ModeDir)
+	assert.Equal(t, dir.WriteMode, RecreateMode)
+	assert.Nil(t, dir.Data)
+}
+
+func TestFileArtifact_IsDir(t *testing.T) {
+	f := FileArtifact{FileMode: os.ModePerm}
+	assert.False(t, f.IsDir())
+
+	f = FileArtifact{FileMode: os.ModePerm | os.ModeDir}
+	assert.True(t, f.IsDir())
 }
