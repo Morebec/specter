@@ -221,7 +221,7 @@ func (s Specter) ProcessSpecifications(ctx context.Context, specs []Specificatio
 
 	s.Logger.Info(fmt.Sprintf("%d artifacts generated.", len(pctx.Artifacts)))
 	for _, o := range pctx.Artifacts {
-		s.Logger.Info(fmt.Sprintf("-> %s", o.Name))
+		s.Logger.Info(fmt.Sprintf("-> %s", o.ID()))
 	}
 
 	s.Logger.Success("Specifications processed successfully.")

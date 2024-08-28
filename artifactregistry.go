@@ -11,7 +11,7 @@ import (
 var _ ArtifactRegistry = (*InMemoryArtifactRegistry)(nil)
 
 type InMemoryArtifactRegistry struct {
-	ArtifactMap map[string][]string
+	ArtifactMap map[string][]ArtifactID
 	mu          sync.RWMutex // Mutex to protect concurrent access
 }
 
@@ -19,32 +19,32 @@ func (r *InMemoryArtifactRegistry) Load() error { return nil }
 
 func (r *InMemoryArtifactRegistry) Save() error { return nil }
 
-func (r *InMemoryArtifactRegistry) AddArtifact(processorName string, artifactName string) {
+func (r *InMemoryArtifactRegistry) AddArtifact(processorName string, artifactID ArtifactID) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if r.ArtifactMap == nil {
-		r.ArtifactMap = map[string][]string{}
+		r.ArtifactMap = map[string][]ArtifactID{}
 	}
 
 	if _, ok := r.ArtifactMap[processorName]; !ok {
-		r.ArtifactMap[processorName] = make([]string, 0)
+		r.ArtifactMap[processorName] = make([]ArtifactID, 0)
 	}
-	r.ArtifactMap[processorName] = append(r.ArtifactMap[processorName], artifactName)
+	r.ArtifactMap[processorName] = append(r.ArtifactMap[processorName], artifactID)
 }
 
-func (r *InMemoryArtifactRegistry) RemoveArtifact(processorName string, artifactName string) {
+func (r *InMemoryArtifactRegistry) RemoveArtifact(processorName string, artifactID ArtifactID) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if _, ok := r.ArtifactMap[processorName]; !ok {
 		return
 	}
 	if r.ArtifactMap == nil {
-		r.ArtifactMap = map[string][]string{}
+		r.ArtifactMap = map[string][]ArtifactID{}
 	}
 
-	var artifacts []string
+	var artifacts []ArtifactID
 	for _, file := range r.ArtifactMap[processorName] {
-		if file != artifactName {
+		if file != artifactID {
 			artifacts = append(artifacts, file)
 		}
 	}
@@ -52,9 +52,9 @@ func (r *InMemoryArtifactRegistry) RemoveArtifact(processorName string, artifact
 	r.ArtifactMap[processorName] = artifacts
 }
 
-func (r *InMemoryArtifactRegistry) Artifacts(processorName string) []string {
+func (r *InMemoryArtifactRegistry) Artifacts(processorName string) []ArtifactID {
 	if r.ArtifactMap == nil {
-		r.ArtifactMap = map[string][]string{}
+		r.ArtifactMap = map[string][]ArtifactID{}
 	}
 
 	values, ok := r.ArtifactMap[processorName]
@@ -67,6 +67,8 @@ func (r *InMemoryArtifactRegistry) Artifacts(processorName string) []string {
 
 // JSONArtifactRegistry implementation of a ArtifactRegistry that is saved as a JSON file.
 type JSONArtifactRegistry struct {
+	UseAbsolutePaths bool `json:"-"`
+
 	GeneratedAt         time.Time                                 `json:"generatedAt"`
 	ArtifactMap         map[string]*JSONArtifactRegistryProcessor `json:"files"`
 	FilePath            string                                    `json:"-"`
@@ -76,7 +78,7 @@ type JSONArtifactRegistry struct {
 }
 
 type JSONArtifactRegistryProcessor struct {
-	Artifacts []string `json:"files"`
+	Artifacts []ArtifactID `json:"files"`
 }
 
 // NewJSONArtifactRegistry returns a new artifact file registry.
@@ -134,7 +136,7 @@ func (r *JSONArtifactRegistry) Save() error {
 	return nil
 }
 
-func (r *JSONArtifactRegistry) AddArtifact(processorName string, artifactName string) {
+func (r *JSONArtifactRegistry) AddArtifact(processorName string, artifactID ArtifactID) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -145,10 +147,10 @@ func (r *JSONArtifactRegistry) AddArtifact(processorName string, artifactName st
 	if _, ok := r.ArtifactMap[processorName]; !ok {
 		r.ArtifactMap[processorName] = &JSONArtifactRegistryProcessor{}
 	}
-	r.ArtifactMap[processorName].Artifacts = append(r.ArtifactMap[processorName].Artifacts, artifactName)
+	r.ArtifactMap[processorName].Artifacts = append(r.ArtifactMap[processorName].Artifacts, artifactID)
 }
 
-func (r *JSONArtifactRegistry) RemoveArtifact(processorName string, artifactName string) {
+func (r *JSONArtifactRegistry) RemoveArtifact(processorName string, artifactID ArtifactID) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -156,9 +158,9 @@ func (r *JSONArtifactRegistry) RemoveArtifact(processorName string, artifactName
 		return
 	}
 
-	var files []string
+	var files []ArtifactID
 	for _, file := range r.ArtifactMap[processorName].Artifacts {
-		if file != artifactName {
+		if file != artifactID {
 			files = append(files, file)
 		}
 	}
@@ -166,7 +168,7 @@ func (r *JSONArtifactRegistry) RemoveArtifact(processorName string, artifactName
 	r.ArtifactMap[processorName].Artifacts = files
 }
 
-func (r *JSONArtifactRegistry) Artifacts(processorName string) []string {
+func (r *JSONArtifactRegistry) Artifacts(processorName string) []ArtifactID {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 

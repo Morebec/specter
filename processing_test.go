@@ -21,33 +21,33 @@ func (m *MockArtifactRegistry) Save() error {
 	return args.Error(0)
 }
 
-func (m *MockArtifactRegistry) AddArtifact(processorName string, artifactName string) {
-	m.Called(processorName, artifactName)
+func (m *MockArtifactRegistry) AddArtifact(processorName string, artifactID ArtifactID) {
+	m.Called(processorName, artifactID)
 }
 
-func (m *MockArtifactRegistry) RemoveArtifact(processorName string, artifactName string) {
-	m.Called(processorName, artifactName)
+func (m *MockArtifactRegistry) RemoveArtifact(processorName string, artifactID ArtifactID) {
+	m.Called(processorName, artifactID)
 }
 
-func (m *MockArtifactRegistry) Artifacts(processorName string) []string {
+func (m *MockArtifactRegistry) Artifacts(processorName string) []ArtifactID {
 	args := m.Called(processorName)
-	return args.Get(0).([]string)
+	return args.Get(0).([]ArtifactID)
 }
 
 func TestArtifactProcessingContext__AddToRegistry(t *testing.T) {
 	// Arrange
-	mockRegistry := new(MockArtifactRegistry)
+	mockRegistry := &MockArtifactRegistry{}
 	ctx := &ArtifactProcessingContext{
 		artifactRegistry: mockRegistry,
 		processorName:    "testProcessor",
 	}
 
-	artifactName := "artifactFile.txt"
+	artifactID := ArtifactID("artifactFile.txt")
 
-	mockRegistry.On("AddArtifact", "testProcessor", artifactName).Return()
+	mockRegistry.On("AddArtifact", "testProcessor", artifactID).Return()
 
 	// Act
-	ctx.AddToRegistry(artifactName)
+	ctx.AddToRegistry(artifactID)
 
 	// Assert
 	mockRegistry.AssertExpectations(t)
@@ -61,12 +61,12 @@ func TestArtifactProcessingContext__RemoveFromRegistry(t *testing.T) {
 		processorName:    "testProcessor",
 	}
 
-	artifactName := "artifactFile.txt"
+	artifactID := ArtifactID("artifactFile.txt")
 
-	mockRegistry.On("RemoveArtifact", "testProcessor", artifactName).Return()
+	mockRegistry.On("RemoveArtifact", "testProcessor", artifactID).Return()
 
 	// Act
-	ctx.RemoveFromRegistry(artifactName)
+	ctx.RemoveFromRegistry(artifactID)
 
 	// Assert
 	mockRegistry.AssertExpectations(t)
@@ -80,7 +80,7 @@ func TestArtifactProcessingContext__RegistryArtifacts(t *testing.T) {
 		processorName:    "testProcessor",
 	}
 
-	expectedArtifacts := []string{"file1.txt", "file2.txt"}
+	expectedArtifacts := []ArtifactID{"file1.txt", "file2.txt"}
 
 	mockRegistry.On("Artifacts", "testProcessor").Return(expectedArtifacts)
 

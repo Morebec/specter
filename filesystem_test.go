@@ -7,6 +7,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -34,13 +35,14 @@ func (m mockFileInfo) Info() (fs.FileInfo, error) {
 	return m, nil
 }
 
-func (m mockFileInfo) Name() string      { return m.name }
+func (m mockFileInfo) ID() string        { return m.name }
 func (m mockFileInfo) Size() int64       { return m.size }
 func (m mockFileInfo) Mode() os.FileMode { return m.mode }
 func (m mockFileInfo) IsDir() bool       { return m.isDir }
 func (m mockFileInfo) Sys() interface{}  { return nil }
 
 type mockFileSystem struct {
+	mu    sync.RWMutex
 	files map[string][]byte
 	dirs  map[string]bool
 
@@ -58,6 +60,8 @@ func (m *mockFileSystem) Rel(basePath, targetPath string) (string, error) {
 }
 
 func (m *mockFileSystem) WriteFile(filePath string, data []byte, _ fs.FileMode) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.writeFileErr != nil {
 		return m.writeFileErr
 	}
@@ -72,6 +76,9 @@ func (m *mockFileSystem) WriteFile(filePath string, data []byte, _ fs.FileMode) 
 }
 
 func (m *mockFileSystem) Mkdir(dirPath string, _ fs.FileMode) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	if m.mkdirErr != nil {
 		return m.mkdirErr
 	}
@@ -82,6 +89,9 @@ func (m *mockFileSystem) Mkdir(dirPath string, _ fs.FileMode) error {
 }
 
 func (m *mockFileSystem) Remove(path string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	if m.rmErr != nil {
 		return m.rmErr
 	}
@@ -93,6 +103,9 @@ func (m *mockFileSystem) Remove(path string) error {
 }
 
 func (m *mockFileSystem) Abs(location string) (string, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	if m.absErr != nil {
 		return "", m.absErr
 	}
@@ -109,10 +122,13 @@ func (m *mockFileSystem) Abs(location string) (string, error) {
 	if absPath, exists := absPaths[location]; exists && absPath {
 		return location, nil
 	}
-	return "", nil
+	return location, nil
 }
 
 func (m *mockFileSystem) StatPath(location string) (os.FileInfo, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	if m.statErr != nil {
 		return nil, m.statErr
 	}
@@ -129,6 +145,9 @@ func (m *mockFileSystem) StatPath(location string) (os.FileInfo, error) {
 }
 
 func (m *mockFileSystem) WalkDir(dirPath string, f func(path string, d fs.DirEntry, err error) error) error {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	if m.walkDirErr != nil {
 		return m.walkDirErr
 	}
@@ -155,6 +174,9 @@ func (m *mockFileSystem) WalkDir(dirPath string, f func(path string, d fs.DirEnt
 }
 
 func (m *mockFileSystem) ReadFile(filePath string) ([]byte, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	if m.readFileErr != nil {
 		return nil, m.readFileErr
 	}

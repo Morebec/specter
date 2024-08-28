@@ -20,11 +20,15 @@ import (
 	"strings"
 )
 
-const ResolvedDependencyContextArtifactName = "_resolved_dependencies"
+const ResolvedDependenciesArtifactID = "_resolved_dependencies"
 
 // ResolvedDependencies represents an ordered list of Specification that should be processed in that specific order to avoid
 // unresolved types.
 type ResolvedDependencies SpecificationGroup
+
+func (r ResolvedDependencies) ID() ArtifactID {
+	return ResolvedDependenciesArtifactID
+}
 
 type DependencyProvider interface {
 	Supports(s Specification) bool
@@ -68,16 +72,11 @@ func (p DependencyResolutionProcessor) Process(ctx ProcessingContext) ([]Artifac
 	}
 	ctx.Logger.Success("Dependencies resolved successfully.")
 
-	return []Artifact{
-		{
-			Name:  ResolvedDependencyContextArtifactName,
-			Value: deps,
-		},
-	}, nil
+	return []Artifact{deps}, nil
 }
 
 func GetResolvedDependenciesFromContext(ctx ProcessingContext) ResolvedDependencies {
-	return GetContextArtifact[ResolvedDependencies](ctx, ResolvedDependencyContextArtifactName)
+	return GetContextArtifact[ResolvedDependencies](ctx, ResolvedDependenciesArtifactID)
 }
 
 type dependencySet map[SpecificationName]struct{}

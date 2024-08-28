@@ -7,7 +7,7 @@ import (
 	"unicode"
 )
 
-const LintingProcessingContextArtifactName = "_linting_processor_results"
+const LinterResultArtifactID = "_linting_processor_results"
 
 // UndefinedSpecificationName constant used to test against undefined SpecificationName.
 const UndefinedSpecificationName SpecificationName = ""
@@ -39,10 +39,7 @@ func (l LintingProcessor) Process(ctx ProcessingContext) (artifacts []Artifact, 
 
 	lr := linter.Lint(ctx.Specifications)
 
-	artifacts = append(artifacts, Artifact{
-		Name:  LintingProcessingContextArtifactName,
-		Value: lr,
-	})
+	artifacts = append(artifacts, lr)
 
 	if lr.HasWarnings() {
 		for _, w := range lr.Warnings() {
@@ -66,7 +63,7 @@ func (l LintingProcessor) Process(ctx ProcessingContext) (artifacts []Artifact, 
 }
 
 func GetLintingResultsFromContext(ctx ProcessingContext) LinterResultSet {
-	return GetContextArtifact[LinterResultSet](ctx, LintingProcessingContextArtifactName)
+	return GetContextArtifact[LinterResultSet](ctx, LinterResultArtifactID)
 }
 
 type LinterResult struct {
@@ -103,6 +100,10 @@ func (s LinterResultSet) Warnings() LinterResultSet {
 	}
 
 	return warns
+}
+
+func (s LinterResultSet) ID() ArtifactID {
+	return LinterResultArtifactID
 }
 
 // HasErrors returns if this result set has any result representing an error.
