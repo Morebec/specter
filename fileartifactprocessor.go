@@ -98,7 +98,7 @@ func (p FileArtifactProcessor) Process(ctx ArtifactProcessingContext) error {
 		return errs
 	}
 
-	ctx.Logger.Success("Artifact files written successfully.")
+	ctx.Logger.Success("Files artifacts written successfully.")
 
 	return nil
 }
@@ -196,7 +196,7 @@ func (p FileArtifactProcessor) cleanRegistry(ctx ArtifactProcessingContext) erro
 		}
 
 		writeMode, ok := entry.Metadata["writeMode"]
-		if ok {
+		if !ok {
 			ctx.Logger.Trace(fmt.Sprintf("invalid registry entry %q: no write mode", entry.ArtifactID))
 			continue
 		}
