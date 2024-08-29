@@ -208,13 +208,13 @@ func (p FileArtifactProcessor) cleanRegistry(ctx ArtifactProcessingContext) erro
 			continue
 		}
 
-		writeModeStr, ok := entry.Metadata["writeMode"].(string)
+		writeMode, ok := entry.Metadata["writeMode"].(WriteMode)
 		if !ok {
 			ctx.Logger.Trace(fmt.Sprintf("invalid registry entry %q: no write mode", entry.ArtifactID))
 			continue
 		}
 
-		if WriteMode(writeModeStr) != RecreateMode {
+		if writeMode != RecreateMode {
 			continue
 		}
 
