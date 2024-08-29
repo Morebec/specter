@@ -53,7 +53,7 @@ func NewDefaultLogger(c DefaultLoggerConfig) *DefaultLogger {
 }
 
 func (l *DefaultLogger) Trace(msg string) {
-	l.Log(l.color.Faint(msg).String())
+	l.Log(l.color.Faint(fmt.Sprintf("--- %s", msg)).String())
 }
 
 func (l *DefaultLogger) Info(msg string) {

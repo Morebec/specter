@@ -153,13 +153,13 @@ func (p FileArtifactProcessor) processFileArtifact(ctx ArtifactProcessingContext
 
 	if fa.IsDir() {
 		ctx.Logger.Info(fmt.Sprintf("Creating directory %q ...", filePath))
-		ctx.Logger.Trace(fmt.Sprintf("making directory %q  for %q ...", filePath, fa.ID()))
+		ctx.Logger.Trace(fmt.Sprintf("making directory %q for %q ...", filePath, fa.ID()))
 		if err := p.FileSystem.WriteFile(filePath, fa.Data, os.ModePerm); err != nil {
 			return err
 		}
 	} else {
 		ctx.Logger.Info(fmt.Sprintf("Writing file %q ...", filePath))
-		ctx.Logger.Trace(fmt.Sprintf("creating directory %q  for %q ...", filePath, fa.ID()))
+		ctx.Logger.Trace(fmt.Sprintf("creating file %q for %q ...", filePath, fa.ID()))
 		if err := p.FileSystem.WriteFile(filePath, fa.Data, os.ModePerm); err != nil {
 			return err
 		}
@@ -183,6 +183,7 @@ func (p FileArtifactProcessor) cleanRegistry(ctx ArtifactProcessingContext) erro
 	var wg sync.WaitGroup
 	var errs errors.Group
 
+	ctx.Logger.Info(fmt.Sprintf("Cleaning file artifacts ..."))
 	entries, err := ctx.ArtifactRegistry.FindAll()
 	if err != nil {
 		return err
@@ -190,13 +191,20 @@ func (p FileArtifactProcessor) cleanRegistry(ctx ArtifactProcessingContext) erro
 
 	for _, entry := range entries {
 		if entry.Metadata == nil {
-			continue // TODO Error (?)
+			ctx.Logger.Trace(fmt.Sprintf("invalid registry entry %q: no metadata", entry.ArtifactID))
+			continue
 		}
 
 		writeMode, ok := entry.Metadata["writeMode"]
-		if !ok || writeMode != RecreateMode {
+		if ok {
+			ctx.Logger.Trace(fmt.Sprintf("invalid registry entry %q: no write mode", entry.ArtifactID))
 			continue
 		}
+
+		if writeMode != RecreateMode {
+			continue
+		}
+
 		wg.Add(1)
 		go func(entry ArtifactRegistryEntry) {
 			defer wg.Done()
@@ -214,13 +222,16 @@ func (p FileArtifactProcessor) cleanRegistry(ctx ArtifactProcessingContext) erro
 
 func (p FileArtifactProcessor) cleanArtifact(ctx ArtifactProcessingContext, entry ArtifactRegistryEntry) error {
 	if entry.Metadata == nil {
-		return nil // TODO Error (?)
+		ctx.Logger.Trace(fmt.Sprintf("invalid registry entry %q: no metadata", entry.ArtifactID))
+		return nil
 	}
 	path, ok := entry.Metadata["path"].(string)
 	if !ok || path == "" {
+		ctx.Logger.Trace(fmt.Sprintf("invalid registry entry %q: no path", entry.ArtifactID))
 		return nil
 	}
 
+	ctx.Logger.Info(fmt.Sprintf(fmt.Sprintf("cleaning file artifact %q ...", entry.ArtifactID)))
 	if err := p.FileSystem.Remove(path); err != nil {
 		return err
 	}

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/morebec/go-errors/errors"
-	"os"
 	"time"
 )
 
@@ -239,6 +238,12 @@ func (s Specter) ProcessArtifacts(ctx context.Context, specifications []Specific
 		return fmt.Errorf("failed loading artifact registry: %w", err)
 	}
 
+	defer func() {
+		if err := s.ArtifactRegistry.Save(); err != nil {
+			s.Logger.Error(fmt.Errorf("failed saving artifact registry: %w", err).Error())
+		}
+	}()
+
 	for _, p := range s.ArtifactProcessors {
 		if err := CheckContextDone(ctx); err != nil {
 			return err
@@ -262,78 +267,6 @@ func (s Specter) ProcessArtifacts(ctx context.Context, specifications []Specific
 		}
 	}
 
-	if err := s.ArtifactRegistry.Save(); err != nil {
-		return fmt.Errorf("failed saving artifact registry: %w", err)
-	}
-
 	s.Logger.Success("FindAll processed successfully.")
 	return nil
-}
-
-// New allows creating a new specter instance using the provided options.
-func New(opts ...Option) *Specter {
-	s := &Specter{
-		Logger:        NewDefaultLogger(DefaultLoggerConfig{DisableColors: true, Writer: os.Stdout}),
-		ExecutionMode: FullMode,
-	}
-	for _, o := range opts {
-		o(s)
-	}
-	return s
-}
-
-// Option represents an option to configure a specter instance.
-type Option func(s *Specter)
-
-// WithLogger configures the Logger of a Specter instance.
-func WithLogger(l Logger) Option {
-	return func(s *Specter) {
-		s.Logger = l
-	}
-}
-
-// WithSourceLoaders configures the SourceLoader of a Specter instance.
-func WithSourceLoaders(loaders ...SourceLoader) Option {
-	return func(s *Specter) {
-		s.SourceLoaders = append(s.SourceLoaders, loaders...)
-	}
-}
-
-// WithLoaders configures the SpecificationLoader of a Specter instance.
-func WithLoaders(loaders ...SpecificationLoader) Option {
-	return func(s *Specter) {
-		s.Loaders = append(s.Loaders, loaders...)
-	}
-}
-
-// WithProcessors configures the SpecProcess of a Specter instance.
-func WithProcessors(processors ...SpecificationProcessor) Option {
-	return func(s *Specter) {
-		s.Processors = append(s.Processors, processors...)
-	}
-}
-
-// WithArtifactProcessors configures the ArtifactProcessor of a Specter instance.
-func WithArtifactProcessors(processors ...ArtifactProcessor) Option {
-	return func(s *Specter) {
-		s.ArtifactProcessors = append(s.ArtifactProcessors, processors...)
-	}
-}
-
-// WithExecutionMode configures the ExecutionMode of a Specter instance.
-func WithExecutionMode(m ExecutionMode) Option {
-	return func(s *Specter) {
-		s.ExecutionMode = m
-	}
-}
-func WithArtifactRegistry(r ArtifactRegistry) Option {
-	return func(s *Specter) {
-		s.ArtifactRegistry = r
-	}
-}
-
-// Defaults
-
-func WithDefaultLogger() Option {
-	return WithLogger(NewDefaultLogger(DefaultLoggerConfig{DisableColors: false, Writer: os.Stdout}))
 }

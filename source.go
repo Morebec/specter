@@ -42,9 +42,6 @@ type FileSystemLoader struct {
 	fs FileSystem
 }
 
-func NewLocalFileSourceLoader() FileSystemLoader {
-	return FileSystemLoader{fs: LocalFileSystem{}}
-}
 func (l FileSystemLoader) Supports(target string) bool {
 	if target == "" {
 		return false

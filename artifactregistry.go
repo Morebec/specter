@@ -85,6 +85,8 @@ func (r *InMemoryArtifactRegistry) Load() error { return nil }
 
 func (r *InMemoryArtifactRegistry) Save() error { return nil }
 
+const DefaultJSONArtifactRegistryFileName = ".specter.json"
+
 type JsonArtifactRegistryEntry struct {
 	ArtifactID ArtifactID     `json:"artifactId"`
 	Metadata   map[string]any `json:"metadata"`
@@ -176,18 +178,6 @@ func (r *JSONArtifactRegistry) FindAll(processorName string) ([]ArtifactRegistry
 	}
 
 	return entries, nil
-}
-
-// NewJSONArtifactRegistry returns a new artifact file registry.
-func NewJSONArtifactRegistry(fileName string, fs FileSystem) *JSONArtifactRegistry {
-	return &JSONArtifactRegistry{
-		Entries:  make(map[string][]JsonArtifactRegistryEntry),
-		FilePath: fileName,
-		CurrentTimeProvider: func() time.Time {
-			return time.Now()
-		},
-		FileSystem: fs,
-	}
 }
 
 func (r *JSONArtifactRegistry) Load() error {

@@ -50,7 +50,7 @@ func (l HCLGenericSpecLoader) Load(s Source) ([]Specification, error) {
 	}
 
 	file, diags := l.ParseHCL(s.Data, s.Location)
-	if diags.HasErrors() {
+	if diags != nil && diags.HasErrors() {
 		return nil, errors.Wrap(diags, InvalidHCLErrorCode)
 	}
 
@@ -115,7 +115,7 @@ func (l HCLGenericSpecLoader) extractAttributesFromBlock(ctx *hcl.EvalContext, b
 	// Detect attributes in current block.
 	for _, a := range block.Body.Attributes {
 		value, d := a.Expr.Value(ctx)
-		if d.HasErrors() {
+		if d != nil && d.HasErrors() {
 			d = append(diags, d...)
 			continue
 		}
@@ -206,7 +206,7 @@ func (l HCLSpecLoader) Load(s Source) ([]Specification, error) {
 	for _, b := range body.Blocks {
 		if b.Type == "const" {
 			v, d := b.Body.Attributes["value"].Expr.Value(ctx)
-			if d.HasErrors() {
+			if d != nil && d.HasErrors() {
 				diags = append(diags, d...)
 			} else {
 				ctx.Variables[b.Labels[0]] = v
@@ -219,11 +219,14 @@ func (l HCLSpecLoader) Load(s Source) ([]Specification, error) {
 	err := hclsimple.Decode(s.Location, s.Data, ctx, fileConf)
 
 	if err != nil {
-		d := err.(hcl.Diagnostics)
+		var d hcl.Diagnostics
+		if !errors.As(err, &d) {
+			return nil, err
+		}
 		diags = append(diags, d...)
 	}
 
-	if diags.HasErrors() {
+	if diags != nil && diags.HasErrors() {
 		return nil, diags
 	}
 

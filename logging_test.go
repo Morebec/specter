@@ -62,7 +62,7 @@ func TestDefaultLogger_Trace(t *testing.T) {
 	})
 
 	logger.Trace("hello world")
-	assert.Equal(t, aurora.Faint("hello world").String()+"\n", string(buffer.Bytes()))
+	assert.Equal(t, aurora.Faint("--- hello world").String()+"\n", string(buffer.Bytes()))
 }
 
 func TestDefaultLogger_Info(t *testing.T) {
