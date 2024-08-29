@@ -24,6 +24,31 @@ on:
     branches: [ "main" ]
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.19
+
+      - name: Add License
+        run: ./scripts/add_license.sh
+
+      - name: Check Format
+        run: ./scripts/check_gofmt.sh
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          if [[ -n $(git status --porcelain) ]]; then
+              echo "::set-output name=invalidCommit::true"
+          fi
+
+      - name: Lint
+        run: ./scripts/golangci_lint.sh
 
   build:
     runs-on: ubuntu-latest
@@ -40,19 +65,3 @@ jobs:
 
     - name: Test
       run: go test -v ./...
-
-    - name: Add License
-      run: ./scripts/add_license.sh
-
-    - name: Check Format
-      run: ./scripts/check_gofmt.sh
-
-    - name: Check for changes
-      id: check_changes
-      run: |
-        if [[ -n $(git status --porcelain) ]]; then
-            echo "::set-output name=invalidCommit::true"
-        fi
-
-    - name: Lint
-      run: ./scripts/golangci_lint.sh
