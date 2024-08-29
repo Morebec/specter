@@ -100,7 +100,7 @@ func (p FileArtifactProcessor) Process(ctx ArtifactProcessingContext) error {
 		go func(ctx ArtifactProcessingContext, file *FileArtifact) {
 			defer wg.Done()
 			if err := p.processFileArtifact(ctx, file); err != nil {
-				ctx.Logger.Error(fmt.Sprintf("failed writing artifact file at %q", file.ID()))
+				ctx.Logger.Error(fmt.Sprintf("failed writing artifact file at %q: %s", file.ID(), err))
 				mu.Lock()
 				defer mu.Unlock()
 				errs = errs.Append(err)
