@@ -281,6 +281,6 @@ func (s Specter) ProcessArtifacts(ctx context.Context, specifications []Specific
 		}
 	}
 
-	s.Logger.Success("FindAll processed successfully.")
+	s.Logger.Success("Artifacts processed successfully.")
 	return nil
 }
