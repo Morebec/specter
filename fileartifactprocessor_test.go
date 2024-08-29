@@ -34,8 +34,8 @@ func TestWriteFileArtifactProcessor_Process(t *testing.T) {
 			name:   "GIVEN file artifacts THEN successful file creation",
 			mockFS: &mockFileSystem{},
 			artifacts: []Artifact{
-				FileArtifact{Path: "/path/to/file1", FileMode: 0755},
-				FileArtifact{Path: "/path/to/file2", FileMode: 0755},
+				&FileArtifact{Path: "/path/to/file1", FileMode: 0755},
+				&FileArtifact{Path: "/path/to/file2", FileMode: 0755},
 			},
 			expectedFiles: []string{"/path/to/file1", "/path/to/file2"},
 			expectError:   nil,
@@ -44,7 +44,7 @@ func TestWriteFileArtifactProcessor_Process(t *testing.T) {
 			name:   "GIVEN non-file artifacts THEN skip and return no error",
 			mockFS: &mockFileSystem{},
 			artifacts: []Artifact{
-				FileArtifact{Path: "/path/to/file1", FileMode: 0755},
+				&FileArtifact{Path: "/path/to/file1", FileMode: 0755},
 				mockArtifact{},
 			},
 			expectedFiles: []string{"/path/to/file1"},
@@ -56,7 +56,7 @@ func TestWriteFileArtifactProcessor_Process(t *testing.T) {
 				writeFileErr: assert.AnError,
 			},
 			artifacts: []Artifact{
-				FileArtifact{Path: "/path/to/file1", FileMode: 0755},
+				&FileArtifact{Path: "/path/to/file1", FileMode: 0755},
 			},
 			expectedFiles: []string{},
 			expectError:   assert.AnError,
@@ -69,7 +69,7 @@ func TestWriteFileArtifactProcessor_Process(t *testing.T) {
 				},
 			},
 			artifacts: []Artifact{
-				FileArtifact{Path: "/path/to/file1", FileMode: 0755, WriteMode: WriteOnceMode},
+				&FileArtifact{Path: "/path/to/file1", FileMode: 0755, WriteMode: WriteOnceMode},
 			},
 			expectedFiles: []string{},
 			expectError:   nil,
@@ -120,9 +120,9 @@ func TestNewDirectoryArtifact(t *testing.T) {
 }
 
 func TestFileArtifact_IsDir(t *testing.T) {
-	f := FileArtifact{FileMode: os.ModePerm}
+	f := &FileArtifact{FileMode: os.ModePerm}
 	assert.False(t, f.IsDir())
 
-	f = FileArtifact{FileMode: os.ModePerm | os.ModeDir}
+	f = &FileArtifact{FileMode: os.ModePerm | os.ModeDir}
 	assert.True(t, f.IsDir())
 }

@@ -36,6 +36,8 @@ const (
 
 const DefaultWriteMode WriteMode = WriteOnceMode
 
+var _ Artifact = (*FileArtifact)(nil)
+
 // FileArtifact is a data structure that can be used by a SpecificationProcessor to generate file artifacts
 // that can be written by the FileArtifactProcessor.
 type FileArtifact struct {
@@ -54,11 +56,11 @@ func NewDirectoryArtifact(path string, fileMode os.FileMode, writeMode WriteMode
 	}
 }
 
-func (a FileArtifact) ID() ArtifactID {
+func (a *FileArtifact) ID() ArtifactID {
 	return ArtifactID(a.Path)
 }
 
-func (a FileArtifact) IsDir() bool {
+func (a *FileArtifact) IsDir() bool {
 	return a.FileMode&os.ModeDir != 0
 }
 
@@ -95,7 +97,7 @@ func (p FileArtifactProcessor) Process(ctx ArtifactProcessingContext) error {
 			return err
 		}
 		wg.Add(1)
-		go func(ctx ArtifactProcessingContext, file FileArtifact) {
+		go func(ctx ArtifactProcessingContext, file *FileArtifact) {
 			defer wg.Done()
 			if err := p.processFileArtifact(ctx, file); err != nil {
 				ctx.Logger.Error(fmt.Sprintf("failed writing artifact file at %q", file.ID()))
@@ -116,12 +118,12 @@ func (p FileArtifactProcessor) Process(ctx ArtifactProcessingContext) error {
 	return nil
 }
 
-func (p FileArtifactProcessor) findFileArtifactsFromContext(ctx ArtifactProcessingContext) ([]FileArtifact, error) {
-	var files []FileArtifact
+func (p FileArtifactProcessor) findFileArtifactsFromContext(ctx ArtifactProcessingContext) ([]*FileArtifact, error) {
+	var files []*FileArtifact
 	var errs errors.Group
 
 	for _, a := range ctx.Artifacts {
-		fa, ok := a.(FileArtifact)
+		fa, ok := a.(*FileArtifact)
 		if !ok {
 			continue
 		}
@@ -143,7 +145,7 @@ func (p FileArtifactProcessor) findFileArtifactsFromContext(ctx ArtifactProcessi
 	return files, nil
 }
 
-func (p FileArtifactProcessor) processFileArtifact(ctx ArtifactProcessingContext, fa FileArtifact) error {
+func (p FileArtifactProcessor) processFileArtifact(ctx ArtifactProcessingContext, fa *FileArtifact) error {
 	filePath, err := p.FileSystem.Abs(fa.Path)
 	if err != nil {
 		return err
