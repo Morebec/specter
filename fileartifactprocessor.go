@@ -59,8 +59,6 @@ func (p FileArtifactProcessor) Name() string {
 }
 
 func (p FileArtifactProcessor) Process(ctx ArtifactProcessingContext) error {
-	ctx.Logger.Info("Writing file artifacts ...")
-
 	files, err := p.findFileArtifactsFromContext(ctx)
 	if err != nil {
 		return err
@@ -74,6 +72,7 @@ func (p FileArtifactProcessor) Process(ctx ArtifactProcessingContext) error {
 	errs := errors.NewGroup(WriteFileArtifactsProcessorErrorCode)
 
 	// Write files concurrently to speed up process.
+	ctx.Logger.Info("Writing file artifacts ...")
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 
@@ -195,7 +194,7 @@ func (p FileArtifactProcessor) cleanRegistry(ctx ArtifactProcessingContext) erro
 			continue
 		}
 
-		writeMode, ok := entry.Metadata["writeMode"]
+		writeMode, ok := entry.Metadata["writeMode"].(WriteMode)
 		if !ok {
 			ctx.Logger.Trace(fmt.Sprintf("invalid registry entry %q: no write mode", entry.ArtifactID))
 			continue
