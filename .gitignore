@@ -18,4 +18,9 @@
 .vscode/
 .idea/
 
+# Specter
 .specter.json
+
+# Utilities
+.husky
+
