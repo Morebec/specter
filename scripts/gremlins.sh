@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # Copyright 2024 Morébec
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,26 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-version: '3'
 
-tasks:
-  dev:install:
-    cmds:
-      - chmod +x ./scripts/*
-      - ./scripts/husky.sh
+if ! command -v gremlins &> /dev/null
+then
+    echo "/!\ gremlins is not installed, installing ..."
+    # binary will be $(go env GOPATH)/bin/gremlins
+    go install github.com/go-gremlins/gremlins/cmd/gremlins@v0.5.0
 
-  dev:lint:
-    cmds:
-      - ./scripts/add_license.sh
-      - ./scripts/check_gofmt.sh
-      - ./scripts/golangci_lint.sh
+    echo "===> gremlins was installed."
+fi
 
-  dev:test:
-    cmds:
-      - go test -v ./...
-      - ./scripts/gremlins.sh
-
-  dev:pre-commit:
-    cmds:
-      - task: dev:lint
-      - task: dev:test
+echo "===> Running gremlins ..."
+gremlins unleash && echo "> Mutation tests executed successfully."

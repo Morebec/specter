@@ -17,6 +17,7 @@ package specter
 import (
 	"fmt"
 	"github.com/morebec/go-errors/errors"
+	"io/fs"
 	"os"
 	"sync"
 )
@@ -153,7 +154,7 @@ func (p FileArtifactProcessor) processFileArtifact(ctx ArtifactProcessingContext
 
 	fileExists := true
 	if _, err := p.FileSystem.StatPath(filePath); err != nil {
-		if !os.IsNotExist(err) {
+		if !errors.Is(err, fs.ErrNotExist) {
 			return err
 		}
 		fileExists = false

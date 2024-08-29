@@ -13,4 +13,4 @@
 # limitations under the License.
 
 
-task dev:lint
+task dev:pre-commit
