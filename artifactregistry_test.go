@@ -15,333 +15,321 @@
 package specter
 
 import (
-	"fmt"
-	"github.com/stretchr/testify/require"
-	"os"
-	"testing"
-	"time"
-
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"testing"
 )
 
-func TestJSONArtifactRegistry_Load(t *testing.T) {
-	type given struct {
-		jsonFileContent string
-	}
-	type then struct {
-		expectedError error
-		expectedValue *JSONArtifactRegistry
-	}
-	tests := []struct {
-		name  string
-		given given
-		then  then
-	}{
-		{
-			name: "Successful Load",
-			given: given{
-				jsonFileContent: `{"generatedAt":"2024-01-01T00:00:00Z","files":{"processor1":{"files":["file1.txt"]}}}`,
-			},
-			then: then{
-				expectedError: nil,
-				expectedValue: &JSONArtifactRegistry{
-					GeneratedAt: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
-					Entries: map[string][]JsonArtifactRegistryEntry{"processor1": {
-						{
-							ArtifactID: "file1.txt",
-						},
-					}},
-				},
-			},
-		},
-		{
-			name: "File Not Exist",
-			given: given{
-				jsonFileContent: "",
-			},
-			then: then{
-				expectedError: nil,
-				expectedValue: &JSONArtifactRegistry{
-					GeneratedAt: time.Time{},
-					Entries:     nil,
-				},
-			},
-		},
-		{
-			name: "Malformed JSON",
-			given: given{
-				jsonFileContent: `{"files":{`,
-			},
-			then: then{
-				expectedError: fmt.Errorf("failed loading artifact file registry: unexpected end of JSON input"),
-				expectedValue: &JSONArtifactRegistry{
-					GeneratedAt: time.Time{},
-					Entries:     nil,
-				},
-			},
-		},
-	}
+func TestImplementations(t *testing.T) {
+	// InMemoryArtifactRegistry
+	assertArtifactRegistryCompliance(t, "InMemoryArtifactRegistry", func() *InMemoryArtifactRegistry {
+		return &InMemoryArtifactRegistry{}
+	})
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			filePath := "test_registry.json"
-
-			fs := &mockFileSystem{}
-			err := fs.WriteFile(filePath, []byte(tt.given.jsonFileContent), os.ModePerm)
-			require.NoError(t, err)
-
-			registry := NewJSONArtifactRegistry(filePath, fs)
-			registry.CurrentTimeProvider = func() time.Time {
-				return time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-			}
-
-			err = registry.Load()
-
-			if tt.then.expectedError != nil {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, tt.then.expectedValue.GeneratedAt, registry.GeneratedAt)
-			}
-		})
-	}
+	// JSON Artifact Registry
+	assertArtifactRegistryCompliance(t, "JSONArtifactRegistry", func() *JSONArtifactRegistry {
+		return NewJSONArtifactRegistry(DefaultJSONArtifactRegistryFileName, &mockFileSystem{})
+	})
 }
 
-func TestJSONArtifactRegistry_Save(t *testing.T) {
-	type then struct {
-		expectedJSON  string
-		expectedError error
+func assertArtifactRegistryCompliance[T ArtifactRegistry](t *testing.T, name string, new func() T) {
+
+	it := func(methodName, testName string, testFunc func(t *testing.T)) {
+		t.Run(name+"__"+methodName+"_"+testName, testFunc)
 	}
 
-	tests := []struct {
-		name  string
-		given *JSONArtifactRegistry
-		then  then
-	}{
-		{
-			name: "Successful Save",
-			given: &JSONArtifactRegistry{
-				Entries: map[string][]JsonArtifactRegistryEntry{
-					"processor1": {
-						{ArtifactID: "file1.txt"},
-					},
-				},
-			},
-			then: then{
-				expectedError: nil,
-				expectedJSON: `{
-  "generatedAt" : "2024-01-01T00:00:00Z",
-  "entries" : {
-    "processor1" : [ {
-      "artifactId" : "file1.txt",
-      "metadata" : null
-    } ]
-  }
-}`,
-			},
-		},
-		{
-			name:  "Empty Registry",
-			given: &JSONArtifactRegistry{},
-			then: then{
-				expectedJSON: `{
-  "generatedAt": "2024-01-01T00:00:00Z",
-  "entries": null
-}`,
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Setup
-			filePath := "test_registry.json"
-			fs := &mockFileSystem{}
-			registry := NewJSONArtifactRegistry(filePath, fs)
-			registry.Entries = tt.given.Entries
-			registry.CurrentTimeProvider = func() time.Time {
-				return time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-			}
-
-			err := registry.Save()
-
-			if tt.then.expectedError != nil {
-				require.ErrorIs(t, err, tt.then.expectedError)
-			} else {
-				require.NoError(t, err)
-			}
-			actualJSON, err := fs.ReadFile(filePath)
-			require.NoError(t, err)
-			assert.JSONEq(t, tt.then.expectedJSON, string(actualJSON))
+	// Add
+	it("Add", "should allow adding an entry", func(t *testing.T) {
+		r := new()
+		err := r.Add("unit_tester", ArtifactRegistryEntry{
+			ArtifactID: "an_artifact",
 		})
-	}
-}
+		require.NoError(t, err)
 
-func TestJSONArtifactRegistry_Add(t *testing.T) {
-	tests := []struct {
-		name          string
-		initialMap    map[string][]JsonArtifactRegistryEntry
-		processorName string
-		entry         ArtifactRegistryEntry
-		expectedMap   map[string][]JsonArtifactRegistryEntry
-	}{
-		{
-			name:          "Add New Artifact",
-			initialMap:    map[string][]JsonArtifactRegistryEntry{},
-			processorName: "processor1",
-			entry:         ArtifactRegistryEntry{ArtifactID: "file1.txt"},
-			expectedMap: map[string][]JsonArtifactRegistryEntry{
-				"processor1": {
-					{ArtifactID: "file1.txt"},
-				},
+		all, err := r.FindAll("unit_tester")
+		require.NoError(t, err)
+		assert.Equal(t, []ArtifactRegistryEntry{
+			{
+				ArtifactID: "an_artifact",
 			},
-		},
-		{
-			name: "Add Artifact to Existing Processor",
-			initialMap: map[string][]JsonArtifactRegistryEntry{
-				"processor1": {
-					{ArtifactID: "file2.txt"},
-				},
-			},
-			processorName: "processor1",
-			entry:         ArtifactRegistryEntry{ArtifactID: "file1.txt"},
-			expectedMap: map[string][]JsonArtifactRegistryEntry{
-				"processor1": {
-					{ArtifactID: "file2.txt"},
-					{ArtifactID: "file1.txt"},
-				},
-			},
-		},
-	}
+		}, all)
+	})
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			registry := &JSONArtifactRegistry{
-				Entries: tt.initialMap,
-			}
-			err := registry.Add(tt.processorName, tt.entry)
-			require.NoError(t, err)
-			assert.Equal(t, tt.expectedMap, registry.Entries)
+	it("Add", "should not allow adding an entry without an ID", func(t *testing.T) {
+		r := new()
+		err := r.Add("unit_tester", ArtifactRegistryEntry{
+			ArtifactID: "",
 		})
-	}
-}
+		require.Error(t, err)
+	})
 
-func TestJSONArtifactRegistry_Remove(t *testing.T) {
-	tests := []struct {
-		name          string
-		initialMap    map[string][]JsonArtifactRegistryEntry
-		processorName string
-		artifactID    ArtifactID
-		expectedMap   map[string][]JsonArtifactRegistryEntry
-	}{
-		{
-			name: "Remove Existing Artifact",
-			initialMap: map[string][]JsonArtifactRegistryEntry{
-				"processor1": {
-					{ArtifactID: "file1.txt"},
-					{ArtifactID: "file2.txt"},
-				},
-			},
-			processorName: "processor1",
-			artifactID:    "file1.txt",
-			expectedMap: map[string][]JsonArtifactRegistryEntry{
-				"processor1": {
-					{ArtifactID: "file2.txt"},
-				},
-			},
-		},
-		{
-			name: "Remove Non-Existing Artifact",
-			initialMap: map[string][]JsonArtifactRegistryEntry{
-				"processor1": {
-					{ArtifactID: "file1.txt"},
-				},
-			},
-			processorName: "processor1",
-			artifactID:    "file2.txt",
-			expectedMap: map[string][]JsonArtifactRegistryEntry{
-				"processor1": {
-					{ArtifactID: "file1.txt"},
-				},
-			},
-		},
-		{
-			name: "Remove From Non-Existing Processor",
-			initialMap: map[string][]JsonArtifactRegistryEntry{
-				"processor1": {
-					{ArtifactID: "file1.txt"},
-				},
-			},
-			processorName: "processor2",
-			artifactID:    "file1.txt",
-			expectedMap: map[string][]JsonArtifactRegistryEntry{
-				"processor1": {
-					{ArtifactID: "file1.txt"},
-				},
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			registry := &JSONArtifactRegistry{
-				Entries: tt.initialMap,
-			}
-			err := registry.Remove(tt.processorName, tt.artifactID)
-			require.NoError(t, err)
-			assert.Equal(t, tt.expectedMap, registry.Entries)
+	it("Add", "should not allow adding an entry without a processor name", func(t *testing.T) {
+		r := new()
+		err := r.Add("", ArtifactRegistryEntry{
+			ArtifactID: "an_artifact",
 		})
-	}
-}
+		require.Error(t, err)
+	})
 
-func TestJSONArtifactRegistry_FindAll(t *testing.T) {
-	tests := []struct {
-		name            string
-		initialMap      map[string][]JsonArtifactRegistryEntry
-		processorName   string
-		expectedEntries []ArtifactRegistryEntry
-	}{
-		{
-			name: "FindAll for Existing Processor",
-			initialMap: map[string][]JsonArtifactRegistryEntry{
-				"processor1": {
-					{ArtifactID: "file1.txt"},
-					{ArtifactID: "file2.txt"},
-				},
-			},
-			processorName: "processor1",
-			expectedEntries: []ArtifactRegistryEntry{
-				{ArtifactID: "file1.txt"},
-				{ArtifactID: "file2.txt"},
-			},
-		},
-		{
-			name: "FindAll for Non-Existing Processor",
-			initialMap: map[string][]JsonArtifactRegistryEntry{
-				"processor1": {
-					{ArtifactID: "file1.txt"},
-				},
-			},
-			processorName:   "processor2",
-			expectedEntries: nil,
-		},
-		{
-			name:            "Empty Registry",
-			initialMap:      map[string][]JsonArtifactRegistryEntry{},
-			processorName:   "processor1",
-			expectedEntries: nil,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			registry := &JSONArtifactRegistry{
-				Entries: tt.initialMap,
-			}
-
-			artifacts, err := registry.FindAll(tt.processorName)
-			require.NoError(t, err)
-			assert.Equal(t, tt.expectedEntries, artifacts)
+	it("Add", "should allow adding multiple entries with the same processor", func(t *testing.T) {
+		r := new()
+		err := r.Add("unit_tester", ArtifactRegistryEntry{
+			ArtifactID: "artifact_one",
 		})
-	}
+		require.NoError(t, err)
+
+		err = r.Add("unit_tester", ArtifactRegistryEntry{
+			ArtifactID: "artifact_two",
+		})
+		require.NoError(t, err)
+
+		all, err := r.FindAll("unit_tester")
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []ArtifactRegistryEntry{
+			{ArtifactID: "artifact_one"},
+			{ArtifactID: "artifact_two"},
+		}, all)
+	})
+
+	it("Add", "should allow adding entries with different processors", func(t *testing.T) {
+		r := new()
+		err := r.Add("processor_one", ArtifactRegistryEntry{
+			ArtifactID: "artifact_one",
+		})
+		require.NoError(t, err)
+
+		err = r.Add("processor_two", ArtifactRegistryEntry{
+			ArtifactID: "artifact_two",
+		})
+		require.NoError(t, err)
+
+		allOne, err := r.FindAll("processor_one")
+		require.NoError(t, err)
+		assert.Equal(t, []ArtifactRegistryEntry{
+			{ArtifactID: "artifact_one"},
+		}, allOne)
+
+		allTwo, err := r.FindAll("processor_two")
+		require.NoError(t, err)
+		assert.Equal(t, []ArtifactRegistryEntry{
+			{ArtifactID: "artifact_two"},
+		}, allTwo)
+	})
+
+	it("Add", "should allow adding duplicate entries with idempotency", func(t *testing.T) {
+		r := new()
+		err := r.Add("unit_tester", ArtifactRegistryEntry{
+			ArtifactID: "duplicate_artifact",
+		})
+		require.NoError(t, err)
+
+		err = r.Add("unit_tester", ArtifactRegistryEntry{
+			ArtifactID: "duplicate_artifact",
+		})
+		require.NoError(t, err)
+
+		allTwo, err := r.FindAll("unit_tester")
+		require.NoError(t, err)
+		assert.Equal(t, []ArtifactRegistryEntry{
+			{ArtifactID: "duplicate_artifact"},
+		}, allTwo)
+	})
+
+	it("Add", "should allow adding an entry with special characters in the ID", func(t *testing.T) {
+		r := new()
+		specialID := "artifact-!@#$%^&*()_+=-{}[]|\\:;\"'<>,.?/"
+		err := r.Add("unit-tester", ArtifactRegistryEntry{
+			ArtifactID: ArtifactID(specialID),
+		})
+		require.NoError(t, err)
+
+		all, err := r.FindAll("unit-tester")
+		require.NoError(t, err)
+		assert.Equal(t, []ArtifactRegistryEntry{
+			{ArtifactID: ArtifactID(specialID)},
+		}, all)
+	})
+
+	// Remove
+	it("Remove", "should allow removing an entry", func(t *testing.T) {
+		r := new()
+		err := r.Add("unit_tester", ArtifactRegistryEntry{
+			ArtifactID: "an_artifact",
+		})
+		require.NoError(t, err)
+
+		err = r.Remove("unit_tester", "an_artifact")
+		require.NoError(t, err)
+
+		all, err := r.FindAll("unit_tester")
+		require.NoError(t, err)
+		assert.Nil(t, all)
+	})
+
+	it("Remove", "should allow removing an entry that does not exist without having an error", func(t *testing.T) {
+		r := new()
+		err := r.Remove("unit_tester", "nonexistent_artifact")
+		require.NoError(t, err)
+	})
+
+	it("Remove", "should not allow removing an entry when the processor name is different", func(t *testing.T) {
+		r := new()
+		err := r.Add("unit_tester", ArtifactRegistryEntry{
+			ArtifactID: "artifact_to_remove",
+		})
+		require.NoError(t, err)
+
+		err = r.Remove("different)tester", "artifact_to_remove")
+		require.NoError(t, err)
+
+		all, err := r.FindAll("unit_tester")
+		require.NoError(t, err)
+		assert.Equal(t, []ArtifactRegistryEntry{
+			{ArtifactID: "artifact_to_remove"},
+		}, all)
+	})
+
+	it("Remove", "should allow removing multiple times without side effects", func(t *testing.T) {
+		r := new()
+		err := r.Add("unit_tester", ArtifactRegistryEntry{
+			ArtifactID: "an_artifact",
+		})
+		require.NoError(t, err)
+
+		err = r.Remove("unit_tester", "an_artifact")
+		require.NoError(t, err)
+
+		all, err := r.FindAll("unit_tester")
+		require.NoError(t, err)
+		assert.Nil(t, all)
+
+		err = r.Remove("unit_tester", "an_artifact")
+		require.NoError(t, err)
+
+		all, err = r.FindAll("unit_tester")
+		require.NoError(t, err)
+		assert.Nil(t, all)
+	})
+
+	it("Remove", "should not allow removing an entry without an ID", func(t *testing.T) {
+		r := new()
+
+		err := r.Remove("unit_tester", "")
+		require.Error(t, err)
+	})
+
+	it("Remove", "should not allow removing an entry without a processor name", func(t *testing.T) {
+		r := new()
+
+		err := r.Remove("", "an_artifact")
+		require.Error(t, err)
+	})
+
+	it("Remove", "should return an empty list after removing the last entry", func(t *testing.T) {
+		r := new()
+		err := r.Add("unit-tester", ArtifactRegistryEntry{
+			ArtifactID: "last_artifact",
+		})
+		require.NoError(t, err)
+
+		err = r.Remove("unit-tester", "last_artifact")
+		require.NoError(t, err)
+
+		all, err := r.FindAll("unit-tester")
+		require.NoError(t, err)
+		assert.Nil(t, all)
+	})
+
+	// Find all
+	it("FindAll", "should allow retrieving all entries for a processor", func(t *testing.T) {
+		r := new()
+		err := r.Add("unit-tester", ArtifactRegistryEntry{
+			ArtifactID: "artifact_one",
+		})
+		require.NoError(t, err)
+		err = r.Add("unit-tester", ArtifactRegistryEntry{
+			ArtifactID: "artifact_two",
+		})
+		require.NoError(t, err)
+
+		all, err := r.FindAll("unit-tester")
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []ArtifactRegistryEntry{
+			{ArtifactID: "artifact_one"},
+			{ArtifactID: "artifact_two"},
+		}, all)
+	})
+
+	it("FindAll", "should return nil for a non-existent processor", func(t *testing.T) {
+		r := new()
+
+		all, err := r.FindAll("nonexistent-tester")
+		require.NoError(t, err)
+		assert.Nil(t, all)
+	})
+
+	it("FindAll", "should return correct entries after adding and removing some", func(t *testing.T) {
+		r := new()
+		err := r.Add("unit-tester", ArtifactRegistryEntry{
+			ArtifactID: "artifact_one",
+		})
+		require.NoError(t, err)
+		err = r.Add("unit-tester", ArtifactRegistryEntry{
+			ArtifactID: "artifact_two",
+		})
+		require.NoError(t, err)
+
+		err = r.Remove("unit-tester", "artifact_one")
+		require.NoError(t, err)
+
+		all, err := r.FindAll("unit-tester")
+		require.NoError(t, err)
+		assert.Equal(t, []ArtifactRegistryEntry{
+			{ArtifactID: "artifact_two"},
+		}, all)
+	})
+
+	// FindByID
+	it("FindByID", "should find an entry by its ID", func(t *testing.T) {
+		r := new()
+		err := r.Add("unit-tester", ArtifactRegistryEntry{
+			ArtifactID: "artifact_to_find",
+		})
+		require.NoError(t, err)
+
+		entry, found, err := r.FindByID("unit-tester", "artifact_to_find")
+		require.NoError(t, err)
+		require.True(t, found)
+		assert.Equal(t, ArtifactRegistryEntry{
+			ArtifactID: "artifact_to_find",
+		}, entry)
+	})
+
+	it("FindByID", "should return not found and no error when finding a non-existent entry by ID", func(t *testing.T) {
+		r := new()
+
+		entry, found, err := r.FindByID("unit-tester", "nonexistent_artifact")
+		require.NoError(t, err)
+		assert.False(t, found)
+		assert.Equal(t, ArtifactRegistryEntry{}, entry)
+	})
+
+	// Save
+	it("Save", "should save an empty registry without errors", func(t *testing.T) {
+		r := new()
+
+		err := r.Save()
+		require.NoError(t, err)
+	})
+
+	it("Save", "should save a populated registry without errors", func(t *testing.T) {
+		r := new()
+		err := r.Add("unit-tester", ArtifactRegistryEntry{
+			ArtifactID: "artifact_to_save",
+		})
+		require.NoError(t, err)
+
+		err = r.Save()
+		require.NoError(t, err)
+	})
 }

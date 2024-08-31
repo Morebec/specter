@@ -138,7 +138,7 @@ func (s Specter) LoadSources(ctx context.Context, sourceLocations []string) ([]S
 	}
 
 	for _, sl := range sourceLocations {
-		if err := CheckContextDone(ctx); err != nil {
+		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
 
@@ -173,7 +173,7 @@ func (s Specter) LoadSpecifications(ctx context.Context, sources []Source) ([]Sp
 	errs := errors.NewGroup(errors.InternalErrorCode)
 
 	for _, src := range sources {
-		if err := CheckContextDone(ctx); err != nil {
+		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
 		wasLoaded := false
@@ -222,7 +222,7 @@ func (s Specter) ProcessSpecifications(ctx context.Context, specs []Specificatio
 
 	s.Logger.Info("\nProcessing specifications ...")
 	for _, p := range s.Processors {
-		if err := CheckContextDone(ctx); err != nil {
+		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
 		artifacts, err := p.Process(pctx)
@@ -259,7 +259,7 @@ func (s Specter) ProcessArtifacts(ctx context.Context, specifications []Specific
 	}()
 
 	for _, p := range s.ArtifactProcessors {
-		if err := CheckContextDone(ctx); err != nil {
+		if err := ctx.Err(); err != nil {
 			return err
 		}
 

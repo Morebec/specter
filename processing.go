@@ -115,6 +115,7 @@ func (n NoopArtifactRegistry) Load() error { return nil }
 
 func (n NoopArtifactRegistry) Save() error { return nil }
 
+// ProcessorArtifactRegistry is a wrapper around an ArtifactRegistry that scopes all calls to a given processor.
 type ProcessorArtifactRegistry struct {
 	processorName string
 	registry      ArtifactRegistry

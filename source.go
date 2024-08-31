@@ -51,12 +51,14 @@ type SourceLoader interface {
 	Load(location string) ([]Source, error)
 }
 
-// FileSystemLoader is an implementation of a SourceLoader that loads files from a FileSystem.
-type FileSystemLoader struct {
+var _ SourceLoader = FileSystemSourceLoader{}
+
+// FileSystemSourceLoader is an implementation of a SourceLoader that loads files from a FileSystem.
+type FileSystemSourceLoader struct {
 	fs FileSystem
 }
 
-func (l FileSystemLoader) Supports(target string) bool {
+func (l FileSystemSourceLoader) Supports(target string) bool {
 	if target == "" {
 		return false
 	}
@@ -75,7 +77,7 @@ func (l FileSystemLoader) Supports(target string) bool {
 	return true
 }
 
-func (l FileSystemLoader) Load(location string) ([]Source, error) {
+func (l FileSystemSourceLoader) Load(location string) ([]Source, error) {
 	if location == "" {
 		// This would indicate that the user forget to call the support method before calling this method.
 		return nil, errors.New("cannot load an empty location")
@@ -103,7 +105,7 @@ func (l FileSystemLoader) Load(location string) ([]Source, error) {
 	return l.loadFile(location)
 }
 
-func (l FileSystemLoader) loadDirectory(dirPath string) ([]Source, error) {
+func (l FileSystemSourceLoader) loadDirectory(dirPath string) ([]Source, error) {
 	var directorySources []Source
 
 	err := l.fs.WalkDir(dirPath, func(path string, d fs.DirEntry, err error) error {
@@ -131,7 +133,7 @@ func (l FileSystemLoader) loadDirectory(dirPath string) ([]Source, error) {
 	return directorySources, nil
 }
 
-func (l FileSystemLoader) loadFile(filePath string) ([]Source, error) {
+func (l FileSystemSourceLoader) loadFile(filePath string) ([]Source, error) {
 	bytes, err := l.fs.ReadFile(filePath)
 	if err != nil {
 		return nil, errors.WrapWithMessage(err, errors.InternalErrorCode, fmt.Sprintf("failed loading file %s", filePath))

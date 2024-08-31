@@ -22,7 +22,8 @@ import (
 	"sync"
 )
 
-const WriteFileArtifactsProcessorErrorCode = "write_file_artifacts_processor_error"
+const FileArtifactProcessorCleanUpFailedErrorCode = "file_artifact_processor.clean_up_failed"
+const FileArtifactProcessorProcessingFailedErrorCode = "file_artifact_processor.processing_failed"
 
 type WriteMode string
 
@@ -76,27 +77,36 @@ func (p FileArtifactProcessor) Name() string {
 }
 
 func (p FileArtifactProcessor) Process(ctx ArtifactProcessingContext) error {
-	files, err := p.findFileArtifactsFromContext(ctx)
-	if err != nil {
+	files := p.findFileArtifactsFromContext(ctx)
+
+	// Ensure context was not canceled before we start the whole process
+	if err := ctx.Err(); err != nil {
 		return err
 	}
 
 	if err := p.cleanRegistry(ctx); err != nil {
-		ctx.Logger.Error("failed cleaning artifact registry")
-		return err
+		ctx.Logger.Error(fmt.Sprintf("failed cleaning artifact registry: %s", err.Error()))
+		return errors.Wrap(err, FileArtifactProcessorCleanUpFailedErrorCode)
 	}
-
-	errs := errors.NewGroup(WriteFileArtifactsProcessorErrorCode)
 
 	// Write files concurrently to speed up process.
 	ctx.Logger.Info("Writing file artifacts ...")
+	if err := p.processArtifacts(ctx, files); err != nil {
+		ctx.Logger.Error(fmt.Sprintf("failed processing artifacts: %s", err.Error()))
+		return errors.Wrap(err, FileArtifactProcessorProcessingFailedErrorCode)
+	}
+
+	ctx.Logger.Success("Files artifacts written successfully.")
+
+	return nil
+}
+
+func (p FileArtifactProcessor) processArtifacts(ctx ArtifactProcessingContext, files []*FileArtifact) error {
+	errs := errors.NewGroup(FileArtifactProcessorProcessingFailedErrorCode)
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 
 	for _, file := range files {
-		if err := CheckContextDone(ctx); err != nil {
-			return err
-		}
 		wg.Add(1)
 		go func(ctx ArtifactProcessingContext, file *FileArtifact) {
 			defer wg.Done()
@@ -114,14 +124,11 @@ func (p FileArtifactProcessor) Process(ctx ArtifactProcessingContext) error {
 		return errs
 	}
 
-	ctx.Logger.Success("Files artifacts written successfully.")
-
 	return nil
 }
 
-func (p FileArtifactProcessor) findFileArtifactsFromContext(ctx ArtifactProcessingContext) ([]*FileArtifact, error) {
+func (p FileArtifactProcessor) findFileArtifactsFromContext(ctx ArtifactProcessingContext) []*FileArtifact {
 	var files []*FileArtifact
-	var errs errors.Group
 
 	for _, a := range ctx.Artifacts {
 		fa, ok := a.(*FileArtifact)
@@ -129,24 +136,24 @@ func (p FileArtifactProcessor) findFileArtifactsFromContext(ctx ArtifactProcessi
 			continue
 		}
 
-		if fa.WriteMode == "" {
-			ctx.Logger.Trace(fmt.Sprintf("File artifact %q does not have a write mode, defaulting to %q", fa.ID(), DefaultWriteMode))
-			fa.WriteMode = DefaultWriteMode
-		}
-
-		if fa.Path == "" {
-			errs = errs.Append(errors.NewWithMessage(
-				WriteFileArtifactsProcessorErrorCode,
-				fmt.Sprintf("file artifact %q does not have a path", fa.ID()),
-			))
-		}
-
 		files = append(files, fa)
 	}
-	return files, nil
+	return files
 }
 
 func (p FileArtifactProcessor) processFileArtifact(ctx ArtifactProcessingContext, fa *FileArtifact) error {
+	if fa.WriteMode == "" {
+		ctx.Logger.Trace(fmt.Sprintf("File artifact %q does not have a write mode, defaulting to %q", fa.ID(), DefaultWriteMode))
+		fa.WriteMode = DefaultWriteMode
+	}
+
+	if fa.Path == "" {
+		return errors.NewWithMessage(
+			FileArtifactProcessorProcessingFailedErrorCode,
+			fmt.Sprintf("file artifact %q does not have a path", fa.ID()),
+		)
+	}
+
 	filePath, err := p.FileSystem.Abs(fa.Path)
 	if err != nil {
 		return err
@@ -166,6 +173,10 @@ func (p FileArtifactProcessor) processFileArtifact(ctx ArtifactProcessingContext
 
 	// At this point if the file still already exists, this means that the clean step has not
 	// been executed properly.
+	if fileExists {
+		ctx.Logger.Trace(fmt.Sprintf("the cleanup process failed without being caught: file for %q still exists", fa.ID()))
+		return errors.NewWithMessage(FileArtifactProcessorCleanUpFailedErrorCode, "the cleanup process failed without being caught")
+	}
 
 	if fa.IsDir() {
 		ctx.Logger.Info(fmt.Sprintf("Creating directory %q ...", filePath))
@@ -182,11 +193,7 @@ func (p FileArtifactProcessor) processFileArtifact(ctx ArtifactProcessingContext
 	}
 
 	if fa.WriteMode != WriteOnceMode {
-		meta := map[string]any{
-			"path":      fa.Path,
-			"writeMode": fa.WriteMode,
-		}
-		if err := ctx.ArtifactRegistry.Add(fa.ID(), meta); err != nil {
+		if err := p.addArtifactToRegistry(ctx, fa); err != nil {
 			return err
 		}
 	}
@@ -205,56 +212,97 @@ func (p FileArtifactProcessor) cleanRegistry(ctx ArtifactProcessingContext) erro
 		return err
 	}
 
+	var validArtifacts []FileArtifact
+
+	ctx.Logger.Trace("Validating file artifact registry entries before cleanup ...")
+	// Validate registry entries before cleanup to reduce the chances of a partial cleanup
 	for _, entry := range entries {
 		if entry.Metadata == nil {
-			ctx.Logger.Trace(fmt.Sprintf("invalid registry entry %q: no metadata", entry.ArtifactID))
-			continue
+			return errors.NewWithMessage(
+				FileArtifactProcessorCleanUpFailedErrorCode,
+				fmt.Sprintf("invalid registry entry %q: no metadata", entry.ArtifactID),
+			)
+		}
+
+		path, ok := entry.Metadata["path"].(string)
+		if !ok || path == "" {
+			// should never happen because of pre validation
+			ctx.Logger.Trace(fmt.Sprintf("invalid registry entry %q: no path", entry.ArtifactID))
+			return errors.NewWithMessage(
+				FileArtifactProcessorCleanUpFailedErrorCode,
+				fmt.Sprintf("invalid registry entry %q: no path", entry.ArtifactID),
+			)
 		}
 
 		writeModeStr, ok := entry.Metadata["writeMode"].(string)
-		if !ok {
-			ctx.Logger.Trace(fmt.Sprintf("invalid registry entry %q: no write mode", entry.ArtifactID))
+		if !ok || writeModeStr == "" {
+			return errors.NewWithMessage(
+				FileArtifactProcessorCleanUpFailedErrorCode,
+				fmt.Sprintf("invalid registry entry %q: no write mode", entry.ArtifactID),
+			)
+		}
+
+		writeMode := WriteMode(writeModeStr)
+		if writeMode != RecreateMode {
+			ctx.Logger.Trace(fmt.Sprintf("registry entry %q  has write mode %q, it will not be cleaned up", entry.ArtifactID, writeModeStr))
 			continue
 		}
 
-		if WriteMode(writeModeStr) != RecreateMode {
-			continue
-		}
+		validArtifacts = append(validArtifacts, FileArtifact{
+			Path:      path,
+			WriteMode: writeMode,
+		})
+	}
 
+	// Proceed with cleanup
+	ctx.Logger.Trace("Cleaning up files of registry entries ...")
+	for _, artifact := range validArtifacts {
 		wg.Add(1)
-		go func(entry ArtifactRegistryEntry) {
+		go func(artifact FileArtifact) {
 			defer wg.Done()
-			if err := p.cleanArtifact(ctx, entry); err != nil {
+			if err := p.cleanArtifact(ctx, artifact); err != nil {
 				mu.Lock()
 				defer mu.Unlock()
 				errs = errs.Append(err)
 			}
-		}(entry)
+		}(artifact)
 	}
 	wg.Wait()
+
+	return errors.GroupOrNil(errs)
+}
+
+func (p FileArtifactProcessor) cleanArtifact(ctx ArtifactProcessingContext, artifact FileArtifact) error {
+	ctx.Logger.Info(fmt.Sprintf("cleaning file artifact %q ...", artifact.ID()))
+
+	// In the case of errors here, we'd like roll back and put the registry in the same state as it was
+	// to avoid having orphaned files on the file system.
+	// We first remove from the registry, processThen attempt a physical removal on the file system.
+	// If this removal fails, we'll add the file back to the registry so it can be retried in a next run.
+
+	if err := ctx.ArtifactRegistry.Remove(artifact.ID()); err != nil {
+		return err
+	}
+
+	if err := p.FileSystem.Remove(artifact.Path); err != nil {
+		// Let's attempt a rollback of the registry entry removal
+		if addBackToRegistryErr := p.addArtifactToRegistry(ctx, &artifact); addBackToRegistryErr != nil {
+			// Double failure, let's return as a group.
+			return errors.NewGroup(FileArtifactProcessorCleanUpFailedErrorCode, addBackToRegistryErr, err)
+		}
+		return err
+	}
 
 	return nil
 }
 
-func (p FileArtifactProcessor) cleanArtifact(ctx ArtifactProcessingContext, entry ArtifactRegistryEntry) error {
-	if entry.Metadata == nil {
-		ctx.Logger.Trace(fmt.Sprintf("invalid registry entry %q: no metadata", entry.ArtifactID))
-		return nil
+func (p FileArtifactProcessor) addArtifactToRegistry(ctx ArtifactProcessingContext, fa *FileArtifact) error {
+	meta := map[string]any{
+		"path":      fa.Path,
+		"writeMode": fa.WriteMode,
 	}
-	path, ok := entry.Metadata["path"].(string)
-	if !ok || path == "" {
-		ctx.Logger.Trace(fmt.Sprintf("invalid registry entry %q: no path", entry.ArtifactID))
-		return nil
-	}
-
-	ctx.Logger.Info(fmt.Sprintf("cleaning file artifact %q ...", entry.ArtifactID))
-	if err := p.FileSystem.Remove(path); err != nil {
+	if err := ctx.ArtifactRegistry.Add(fa.ID(), meta); err != nil {
 		return err
 	}
-
-	if err := ctx.ArtifactRegistry.Remove(entry.ArtifactID); err != nil {
-		return err
-	}
-
 	return nil
 }

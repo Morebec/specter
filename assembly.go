@@ -75,6 +75,8 @@ func WithExecutionMode(m ExecutionMode) Option {
 		s.ExecutionMode = m
 	}
 }
+
+// WithArtifactRegistry configures the ArtifactRegistry of a Specter instance.
 func WithArtifactRegistry(r ArtifactRegistry) Option {
 	return func(s *Specter) {
 		s.ArtifactRegistry = r
@@ -91,13 +93,16 @@ func WithJSONArtifactRegistry(fileName string, fs FileSystem) Option {
 	return WithArtifactRegistry(NewJSONArtifactRegistry(fileName, fs))
 }
 
-// NewFileSystemLoader FileSystem
-func NewFileSystemLoader(fs FileSystem) *FileSystemLoader {
-	return &FileSystemLoader{fs: fs}
+// Loaders
+
+// NewFileSystemSourceLoader constructs a FileSystemSourceLoader that uses a given FileSystem.
+func NewFileSystemSourceLoader(fs FileSystem) *FileSystemSourceLoader {
+	return &FileSystemSourceLoader{fs: fs}
 }
 
-func NewLocalFileSourceLoader() FileSystemLoader {
-	return FileSystemLoader{fs: LocalFileSystem{}}
+// NewLocalFileSourceLoader returns a new FileSystemSourceLoader that uses a LocalFileSystem.
+func NewLocalFileSourceLoader() *FileSystemSourceLoader {
+	return NewFileSystemSourceLoader(LocalFileSystem{})
 }
 
 // ARTIFACT REGISTRIES
@@ -105,9 +110,9 @@ func NewLocalFileSourceLoader() FileSystemLoader {
 // NewJSONArtifactRegistry returns a new artifact file registry.
 func NewJSONArtifactRegistry(fileName string, fs FileSystem) *JSONArtifactRegistry {
 	return &JSONArtifactRegistry{
-		Entries:  make(map[string][]JsonArtifactRegistryEntry),
-		FilePath: fileName,
-		CurrentTimeProvider: func() time.Time {
+		InMemoryArtifactRegistry: &InMemoryArtifactRegistry{},
+		FilePath:                 fileName,
+		TimeProvider: func() time.Time {
 			return time.Now()
 		},
 		FileSystem: fs,

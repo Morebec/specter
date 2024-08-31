@@ -109,7 +109,9 @@ func (m *mockFileSystem) Remove(path string) error {
 		return m.rmErr
 	}
 
-	m.dirs[path] = false
+	if _, ok := m.dirs[path]; ok {
+		m.dirs[path] = false
+	}
 	delete(m.files, path)
 
 	return nil

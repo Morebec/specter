@@ -167,7 +167,7 @@ func TestLocalFileSourceLoader_Load(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			loader := FileSystemLoader{fs: tt.given}
+			loader := FileSystemSourceLoader{fs: tt.given}
 			src, err := loader.Load(tt.whenLocation)
 
 			if tt.expectedErr != nil {
