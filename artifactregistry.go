@@ -135,9 +135,9 @@ var _ ArtifactRegistry = (*JSONArtifactRegistry)(nil)
 // JSONArtifactRegistry implementation of a ArtifactRegistry that is saved as a JSON file.
 type JSONArtifactRegistry struct {
 	*InMemoryArtifactRegistry
-	FileSystem   FileSystem       `json:"-"`
-	FilePath     string           `json:"-"`
-	TimeProvider func() time.Time `json:"-"`
+	FileSystem   FileSystem
+	FilePath     string
+	TimeProvider TimeProvider
 
 	mu sync.RWMutex // Mutex to protect concurrent access
 }

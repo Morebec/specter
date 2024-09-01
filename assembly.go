@@ -17,14 +17,13 @@ package specter
 import (
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"os"
-	"time"
 )
 
 // New allows creating a new specter instance using the provided options.
 func New(opts ...Option) *Specter {
 	s := &Specter{
-		Logger:        NewDefaultLogger(DefaultLoggerConfig{DisableColors: true, Writer: os.Stdout}),
-		ExecutionMode: FullMode,
+		Logger:       NewDefaultLogger(DefaultLoggerConfig{DisableColors: false, Writer: os.Stdout}),
+		TimeProvider: CurrentTimeProvider(),
 	}
 	for _, o := range opts {
 		o(s)
@@ -70,10 +69,10 @@ func WithArtifactProcessors(processors ...ArtifactProcessor) Option {
 	}
 }
 
-// WithExecutionMode configures the ExecutionMode of a Specter instance.
-func WithExecutionMode(m ExecutionMode) Option {
+// WithTimeProvider configures the TimeProvider of a Specter instance.
+func WithTimeProvider(tp TimeProvider) Option {
 	return func(s *Specter) {
-		s.ExecutionMode = m
+		s.TimeProvider = tp
 	}
 }
 
@@ -113,10 +112,8 @@ func NewJSONArtifactRegistry(fileName string, fs FileSystem) *JSONArtifactRegist
 	return &JSONArtifactRegistry{
 		InMemoryArtifactRegistry: &InMemoryArtifactRegistry{},
 		FilePath:                 fileName,
-		TimeProvider: func() time.Time {
-			return time.Now()
-		},
-		FileSystem: fs,
+		TimeProvider:             CurrentTimeProvider(),
+		FileSystem:               fs,
 	}
 }
 

@@ -109,11 +109,12 @@ func (l FileSystemSourceLoader) loadDirectory(dirPath string) ([]Source, error) 
 	var directorySources []Source
 
 	err := l.fs.WalkDir(dirPath, func(path string, d fs.DirEntry, err error) error {
-		if d.IsDir() {
-			return nil
-		}
 		if err != nil {
 			return err
+		}
+
+		if d.IsDir() {
+			return nil
 		}
 
 		fileSources, err := l.loadFile(path)

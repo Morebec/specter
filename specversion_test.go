@@ -15,7 +15,7 @@
 package specter
 
 import (
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -58,26 +58,35 @@ func (m *mockSpecification) Version() SpecificationVersion {
 func TestHasVersionMustHaveAVersionLinter(t *testing.T) {
 	tests := []struct {
 		name            string
-		given           SpecificationGroup
+		when            SpecificationGroup
 		expectedResults LinterResultSet
-		severity        LinterResultSeverity
+		givenSeverity   LinterResultSeverity
 	}{
 		{
-			name: "GIVEN all specifications have a version THEN return no warnings or errors",
-			given: SpecificationGroup{
+			name: "WHEN some specification does not implement HasVersion, THEN ignore said specification",
+			when: SpecificationGroup{
 				&mockSpecification{name: "spec1", version: "v1"},
-				&mockSpecification{name: "spec2", version: "v2"},
+				NewGenericSpecification("not-versioned", "spec", Source{}),
 			},
-			severity:        WarningSeverity,
+			givenSeverity:   WarningSeverity,
 			expectedResults: LinterResultSet(nil),
 		},
 		{
-			name: "GIVEN one specification is missing a version and severity is Warning THEN return a warning",
-			given: SpecificationGroup{
+			name: "WHEN all specifications have a version THEN return no warnings or errors",
+			when: SpecificationGroup{
+				&mockSpecification{name: "spec1", version: "v1"},
+				&mockSpecification{name: "spec2", version: "v2"},
+			},
+			givenSeverity:   WarningSeverity,
+			expectedResults: LinterResultSet(nil),
+		},
+		{
+			name: "WHEN one specification is missing a version and severity is Warning THEN return a warning",
+			when: SpecificationGroup{
 				&mockSpecification{name: "spec1", version: "v1"},
 				&mockSpecification{name: "spec2", version: ""},
 			},
-			severity: WarningSeverity,
+			givenSeverity: WarningSeverity,
 			expectedResults: LinterResultSet{
 				{
 					Severity: WarningSeverity,
@@ -86,12 +95,12 @@ func TestHasVersionMustHaveAVersionLinter(t *testing.T) {
 			},
 		},
 		{
-			name: "GIVEN one specification is missing a version and severity is error THEN return an error",
-			given: SpecificationGroup{
+			name: "WHEN one specification is missing a version and severity is error THEN return an error",
+			when: SpecificationGroup{
 				&mockSpecification{name: "spec1", version: "v1"},
 				&mockSpecification{name: "spec2", version: ""},
 			},
-			severity: ErrorSeverity,
+			givenSeverity: ErrorSeverity,
 			expectedResults: LinterResultSet{
 				{
 					Severity: ErrorSeverity,
@@ -101,11 +110,11 @@ func TestHasVersionMustHaveAVersionLinter(t *testing.T) {
 		},
 		{
 			name: "multiple specifications are missing versions",
-			given: SpecificationGroup{
+			when: SpecificationGroup{
 				&mockSpecification{name: "spec1", version: ""},
 				&mockSpecification{name: "spec2", version: ""},
 			},
-			severity: ErrorSeverity,
+			givenSeverity: ErrorSeverity,
 			expectedResults: LinterResultSet{
 				{
 					Severity: ErrorSeverity,
@@ -121,9 +130,9 @@ func TestHasVersionMustHaveAVersionLinter(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			linter := HasVersionMustHaveAVersionLinter(tt.severity)
-			results := linter.Lint(tt.given)
-			assert.Equal(t, tt.expectedResults, results)
+			linter := HasVersionMustHaveAVersionLinter(tt.givenSeverity)
+			results := linter.Lint(tt.when)
+			require.Equal(t, tt.expectedResults, results)
 		})
 	}
 }

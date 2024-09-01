@@ -95,26 +95,6 @@ type ArtifactRegistryEntry struct {
 	Metadata   map[string]any
 }
 
-var _ ArtifactRegistry = NoopArtifactRegistry{}
-
-type NoopArtifactRegistry struct{}
-
-func (n NoopArtifactRegistry) Add(processorName string, e ArtifactRegistryEntry) error { return nil }
-
-func (n NoopArtifactRegistry) Remove(processorName string, artifactID ArtifactID) error { return nil }
-
-func (n NoopArtifactRegistry) FindByID(processorName string, artifactID ArtifactID) (_ ArtifactRegistryEntry, _ bool, _ error) {
-	return ArtifactRegistryEntry{}, false, nil
-}
-
-func (n NoopArtifactRegistry) FindAll(processorName string) ([]ArtifactRegistryEntry, error) {
-	return nil, nil
-}
-
-func (n NoopArtifactRegistry) Load() error { return nil }
-
-func (n NoopArtifactRegistry) Save() error { return nil }
-
 // ProcessorArtifactRegistry is a wrapper around an ArtifactRegistry that scopes all calls to a given processor.
 type ProcessorArtifactRegistry struct {
 	processorName string

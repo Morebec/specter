@@ -49,10 +49,10 @@ func TestWithArtifactProcessors(t *testing.T) {
 	require.Contains(t, s.ArtifactProcessors, processor)
 }
 
-func TestWithExecutionMode(t *testing.T) {
-	mode := PreviewMode
-	s := New(WithExecutionMode(mode))
-	require.Equal(t, s.ExecutionMode, mode)
+func TestWithTimeProvider(t *testing.T) {
+	tp := CurrentTimeProvider()
+	s := New(WithTimeProvider(tp))
+	require.NotNil(t, s.TimeProvider)
 }
 
 func TestWithArtifactRegistry(t *testing.T) {

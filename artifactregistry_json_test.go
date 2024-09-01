@@ -150,9 +150,7 @@ func TestJSONArtifactRegistry_Load(t *testing.T) {
 			}(fs, filePath)
 
 			registry := NewJSONArtifactRegistry(filePath, fs)
-			registry.TimeProvider = func() time.Time {
-				return time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-			}
+			registry.TimeProvider = staticTimeProvider(time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC))
 
 			err = registry.Load()
 
@@ -242,9 +240,7 @@ func TestJSONArtifactRegistry_Save(t *testing.T) {
 			registryFilePath := DefaultJSONArtifactRegistryFileName
 
 			registry := NewJSONArtifactRegistry(registryFilePath, fs)
-			registry.TimeProvider = func() time.Time {
-				return time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-			}
+			registry.TimeProvider = staticTimeProvider(time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC))
 
 			// Add initial entries
 			for p, entries := range tt.given.entries {
