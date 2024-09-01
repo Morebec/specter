@@ -35,13 +35,6 @@ type HCLGenericSpecLoader struct {
 	hclparse.Parser
 }
 
-// NewHCLGenericSpecLoader this  SpecificationLoader will load all Specifications to instances of GenericSpecification.
-func NewHCLGenericSpecLoader() *HCLGenericSpecLoader {
-	return &HCLGenericSpecLoader{
-		Parser: *hclparse.NewParser(),
-	}
-}
-
 func (l HCLGenericSpecLoader) SupportsSource(s Source) bool {
 	return s.Format == HCLSourceFormat
 }
@@ -72,7 +65,7 @@ func (l HCLGenericSpecLoader) Load(s Source) ([]Specification, error) {
 
 	body := file.Body.(*hclsyntax.Body)
 	for _, block := range body.Blocks {
-		// Ensure there is at least one label for the FilePath
+		// Ensure there is at least one label for the block
 		if len(block.Labels) == 0 || block.Labels[0] == "" {
 			return nil, errors.NewWithMessage(
 				InvalidHCLErrorCode,
@@ -87,19 +80,21 @@ func (l HCLGenericSpecLoader) Load(s Source) ([]Specification, error) {
 		}
 
 		// Extract Attributes in block.
-		specAttributes, err := l.extractAttributesFromBlock(ctx, block)
-		if err != nil {
-			return nil, errors.WrapWithMessage(
-				err,
-				InvalidHCLErrorCode,
-				fmt.Sprintf(
-					"invalid specification source %q at line %d:%d for block %q",
-					s.Location,
-					block.Range().Start.Line,
-					block.Range().Start.Column,
-					block.Type,
-				),
-			)
+		specAttributes, attrDiags := l.extractAttributesFromBlock(ctx, block)
+		if attrDiags != nil {
+			diags = diags.Extend(attrDiags)
+			continue
+			//return nil, errors.WrapWithMessage(
+			//	err,
+			//	InvalidHCLErrorCode,
+			//	fmt.Sprintf(
+			//		"invalid specification source %q at line %d:%d for block %q",
+			//		s.Location,
+			//		block.Range().Start.Line,
+			//		block.Range().Start.Column,
+			//		block.Type,
+			//	),
+			//)
 		}
 
 		// Create specification and add to list
@@ -111,8 +106,8 @@ func (l HCLGenericSpecLoader) Load(s Source) ([]Specification, error) {
 		})
 	}
 
-	group := errors.NewGroup(errors.InternalErrorCode)
-	if diags != nil && !diags.HasErrors() {
+	group := errors.NewGroup(InvalidHCLErrorCode)
+	if diags != nil && diags.HasErrors() {
 		for _, d := range diags.Errs() {
 			group = group.Append(d)
 		}
@@ -162,11 +157,12 @@ func (l HCLGenericSpecLoader) extractAttributesFromBlock(ctx *hcl.EvalContext, b
 		})
 	}
 
-	return attrs, nil
+	return attrs, diags
 }
 
 type HCLSpecLoaderFileConfigurationProvider func() HCLFileConfig
 
+// HCLFileConfig interface that is to be implemented to define the structure of HCL specification files.
 type HCLFileConfig interface {
 	Specifications() []Specification
 }
@@ -186,7 +182,7 @@ type HCLSpecLoader struct {
 	evalCtx            *hcl.EvalContext
 }
 
-func NewHCLFileConfigSpecLoader(fileConfigProvider HCLSpecLoaderFileConfigurationProvider) *HCLSpecLoader {
+func NewHCLSpecLoader(fileConfigProvider HCLSpecLoaderFileConfigurationProvider) *HCLSpecLoader {
 	return &HCLSpecLoader{
 		fileConfigProvider: fileConfigProvider,
 		evalCtx: &hcl.EvalContext{
@@ -197,8 +193,6 @@ func NewHCLFileConfigSpecLoader(fileConfigProvider HCLSpecLoaderFileConfiguratio
 }
 
 func (l HCLSpecLoader) Load(s Source) ([]Specification, error) {
-	ctx := l.evalCtx
-
 	// Although the caller is responsible for calling HCLGenericSpecLoader.SupportsSource, guard against it.
 	if !l.SupportsSource(s) {
 		return nil, errors.NewWithMessage(
@@ -211,21 +205,26 @@ func (l HCLSpecLoader) Load(s Source) ([]Specification, error) {
 		)
 	}
 
-	// Parse const blocks to add them as Variables in the context.
-	var diags hcl.Diagnostics
-	var parsedFile *hcl.File
-	parsedFile, diags = l.parser.ParseHCL(s.Data, s.Location)
+	ctx := l.evalCtx
+	//// Parse const blocks to add them as Variables in the context.
+	//var diags hcl.Diagnostics
+	//var parsedFile *hcl.File
+	//parsedFile, diags = l.parser.ParseHCL(s.Data, s.Location)
+	//
+	//body := parsedFile.Body.(*hclsyntax.Body)
+	//for _, b := range body.Blocks {
+	//	if b.Type == "const" {
+	//		v, d := b.Body.Attributes["value"].Expr.Value(ctx)
+	//		if d != nil && d.HasErrors() {
+	//			diags = append(diags, d...)
+	//		} else {
+	//			ctx.Variables[b.Labels[0]] = v
+	//		}
+	//	}
+	//}
 
-	body := parsedFile.Body.(*hclsyntax.Body)
-	for _, b := range body.Blocks {
-		if b.Type == "const" {
-			v, d := b.Body.Attributes["value"].Expr.Value(ctx)
-			if d != nil && d.HasErrors() {
-				diags = append(diags, d...)
-			} else {
-				ctx.Variables[b.Labels[0]] = v
-			}
-		}
+	if len(s.Data) == 0 {
+		return nil, nil
 	}
 
 	// Decode config file
@@ -233,15 +232,7 @@ func (l HCLSpecLoader) Load(s Source) ([]Specification, error) {
 	err := hclsimple.Decode(s.Location, s.Data, ctx, fileConf)
 
 	if err != nil {
-		var d hcl.Diagnostics
-		if !errors.As(err, &d) {
-			return nil, err
-		}
-		diags = append(diags, d...)
-	}
-
-	if diags != nil && diags.HasErrors() {
-		return nil, diags
+		return nil, errors.Wrap(err, InvalidHCLErrorCode)
 	}
 
 	// Set source for all specifications

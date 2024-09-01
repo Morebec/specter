@@ -21,16 +21,20 @@ import (
 	"time"
 )
 
-type ExecutionMode string
-
-// LintMode will cause a Specter instance to run until the lint step only.
-const LintMode ExecutionMode = "lint"
+type RunMode string
 
 // PreviewMode will cause a Specter instance to run until the processing step only, no artifact will be processed.
-const PreviewMode ExecutionMode = "preview"
+const PreviewMode RunMode = "preview"
 
-// FullMode will cause a Specter instance to be run fully.
-const FullMode ExecutionMode = "full"
+// RunThrough will cause a Specter instance to be run fully.
+const RunThrough RunMode = "run-through"
+
+const defaultRunMode = PreviewMode
+
+const SourceLoadingFailedErrorCode = "specter.source_loading_failed"
+const SpecificationLoadingFailedErrorCode = "specter.specification_loading_failed"
+const SpecificationProcessingFailedErrorCode = "specter.specification_processing_failed"
+const ArtifactProcessingFailedErrorCode = "specter.artifact_processing_failed"
 
 // Specter is the service responsible to run a specter pipeline.
 type Specter struct {
@@ -40,85 +44,78 @@ type Specter struct {
 	ArtifactProcessors []ArtifactProcessor
 	ArtifactRegistry   ArtifactRegistry
 	Logger             Logger
-	ExecutionMode      ExecutionMode
-}
-
-type Stats struct {
-	StartedAt         time.Time
-	EndedAt           time.Time
-	NbSourceLocations int
-	NbSources         int
-	NbSpecifications  int
-	NbArtifacts       int
-}
-
-func (s Stats) ExecutionTime() time.Duration {
-	return s.EndedAt.Sub(s.StartedAt)
+	TimeProvider       TimeProvider
 }
 
 type RunResult struct {
-	Sources       []Source
-	Specification []Specification
-	Artifacts     []Artifact
-	Stats         Stats
+	StartedAt time.Time
+	EndedAt   time.Time
+
+	SourceLocations []string
+	Sources         []Source
+	Specifications  []Specification
+	Artifacts       []Artifact
+	RunMode         RunMode
+}
+
+func (r RunResult) ExecutionTime() time.Duration {
+	return r.EndedAt.Sub(r.StartedAt)
 }
 
 // Run the pipeline from start to finish.
-func (s Specter) Run(ctx context.Context, sourceLocations []string) (RunResult, error) {
-	var run RunResult
-	var artifacts []Artifact
+func (s Specter) Run(ctx context.Context, sourceLocations []string, runMode RunMode) (run RunResult, err error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	if runMode == "" {
+		s.Logger.Warning(fmt.Sprintf("No run mode provided, defaulting to %q", defaultRunMode))
+		runMode = defaultRunMode
+	}
+
+	run = RunResult{
+		StartedAt:       s.TimeProvider(),
+		SourceLocations: sourceLocations,
+		RunMode:         runMode,
+	}
 
 	defer func() {
-		run.Stats.EndedAt = time.Now()
-		s.Logger.Info(fmt.Sprintf("\nStarted At: %s", run.Stats.StartedAt))
-		s.Logger.Info(fmt.Sprintf("Ended at: %s", run.Stats.EndedAt))
-		s.Logger.Info(fmt.Sprintf("Execution time: %s", run.Stats.ExecutionTime()))
-		s.Logger.Info(fmt.Sprintf("Number of source locations: %d", run.Stats.NbSourceLocations))
-		s.Logger.Info(fmt.Sprintf("Number of sources: %d", run.Stats.NbSources))
-		s.Logger.Info(fmt.Sprintf("Number of specifications: %d", run.Stats.NbSpecifications))
-		s.Logger.Info(fmt.Sprintf("Number of artifacts: %d", run.Stats.NbArtifacts))
+		run.EndedAt = s.TimeProvider()
+		s.logRunResult(run)
 	}()
 
-	run.Stats.StartedAt = time.Now()
-
 	// Load sources
-	run.Stats.NbSourceLocations = len(sourceLocations)
-	sources, err := s.LoadSources(ctx, sourceLocations)
-	run.Stats.NbSources = len(sources)
-	run.Sources = sources
+	run.Sources, err = s.loadSources(ctx, sourceLocations)
 	if err != nil {
-		e := errors.WrapWithMessage(err, errors.InternalErrorCode, "failed loading sources")
+		e := errors.WrapWithMessage(err, SourceLoadingFailedErrorCode, "failed loading sources")
 		s.Logger.Error(e.Error())
 		return run, e
 	}
 
 	// Load Specifications
-	var specifications []Specification
-	specifications, err = s.LoadSpecifications(ctx, sources)
-	run.Stats.NbSpecifications = len(specifications)
+	run.Specifications, err = s.loadSpecifications(ctx, run.Sources)
 	if err != nil {
-		e := errors.WrapWithMessage(err, errors.InternalErrorCode, "failed loading specifications")
+		e := errors.WrapWithMessage(err, SpecificationLoadingFailedErrorCode, "failed loading specifications")
 		s.Logger.Error(e.Error())
 		return run, e
 	}
 
 	// Process Specifications
-	artifacts, err = s.ProcessSpecifications(ctx, specifications)
-	run.Stats.NbArtifacts = len(artifacts)
-	run.Artifacts = artifacts
+	run.Artifacts, err = s.processSpecifications(ctx, run.Specifications)
 	if err != nil {
-		e := errors.WrapWithMessage(err, errors.InternalErrorCode, "failed processing specifications")
+		e := errors.WrapWithMessage(err, SpecificationProcessingFailedErrorCode, "failed processing specifications")
 		s.Logger.Error(e.Error())
 		return run, e
 	}
-	// stop here
-	if s.ExecutionMode == PreviewMode {
+
+	// stop here if preview
+	if run.RunMode == PreviewMode {
 		return run, nil
 	}
 
 	// Process Artifact
-	if err = s.ProcessArtifacts(ctx, specifications, artifacts); err != nil {
-		e := errors.WrapWithMessage(err, errors.InternalErrorCode, "failed processing artifacts")
+	if err = s.processArtifacts(ctx, run.Specifications, run.Artifacts); err != nil {
+		e := errors.WrapWithMessage(err, ArtifactProcessingFailedErrorCode, "failed processing artifacts")
 		s.Logger.Error(e.Error())
 		return run, e
 	}
@@ -127,8 +124,19 @@ func (s Specter) Run(ctx context.Context, sourceLocations []string) (RunResult, 
 	return run, nil
 }
 
-// LoadSources only performs the Load sources step.
-func (s Specter) LoadSources(ctx context.Context, sourceLocations []string) ([]Source, error) {
+func (s Specter) logRunResult(run RunResult) {
+	s.Logger.Info(fmt.Sprintf("Run Mode: %s", run.RunMode))
+	s.Logger.Info(fmt.Sprintf("\nStarted At: %s", run.StartedAt))
+	s.Logger.Info(fmt.Sprintf("Ended at: %s", run.EndedAt))
+	s.Logger.Info(fmt.Sprintf("Run time: %s", run.ExecutionTime()))
+	s.Logger.Info(fmt.Sprintf("Number of source locations: %d", len(run.SourceLocations)))
+	s.Logger.Info(fmt.Sprintf("Number of sources: %d", len(run.Sources)))
+	s.Logger.Info(fmt.Sprintf("Number of specifications: %d", len(run.Specifications)))
+	s.Logger.Info(fmt.Sprintf("Number of artifacts: %d", len(run.Artifacts)))
+}
+
+// loadSources only performs the Load sources step.
+func (s Specter) loadSources(ctx context.Context, sourceLocations []string) ([]Source, error) {
 	var sources []Source
 	errs := errors.NewGroup(errors.InternalErrorCode)
 
@@ -138,7 +146,7 @@ func (s Specter) LoadSources(ctx context.Context, sourceLocations []string) ([]S
 	}
 
 	for _, sl := range sourceLocations {
-		if err := CheckContextDone(ctx); err != nil {
+		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
 
@@ -163,8 +171,8 @@ func (s Specter) LoadSources(ctx context.Context, sourceLocations []string) ([]S
 	return sources, errors.GroupOrNil(errs)
 }
 
-// LoadSpecifications performs the loading of Specifications.
-func (s Specter) LoadSpecifications(ctx context.Context, sources []Source) ([]Specification, error) {
+// loadSpecifications performs the loading of Specifications.
+func (s Specter) loadSpecifications(ctx context.Context, sources []Source) ([]Specification, error) {
 	s.Logger.Info("\nLoading specifications ...")
 
 	// Load specifications
@@ -173,7 +181,7 @@ func (s Specter) LoadSpecifications(ctx context.Context, sources []Source) ([]Sp
 	errs := errors.NewGroup(errors.InternalErrorCode)
 
 	for _, src := range sources {
-		if err := CheckContextDone(ctx); err != nil {
+		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
 		wasLoaded := false
@@ -211,8 +219,8 @@ func (s Specter) LoadSpecifications(ctx context.Context, sources []Source) ([]Sp
 	return specifications, errors.GroupOrNil(errs)
 }
 
-// ProcessSpecifications sends the specifications to processors.
-func (s Specter) ProcessSpecifications(ctx context.Context, specs []Specification) ([]Artifact, error) {
+// processSpecifications sends the specifications to processors.
+func (s Specter) processSpecifications(ctx context.Context, specs []Specification) ([]Artifact, error) {
 	pctx := ProcessingContext{
 		Context:        ctx,
 		Specifications: specs,
@@ -222,7 +230,7 @@ func (s Specter) ProcessSpecifications(ctx context.Context, specs []Specificatio
 
 	s.Logger.Info("\nProcessing specifications ...")
 	for _, p := range s.Processors {
-		if err := CheckContextDone(ctx); err != nil {
+		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
 		artifacts, err := p.Process(pctx)
@@ -241,10 +249,10 @@ func (s Specter) ProcessSpecifications(ctx context.Context, specs []Specificatio
 	return pctx.Artifacts, nil
 }
 
-// ProcessArtifacts sends a list of ProcessingArtifacts to the registered ArtifactProcessors.
-func (s Specter) ProcessArtifacts(ctx context.Context, specifications []Specification, artifacts []Artifact) error {
+// processArtifacts sends a list of ProcessingArtifacts to the registered ArtifactProcessors.
+func (s Specter) processArtifacts(ctx context.Context, specifications []Specification, artifacts []Artifact) error {
 	if s.ArtifactRegistry == nil {
-		s.ArtifactRegistry = NoopArtifactRegistry{}
+		s.ArtifactRegistry = &InMemoryArtifactRegistry{}
 	}
 
 	s.Logger.Info("\nProcessing artifacts ...")
@@ -259,7 +267,7 @@ func (s Specter) ProcessArtifacts(ctx context.Context, specifications []Specific
 	}()
 
 	for _, p := range s.ArtifactProcessors {
-		if err := CheckContextDone(ctx); err != nil {
+		if err := ctx.Err(); err != nil {
 			return err
 		}
 

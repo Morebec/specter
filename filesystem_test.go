@@ -19,6 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"io/fs"
 	"os"
+	"path"
 	"runtime"
 	"strings"
 	"sync"
@@ -109,7 +110,9 @@ func (m *mockFileSystem) Remove(path string) error {
 		return m.rmErr
 	}
 
-	m.dirs[path] = false
+	if _, ok := m.dirs[path]; ok {
+		m.dirs[path] = false
+	}
 	delete(m.files, path)
 
 	return nil
@@ -249,4 +252,63 @@ func TestLocalFileSystem_StatPath(t *testing.T) {
 	stat, err := lfs.StatPath(filename)
 	require.NoError(t, err)
 	assert.NotNil(t, stat)
+}
+
+func TestLocalFileSystem_Mkdir(t *testing.T) {
+	lfs := LocalFileSystem{}
+	dirPath := path.Join(os.TempDir(), "specter", "TestLocalFileSystem_Mkdir")
+	err := lfs.Mkdir(dirPath, os.ModePerm)
+	defer func(lfs LocalFileSystem, path string) {
+		err = lfs.Remove(dirPath)
+		require.NoError(t, err)
+	}(lfs, dirPath)
+	require.NoError(t, err)
+}
+
+func TestLocalFileSystem_Remove(t *testing.T) {
+	lfs := LocalFileSystem{}
+	dirPath := path.Join(os.TempDir(), "specter", "TestLocalFileSystem_Remove")
+	err := lfs.Mkdir(dirPath, os.ModePerm)
+	require.NoError(t, err)
+
+	err = lfs.Remove(dirPath)
+	require.NoError(t, err)
+}
+
+func TestLocalFileSystem_WriteFile(t *testing.T) {
+	lfs := LocalFileSystem{}
+	dirPath := path.Join(os.TempDir(), "specter", "TestLocalFileSystem_WriteFile")
+	err := lfs.Mkdir(dirPath, os.ModePerm)
+	defer func() {
+		err := lfs.Remove(dirPath)
+		require.NoError(t, err)
+	}()
+	require.NoError(t, err)
+
+	filePath := path.Join(dirPath, "TestLocalFileSystem_WriteFile.txt")
+	err = lfs.WriteFile(filePath, []byte("hello world"), os.ModePerm)
+	defer func() {
+		err := lfs.Remove(filePath)
+		require.NoError(t, err)
+	}()
+	require.NoError(t, err)
+}
+
+func TestLocalFileSystem_Rel(t *testing.T) {
+	lfs := LocalFileSystem{}
+	specterTestDir := path.Join(os.TempDir(), "specter")
+	dirPath := path.Join(specterTestDir, "TestLocalFileSystem_Rel")
+	err := lfs.Mkdir(dirPath, os.ModePerm)
+	defer func() {
+		err := lfs.Remove(dirPath)
+		require.NoError(t, err)
+
+		err = lfs.Remove(specterTestDir)
+		require.NoError(t, err)
+	}()
+	require.NoError(t, err)
+
+	rel, err := lfs.Rel(specterTestDir, dirPath)
+	require.NoError(t, err)
+	assert.Equal(t, "TestLocalFileSystem_Rel", rel)
 }

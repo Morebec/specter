@@ -31,7 +31,6 @@ func HasVersionMustHaveAVersionLinter(severity LinterResultSeverity) Specificati
 			if _, ok := s.(HasVersion); ok {
 				return true
 			}
-
 			return false
 		})
 

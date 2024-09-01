@@ -15,7 +15,6 @@
 package specter
 
 import (
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -49,43 +48,56 @@ func (m *MockArtifactRegistry) Artifacts(processorName string) []ArtifactID {
 	return args.Get(0).([]ArtifactID)
 }
 
-func TestNoopArtifactRegistry_Load(t *testing.T) {
-	// Arrange
-	registry := NoopArtifactRegistry{}
+func TestProcessorArtifactRegistry_Add(t *testing.T) {
+	r := &InMemoryArtifactRegistry{}
+	pr := ProcessorArtifactRegistry{
+		processorName: "unit_tester",
+		registry:      r,
+	}
 
-	// Act
-	err := registry.Load()
-
-	// Assert
-	assert.NoError(t, err, "Load should not return an error")
-}
-
-func TestNoopArtifactRegistry_Save(t *testing.T) {
-	// Arrange
-	registry := NoopArtifactRegistry{}
-
-	// Act
-	err := registry.Save()
-
-	// Assert
-	assert.NoError(t, err, "Save should not return an error")
-}
-
-func TestNoopArtifactRegistry_Add(t *testing.T) {
-	registry := NoopArtifactRegistry{}
-	err := registry.Add("processor1", ArtifactRegistryEntry{})
+	err := pr.Add("an_artifact", nil)
 	require.NoError(t, err)
+
+	_, found, err := r.FindByID("unit_tester", "an_artifact")
+	require.NoError(t, err)
+	require.True(t, found)
 }
 
-func TestNoopArtifactRegistry_Remove(t *testing.T) {
-	registry := NoopArtifactRegistry{}
-	err := registry.Remove("processor1", "artifactFile.txt")
+func TestProcessorArtifactRegistry_Remove(t *testing.T) {
+	r := &InMemoryArtifactRegistry{}
+	pr := ProcessorArtifactRegistry{
+		processorName: "unit_tester",
+		registry:      r,
+	}
+
+	err := r.Add("unit_tester", ArtifactRegistryEntry{
+		ArtifactID: "an_artifact",
+		Metadata:   nil,
+	})
 	require.NoError(t, err)
+
+	err = pr.Remove("an_artifact")
+	require.NoError(t, err)
+
+	_, found, err := r.FindByID("unit_tester", "an_artifact")
+	require.NoError(t, err)
+	require.False(t, found)
 }
 
-func TestNoopArtifactRegistry_FindAll(t *testing.T) {
-	registry := NoopArtifactRegistry{}
-	artifacts, err := registry.FindAll("processor1")
+func TestProcessorArtifactRegistry_FindByID(t *testing.T) {
+	r := &InMemoryArtifactRegistry{}
+	pr := ProcessorArtifactRegistry{
+		processorName: "unit_tester",
+		registry:      r,
+	}
+
+	err := r.Add("unit_tester", ArtifactRegistryEntry{
+		ArtifactID: "an_artifact",
+		Metadata:   nil,
+	})
 	require.NoError(t, err)
-	require.Nil(t, artifacts, "FindAll should return nil for NoopArtifactRegistry")
+
+	_, found, err := pr.FindByID("an_artifact")
+	require.NoError(t, err)
+	require.True(t, found)
 }

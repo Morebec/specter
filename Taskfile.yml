@@ -28,8 +28,7 @@ tasks:
 
   dev:test:
     cmds:
-      - go test -v ./...
-      - ./scripts/gremlins.sh
+      - ./scripts/go_test.sh
 
   dev:pre-commit:
     cmds:

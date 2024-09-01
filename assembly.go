@@ -15,15 +15,15 @@
 package specter
 
 import (
+	"github.com/hashicorp/hcl/v2/hclparse"
 	"os"
-	"time"
 )
 
 // New allows creating a new specter instance using the provided options.
 func New(opts ...Option) *Specter {
 	s := &Specter{
-		Logger:        NewDefaultLogger(DefaultLoggerConfig{DisableColors: true, Writer: os.Stdout}),
-		ExecutionMode: FullMode,
+		Logger:       NewDefaultLogger(DefaultLoggerConfig{DisableColors: false, Writer: os.Stdout}),
+		TimeProvider: CurrentTimeProvider(),
 	}
 	for _, o := range opts {
 		o(s)
@@ -69,12 +69,14 @@ func WithArtifactProcessors(processors ...ArtifactProcessor) Option {
 	}
 }
 
-// WithExecutionMode configures the ExecutionMode of a Specter instance.
-func WithExecutionMode(m ExecutionMode) Option {
+// WithTimeProvider configures the TimeProvider of a Specter instance.
+func WithTimeProvider(tp TimeProvider) Option {
 	return func(s *Specter) {
-		s.ExecutionMode = m
+		s.TimeProvider = tp
 	}
 }
+
+// WithArtifactRegistry configures the ArtifactRegistry of a Specter instance.
 func WithArtifactRegistry(r ArtifactRegistry) Option {
 	return func(s *Specter) {
 		s.ArtifactRegistry = r
@@ -91,13 +93,16 @@ func WithJSONArtifactRegistry(fileName string, fs FileSystem) Option {
 	return WithArtifactRegistry(NewJSONArtifactRegistry(fileName, fs))
 }
 
-// NewFileSystemLoader FileSystem
-func NewFileSystemLoader(fs FileSystem) *FileSystemLoader {
-	return &FileSystemLoader{fs: fs}
+// Loaders
+
+// NewFileSystemSourceLoader constructs a FileSystemSourceLoader that uses a given FileSystem.
+func NewFileSystemSourceLoader(fs FileSystem) *FileSystemSourceLoader {
+	return &FileSystemSourceLoader{fs: fs}
 }
 
-func NewLocalFileSourceLoader() FileSystemLoader {
-	return FileSystemLoader{fs: LocalFileSystem{}}
+// NewLocalFileSourceLoader returns a new FileSystemSourceLoader that uses a LocalFileSystem.
+func NewLocalFileSourceLoader() *FileSystemSourceLoader {
+	return NewFileSystemSourceLoader(LocalFileSystem{})
 }
 
 // ARTIFACT REGISTRIES
@@ -105,11 +110,16 @@ func NewLocalFileSourceLoader() FileSystemLoader {
 // NewJSONArtifactRegistry returns a new artifact file registry.
 func NewJSONArtifactRegistry(fileName string, fs FileSystem) *JSONArtifactRegistry {
 	return &JSONArtifactRegistry{
-		Entries:  make(map[string][]JsonArtifactRegistryEntry),
-		FilePath: fileName,
-		CurrentTimeProvider: func() time.Time {
-			return time.Now()
-		},
-		FileSystem: fs,
+		InMemoryArtifactRegistry: &InMemoryArtifactRegistry{},
+		FilePath:                 fileName,
+		TimeProvider:             CurrentTimeProvider(),
+		FileSystem:               fs,
+	}
+}
+
+// NewHCLGenericSpecLoader this  SpecificationLoader will load all Specifications to instances of GenericSpecification.
+func NewHCLGenericSpecLoader() *HCLGenericSpecLoader {
+	return &HCLGenericSpecLoader{
+		Parser: *hclparse.NewParser(),
 	}
 }
