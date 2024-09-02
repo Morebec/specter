@@ -17,3 +17,8 @@
 ./scripts/add_license.sh
 ./scripts/check_gofmt.sh
 ./scripts/golangci_lint.sh
+
+# Run tests on main
+if [ "$(git rev-parse --abbrev-ref HEAD)" == "main" ]; then
+  ./scripts/go_test.sh
+fi
