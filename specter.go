@@ -125,8 +125,8 @@ func (s Specter) Run(ctx context.Context, sourceLocations []string, runMode RunM
 }
 
 func (s Specter) logRunResult(run RunResult) {
-	s.Logger.Info(fmt.Sprintf("Run Mode: %s", run.RunMode))
-	s.Logger.Info(fmt.Sprintf("\nStarted At: %s", run.StartedAt))
+	s.Logger.Info(fmt.Sprintf("\nRun Mode: %s", run.RunMode))
+	s.Logger.Info(fmt.Sprintf("Started At: %s", run.StartedAt))
 	s.Logger.Info(fmt.Sprintf("Ended at: %s", run.EndedAt))
 	s.Logger.Info(fmt.Sprintf("Run time: %s", run.ExecutionTime()))
 	s.Logger.Info(fmt.Sprintf("Number of source locations: %d", len(run.SourceLocations)))
