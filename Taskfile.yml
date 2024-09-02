@@ -36,8 +36,3 @@ tasks:
   dev:test:
     cmds:
       - ./scripts/go_test.sh
-
-  dev:pre-commit:
-    cmds:
-      - task: dev:lint
-      - task: dev:test

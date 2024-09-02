@@ -14,5 +14,6 @@
 # limitations under the License.
 
 
-
-task dev:pre-commit
+./scripts/add_license.sh
+./scripts/check_gofmt.sh
+./scripts/golangci_lint.sh
