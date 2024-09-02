@@ -70,7 +70,7 @@ func (l FileSystemSourceLoader) Supports(target string) bool {
 	// given our previous target path check, this will never happen.
 
 	// Make sure file exists.
-	if _, err := os.Stat(location); os.IsNotExist(err) {
+	if _, err := l.fs.StatPath(location); os.IsNotExist(err) {
 		return false
 	}
 

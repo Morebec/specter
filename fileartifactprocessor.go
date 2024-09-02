@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"github.com/morebec/go-errors/errors"
 	"io/fs"
-	"os"
 	"sync"
 )
 
@@ -45,14 +44,14 @@ var _ Artifact = (*FileArtifact)(nil)
 type FileArtifact struct {
 	Path      string
 	Data      []byte
-	FileMode  os.FileMode
+	FileMode  fs.FileMode
 	WriteMode WriteMode
 }
 
-func NewDirectoryArtifact(path string, fileMode os.FileMode, writeMode WriteMode) *FileArtifact {
+func NewDirectoryArtifact(path string, fileMode fs.FileMode, writeMode WriteMode) *FileArtifact {
 	return &FileArtifact{
 		Path:      path,
-		FileMode:  fileMode | os.ModeDir,
+		FileMode:  fileMode | fs.ModeDir,
 		WriteMode: writeMode,
 		Data:      nil,
 	}
@@ -63,7 +62,7 @@ func (a *FileArtifact) ID() ArtifactID {
 }
 
 func (a *FileArtifact) IsDir() bool {
-	return a.FileMode&os.ModeDir != 0
+	return a.FileMode&fs.ModeDir != 0
 }
 
 // FileArtifactProcessor is a processor responsible for writing Artifact referring to files.
@@ -101,30 +100,48 @@ func (p FileArtifactProcessor) Process(ctx ArtifactProcessingContext) error {
 	return nil
 }
 
-func (p FileArtifactProcessor) processArtifacts(ctx ArtifactProcessingContext, files []*FileArtifact) error {
+func (p FileArtifactProcessor) processArtifacts(ctx ArtifactProcessingContext, fileArtifacts []*FileArtifact) error {
 	errs := errors.NewGroup(FileArtifactProcessorProcessingFailedErrorCode)
+
+	// Directories need to be created before files to ensure their parent directory exists at the moment of write.
+	// Separate directories and files.
+	var files []*FileArtifact
+	var directories []*FileArtifact
+	for _, fa := range fileArtifacts {
+		if fa.IsDir() {
+			directories = append(directories, fa)
+		} else {
+			files = append(files, fa)
+		}
+	}
+
+	// Create directories sequentially.
+	// We delegate the responsibility of the caller to have provided the directories in the right order.
+	for _, d := range directories {
+		if err := p.processFileArtifact(ctx, d); err != nil {
+			ctx.Logger.Error(fmt.Sprintf("failed writing directory artifact at %q: %s", d.Path, err))
+			errs = errs.Append(err)
+		}
+	}
+
+	// Process files concurrently
 	var mu sync.Mutex
 	var wg sync.WaitGroup
-
 	for _, file := range files {
 		wg.Add(1)
-		go func(ctx ArtifactProcessingContext, file *FileArtifact) {
+		go func(file *FileArtifact) {
 			defer wg.Done()
 			if err := p.processFileArtifact(ctx, file); err != nil {
-				ctx.Logger.Error(fmt.Sprintf("failed writing artifact file at %q: %s", file.ID(), err))
+				ctx.Logger.Error(fmt.Sprintf("failed writing artifact file at %q: %s", file.Path, err))
 				mu.Lock()
-				defer mu.Unlock()
 				errs = errs.Append(err)
+				mu.Unlock()
 			}
-		}(ctx, file)
+		}(file)
 	}
 	wg.Wait()
 
-	if errs.HasErrors() {
-		return errs
-	}
-
-	return nil
+	return errors.GroupOrNil(errs)
 }
 
 func (p FileArtifactProcessor) findFileArtifactsFromContext(ctx ArtifactProcessingContext) []*FileArtifact {
@@ -181,13 +198,13 @@ func (p FileArtifactProcessor) processFileArtifact(ctx ArtifactProcessingContext
 	if fa.IsDir() {
 		ctx.Logger.Info(fmt.Sprintf("Creating directory %q ...", filePath))
 		ctx.Logger.Trace(fmt.Sprintf("making directory %q for %q ...", filePath, fa.ID()))
-		if err := p.FileSystem.WriteFile(filePath, fa.Data, os.ModePerm); err != nil {
+		if err := p.FileSystem.WriteFile(filePath, fa.Data, fs.ModePerm); err != nil {
 			return err
 		}
 	} else {
 		ctx.Logger.Info(fmt.Sprintf("Writing file %q ...", filePath))
 		ctx.Logger.Trace(fmt.Sprintf("creating file %q for %q ...", filePath, fa.ID()))
-		if err := p.FileSystem.WriteFile(filePath, fa.Data, os.ModePerm); err != nil {
+		if err := p.FileSystem.WriteFile(filePath, fa.Data, fs.ModePerm); err != nil {
 			return err
 		}
 	}

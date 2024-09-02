@@ -39,7 +39,7 @@ type FileSystem interface {
 	// StatPath returns file information for the specified location. This typically
 	// includes details like size, modification time, and whether the path is a file
 	// or directory.
-	StatPath(location string) (os.FileInfo, error)
+	StatPath(location string) (fs.FileInfo, error)
 
 	// WalkDir traverses the directory tree rooted at the specified path, calling the
 	// provided function for each file or directory encountered. This allows for
@@ -97,7 +97,7 @@ func (l LocalFileSystem) WalkDir(dirPath string, f func(path string, d fs.DirEnt
 	return filepath.WalkDir(dirPath, f)
 }
 
-func (l LocalFileSystem) StatPath(location string) (os.FileInfo, error) {
+func (l LocalFileSystem) StatPath(location string) (fs.FileInfo, error) {
 	return os.Stat(location)
 }
 
