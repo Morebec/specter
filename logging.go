@@ -22,9 +22,7 @@ import (
 	"sync"
 )
 
-// Logger interface to be used by specter and processors to perform logging.
-// implementations can be made for different scenarios, such as artifactting to a file, stderr, silencing the logger etc.
-// The logger only provides contextual logging.
+// Logger interface to be used by a Pipeline and its processors to perform logging.
 type Logger interface {
 	// Trace should only be used for debugging purposes.
 	Trace(msg string)
@@ -35,7 +33,7 @@ type Logger interface {
 	// Warning is used to indicate events that could be problematic but that do not constitute errors.
 	Warning(msg string)
 
-	// Error is used to indicate that an error has occurred within specter.
+	// Error is used to indicate that an error has occurred.
 	Error(msg string)
 
 	// Success is used to indicate that a given action was performed successfully.

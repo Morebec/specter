@@ -21,43 +21,43 @@ import (
 )
 
 func TestWithDefaultLogger(t *testing.T) {
-	s := New(WithDefaultLogger())
+	s := NewPipeline(WithDefaultLogger())
 	assert.IsType(t, &DefaultLogger{}, s.Logger)
 }
 
 func TestWithSourceLoaders(t *testing.T) {
 	loader := &FileSystemSourceLoader{}
-	s := New(WithSourceLoaders(loader))
+	s := NewPipeline(WithSourceLoaders(loader))
 	require.Contains(t, s.SourceLoaders, loader)
 }
 
 func TestWithLoaders(t *testing.T) {
 	loader := &HCLGenericSpecLoader{}
-	s := New(WithLoaders(loader))
+	s := NewPipeline(WithLoaders(loader))
 	require.Contains(t, s.Loaders, loader)
 }
 
 func TestWithProcessors(t *testing.T) {
 	processor := LintingProcessor{}
-	s := New(WithProcessors(processor))
+	s := NewPipeline(WithProcessors(processor))
 	require.Contains(t, s.Processors, processor)
 }
 
 func TestWithArtifactProcessors(t *testing.T) {
 	processor := FileArtifactProcessor{}
-	s := New(WithArtifactProcessors(processor))
+	s := NewPipeline(WithArtifactProcessors(processor))
 	require.Contains(t, s.ArtifactProcessors, processor)
 }
 
 func TestWithTimeProvider(t *testing.T) {
 	tp := CurrentTimeProvider()
-	s := New(WithTimeProvider(tp))
+	s := NewPipeline(WithTimeProvider(tp))
 	require.NotNil(t, s.TimeProvider)
 }
 
 func TestWithArtifactRegistry(t *testing.T) {
 	registry := &InMemoryArtifactRegistry{}
-	s := New(WithArtifactRegistry(registry))
+	s := NewPipeline(WithArtifactRegistry(registry))
 	require.Equal(t, s.ArtifactRegistry, registry)
 }
 
@@ -65,7 +65,7 @@ func TestWithJSONArtifactRegistry(t *testing.T) {
 	fs := &mockFileSystem{}
 	filePath := DefaultJSONArtifactRegistryFileName
 
-	s := New(WithJSONArtifactRegistry(filePath, fs))
+	s := NewPipeline(WithJSONArtifactRegistry(filePath, fs))
 	require.IsType(t, &JSONArtifactRegistry{}, s.ArtifactRegistry)
 	registry := s.ArtifactRegistry.(*JSONArtifactRegistry)
 

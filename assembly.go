@@ -19,9 +19,9 @@ import (
 	"os"
 )
 
-// New allows creating a new specter instance using the provided options.
-func New(opts ...Option) *Specter {
-	s := &Specter{
+// NewPipeline creates a new instance of a *Pipeline using the provided options.
+func NewPipeline(opts ...PipelineOption) *Pipeline {
+	s := &Pipeline{
 		Logger:       NewDefaultLogger(DefaultLoggerConfig{DisableColors: false, Writer: os.Stdout}),
 		TimeProvider: CurrentTimeProvider(),
 	}
@@ -31,65 +31,65 @@ func New(opts ...Option) *Specter {
 	return s
 }
 
-// Option represents an option to configure a specter instance.
-type Option func(s *Specter)
+// PipelineOption represents an option to configure a Pipeline instance.
+type PipelineOption func(s *Pipeline)
 
-// WithLogger configures the Logger of a Specter instance.
-func WithLogger(l Logger) Option {
-	return func(s *Specter) {
+// WithLogger configures the Logger of a Pipeline instance.
+func WithLogger(l Logger) PipelineOption {
+	return func(s *Pipeline) {
 		s.Logger = l
 	}
 }
 
-// WithSourceLoaders configures the SourceLoader of a Specter instance.
-func WithSourceLoaders(loaders ...SourceLoader) Option {
-	return func(s *Specter) {
+// WithSourceLoaders configures the SourceLoader of a Pipeline instance.
+func WithSourceLoaders(loaders ...SourceLoader) PipelineOption {
+	return func(s *Pipeline) {
 		s.SourceLoaders = append(s.SourceLoaders, loaders...)
 	}
 }
 
-// WithLoaders configures the SpecificationLoader of a Specter instance.
-func WithLoaders(loaders ...SpecificationLoader) Option {
-	return func(s *Specter) {
+// WithLoaders configures the SpecificationLoader of a Pipeline instance.
+func WithLoaders(loaders ...SpecificationLoader) PipelineOption {
+	return func(s *Pipeline) {
 		s.Loaders = append(s.Loaders, loaders...)
 	}
 }
 
-// WithProcessors configures the SpecProcess of a Specter instance.
-func WithProcessors(processors ...SpecificationProcessor) Option {
-	return func(s *Specter) {
+// WithProcessors configures the SpecProcess of a Pipeline instance.
+func WithProcessors(processors ...SpecificationProcessor) PipelineOption {
+	return func(s *Pipeline) {
 		s.Processors = append(s.Processors, processors...)
 	}
 }
 
-// WithArtifactProcessors configures the ArtifactProcessor of a Specter instance.
-func WithArtifactProcessors(processors ...ArtifactProcessor) Option {
-	return func(s *Specter) {
+// WithArtifactProcessors configures the ArtifactProcessor of a Pipeline instance.
+func WithArtifactProcessors(processors ...ArtifactProcessor) PipelineOption {
+	return func(s *Pipeline) {
 		s.ArtifactProcessors = append(s.ArtifactProcessors, processors...)
 	}
 }
 
-// WithTimeProvider configures the TimeProvider of a Specter instance.
-func WithTimeProvider(tp TimeProvider) Option {
-	return func(s *Specter) {
+// WithTimeProvider configures the TimeProvider of a Pipeline instance.
+func WithTimeProvider(tp TimeProvider) PipelineOption {
+	return func(s *Pipeline) {
 		s.TimeProvider = tp
 	}
 }
 
-// WithArtifactRegistry configures the ArtifactRegistry of a Specter instance.
-func WithArtifactRegistry(r ArtifactRegistry) Option {
-	return func(s *Specter) {
+// WithArtifactRegistry configures the ArtifactRegistry of a Pipeline instance.
+func WithArtifactRegistry(r ArtifactRegistry) PipelineOption {
+	return func(s *Pipeline) {
 		s.ArtifactRegistry = r
 	}
 }
 
-// DEFAULTS SPECTER OPTIONS
+// DEFAULTS PIPELINE OPTIONS
 
-func WithDefaultLogger() Option {
+func WithDefaultLogger() PipelineOption {
 	return WithLogger(NewDefaultLogger(DefaultLoggerConfig{DisableColors: false, Writer: os.Stdout}))
 }
 
-func WithJSONArtifactRegistry(fileName string, fs FileSystem) Option {
+func WithJSONArtifactRegistry(fileName string, fs FileSystem) PipelineOption {
 	return WithArtifactRegistry(NewJSONArtifactRegistry(fileName, fs))
 }
 

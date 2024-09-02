@@ -34,7 +34,7 @@ func TestSpecter_Run(t *testing.T) {
 	testDay := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	type given struct {
-		specter func() *Specter
+		pipeline func() *Pipeline
 	}
 
 	type when struct {
@@ -57,8 +57,8 @@ func TestSpecter_Run(t *testing.T) {
 		{
 			name: "WHEN no source locations provided THEN return with no error",
 			given: given{
-				specter: func() *Specter {
-					return New(
+				pipeline: func() *Pipeline {
+					return NewPipeline(
 						WithTimeProvider(staticTimeProvider(testDay)),
 					)
 				},
@@ -83,8 +83,8 @@ func TestSpecter_Run(t *testing.T) {
 		{
 			name: "WHEN no execution mode provided THEN assume Preview mode",
 			given: given{
-				specter: func() *Specter {
-					return New(
+				pipeline: func() *Pipeline {
+					return NewPipeline(
 						WithTimeProvider(staticTimeProvider(testDay)),
 					)
 				},
@@ -109,8 +109,8 @@ func TestSpecter_Run(t *testing.T) {
 		{
 			name: "WHEN no context is provided THEN assume a context.Background and do not fail",
 			given: given{
-				specter: func() *Specter {
-					return New(
+				pipeline: func() *Pipeline {
+					return NewPipeline(
 						WithTimeProvider(staticTimeProvider(testDay)),
 					)
 				},
@@ -135,7 +135,7 @@ func TestSpecter_Run(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := tt.given.specter()
+			s := tt.given.pipeline()
 
 			actualResult, err := s.Run(tt.when.context, tt.when.sourceLocations, tt.when.executionMode)
 			if tt.then.expectedError != nil {
