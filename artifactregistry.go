@@ -17,6 +17,7 @@ package specter
 import (
 	"encoding/json"
 	"github.com/morebec/go-errors/errors"
+	"io/fs"
 	"os"
 	"slices"
 	"sync"
@@ -207,7 +208,7 @@ func (r *JSONArtifactRegistry) Save() error {
 	if err != nil {
 		return errors.Wrap(err, "failed generating artifact file registry")
 	}
-	if err := r.FileSystem.WriteFile(r.FilePath, js, os.ModePerm); err != nil {
+	if err := r.FileSystem.WriteFile(r.FilePath, js, fs.ModePerm); err != nil {
 		return errors.Wrap(err, "failed generating artifact file registry")
 	}
 
