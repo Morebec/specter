@@ -14,14 +14,21 @@
 # limitations under the License.
 
 
-if ! command -v gremlins &> /dev/null
-then
-    echo "/!\ gremlins is not installed, installing ..."
-    # binary will be $(go env GOPATH)/bin/gremlins
-    go install github.com/go-gremlins/gremlins/cmd/gremlins@v0.5.0
+  if ! command -v go-mod-upgrade &> /dev/null
+  then
+      echo "/!\ go-mod-upgrade is not installed, installing ..."
+      # binary will be $(go env GOPATH)/bin/go-mod-upgrade
+      go install github.com/oligot/go-mod-upgrade@latest
 
-    echo "===> gremlins was installed."
-fi
+      echo "===> go-mod-upgrade was installed."
+  fi
 
-echo "===> Running gremlins ..."
-gremlins unleash && echo "> Mutation tests executed successfully."
+  echo "===> Running go-mod-upgrade ..."
+  echo "Colors in module names help identify the update type:
+  - GREEN for a minor update
+  - YELLOW for a patch update
+  - RED for a prerelease update
+"
+  go-mod-upgrade
+  echo "Running go mod tidy ..."
+  go mod tidy
