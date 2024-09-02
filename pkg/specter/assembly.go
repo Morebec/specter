@@ -15,7 +15,6 @@
 package specter
 
 import (
-	"github.com/hashicorp/hcl/v2/hclparse"
 	"os"
 )
 
@@ -114,12 +113,5 @@ func NewJSONArtifactRegistry(fileName string, fs FileSystem) *JSONArtifactRegist
 		FilePath:                 fileName,
 		TimeProvider:             CurrentTimeProvider(),
 		FileSystem:               fs,
-	}
-}
-
-// NewHCLGenericSpecLoader this  SpecificationLoader will load all Specifications to instances of GenericSpecification.
-func NewHCLGenericSpecLoader() *HCLGenericSpecLoader {
-	return &HCLGenericSpecLoader{
-		Parser: *hclparse.NewParser(),
 	}
 }

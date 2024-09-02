@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package specter
+package specter_test
 
 import (
 	"bytes"
 	"github.com/logrusorgru/aurora"
+	. "github.com/morebec/specter/pkg/specter"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"os"
@@ -35,11 +36,11 @@ func TestNewDefaultLogger(t *testing.T) {
 			given: DefaultLoggerConfig{},
 			want: func(l *DefaultLogger) {
 				require.NotNil(t, l)
-				require.Equal(t, os.Stdout, l.writer)
+				require.Equal(t, os.Stdout, l.Writer)
 
 				// Check colors enabled by capturing artifact
 				buffer := bytes.Buffer{}
-				l.writer = &buffer
+				l.Writer = &buffer
 				l.Success("hello world")
 
 				assert.Equal(t, aurora.Green("hello world").String()+"\n", buffer.String())
@@ -53,7 +54,7 @@ func TestNewDefaultLogger(t *testing.T) {
 			want: func(l *DefaultLogger) {
 				// Check colors enabled
 				buffer := bytes.Buffer{}
-				l.writer = &buffer
+				l.Writer = &buffer
 				l.Success("hello world")
 
 				assert.Equal(t, "hello world\n", buffer.String())

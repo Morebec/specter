@@ -12,22 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package specter
+package specterutils
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/morebec/specter/pkg/specter"
+)
 
 type SpecificationVersion string
 
 type HasVersion interface {
-	Specification
+	specter.Specification
 
 	Version() SpecificationVersion
 }
 
 func HasVersionMustHaveAVersionLinter(severity LinterResultSeverity) SpecificationLinter {
-	return SpecificationLinterFunc(func(specifications SpecificationGroup) LinterResultSet {
+	return SpecificationLinterFunc(func(specifications specter.SpecificationGroup) LinterResultSet {
 		var r LinterResultSet
-		specs := specifications.Select(func(s Specification) bool {
+		specs := specifications.Select(func(s specter.Specification) bool {
 			if _, ok := s.(HasVersion); ok {
 				return true
 			}
