@@ -15,10 +15,17 @@
 version: '3'
 
 tasks:
+  default:
+    cmds:
+      - task --list-all
   dev:install:
     cmds:
       - chmod +x ./scripts/*
       - ./scripts/husky.sh
+
+  dev:deps-upgrade:
+    cmds:
+      - ./scripts/go-mod-upgrade.sh
 
   dev:lint:
     cmds:
