@@ -198,7 +198,7 @@ func (p FileArtifactProcessor) processFileArtifact(ctx ArtifactProcessingContext
 	if fa.IsDir() {
 		ctx.Logger.Info(fmt.Sprintf("Creating directory %q ...", filePath))
 		ctx.Logger.Trace(fmt.Sprintf("making directory %q for %q ...", filePath, fa.ID()))
-		if err := p.FileSystem.WriteFile(filePath, fa.Data, fs.ModePerm); err != nil {
+		if err := p.FileSystem.Mkdir(filePath, fs.ModePerm); err != nil {
 			return err
 		}
 	} else {

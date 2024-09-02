@@ -97,6 +97,10 @@ func (m *mockFileSystem) Mkdir(dirPath string, _ fs.FileMode) error {
 		return m.mkdirErr
 	}
 
+	if m.dirs == nil {
+		m.dirs = map[string]bool{}
+	}
+
 	m.dirs[dirPath] = true
 
 	return nil

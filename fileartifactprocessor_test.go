@@ -364,7 +364,7 @@ func TestWriteFileArtifactProcessor_Process(t *testing.T) {
 			name: "GIVEN file system cant make directories THEN an error should be returned",
 			given: processGiven{
 				fileSystem: &mockFileSystem{
-					writeFileErr: assert.AnError,
+					mkdirErr: assert.AnError,
 				},
 			},
 			when: processWhen{
