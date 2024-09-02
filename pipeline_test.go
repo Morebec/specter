@@ -23,7 +23,7 @@ import (
 )
 
 func TestRunResult_ExecutionTime(t *testing.T) {
-	r := RunResult{}
+	r := PipelineResult{}
 	r.StartedAt = time.Date(2024, 01, 01, 0, 0, 0, 0, time.UTC)
 	r.EndedAt = time.Date(2024, 01, 01, 1, 0, 0, 0, time.UTC)
 
@@ -44,7 +44,7 @@ func TestSpecter_Run(t *testing.T) {
 	}
 
 	type then struct {
-		expectedRunResult RunResult
+		expectedRunResult PipelineResult
 		expectedError     assert.ErrorAssertionFunc
 	}
 
@@ -69,7 +69,7 @@ func TestSpecter_Run(t *testing.T) {
 				executionMode:   PreviewMode,
 			},
 			then: then{
-				expectedRunResult: RunResult{
+				expectedRunResult: PipelineResult{
 					RunMode:        PreviewMode,
 					Sources:        nil,
 					Specifications: nil,
@@ -95,7 +95,7 @@ func TestSpecter_Run(t *testing.T) {
 				executionMode:   "", // No execution mode should default to preview
 			},
 			then: then{
-				expectedRunResult: RunResult{
+				expectedRunResult: PipelineResult{
 					RunMode:        PreviewMode,
 					Sources:        nil,
 					Specifications: nil,
@@ -121,7 +121,7 @@ func TestSpecter_Run(t *testing.T) {
 				executionMode:   "", // No execution mode should default to preview
 			},
 			then: then{
-				expectedRunResult: RunResult{
+				expectedRunResult: PipelineResult{
 					RunMode:        PreviewMode,
 					Sources:        nil,
 					Specifications: nil,

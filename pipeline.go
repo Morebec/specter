@@ -47,7 +47,7 @@ type Pipeline struct {
 	TimeProvider       TimeProvider
 }
 
-type RunResult struct {
+type PipelineResult struct {
 	StartedAt time.Time
 	EndedAt   time.Time
 
@@ -58,12 +58,12 @@ type RunResult struct {
 	RunMode         RunMode
 }
 
-func (r RunResult) ExecutionTime() time.Duration {
+func (r PipelineResult) ExecutionTime() time.Duration {
 	return r.EndedAt.Sub(r.StartedAt)
 }
 
 // Run the pipeline from start to finish.
-func (p Pipeline) Run(ctx context.Context, sourceLocations []string, runMode RunMode) (run RunResult, err error) {
+func (p Pipeline) Run(ctx context.Context, sourceLocations []string, runMode RunMode) (result PipelineResult, err error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -73,58 +73,58 @@ func (p Pipeline) Run(ctx context.Context, sourceLocations []string, runMode Run
 		runMode = defaultRunMode
 	}
 
-	run = RunResult{
+	result = PipelineResult{
 		StartedAt:       p.TimeProvider(),
 		SourceLocations: sourceLocations,
 		RunMode:         runMode,
 	}
 
 	defer func() {
-		run.EndedAt = p.TimeProvider()
-		p.logRunResult(run)
+		result.EndedAt = p.TimeProvider()
+		p.logResult(result)
 	}()
 
 	// Load sources
-	run.Sources, err = p.loadSources(ctx, sourceLocations)
+	result.Sources, err = p.loadSources(ctx, sourceLocations)
 	if err != nil {
 		e := errors.WrapWithMessage(err, SourceLoadingFailedErrorCode, "failed loading sources")
 		p.Logger.Error(e.Error())
-		return run, e
+		return result, e
 	}
 
 	// Load Specifications
-	run.Specifications, err = p.loadSpecifications(ctx, run.Sources)
+	result.Specifications, err = p.loadSpecifications(ctx, result.Sources)
 	if err != nil {
 		e := errors.WrapWithMessage(err, SpecificationLoadingFailedErrorCode, "failed loading specifications")
 		p.Logger.Error(e.Error())
-		return run, e
+		return result, e
 	}
 
 	// Process Specifications
-	run.Artifacts, err = p.processSpecifications(ctx, run.Specifications)
+	result.Artifacts, err = p.processSpecifications(ctx, result.Specifications)
 	if err != nil {
 		e := errors.WrapWithMessage(err, SpecificationProcessingFailedErrorCode, "failed processing specifications")
 		p.Logger.Error(e.Error())
-		return run, e
+		return result, e
 	}
 
 	// stop here if preview
-	if run.RunMode == PreviewMode {
-		return run, nil
+	if result.RunMode == PreviewMode {
+		return result, nil
 	}
 
 	// Process Artifact
-	if err = p.processArtifacts(ctx, run.Specifications, run.Artifacts); err != nil {
+	if err = p.processArtifacts(ctx, result.Specifications, result.Artifacts); err != nil {
 		e := errors.WrapWithMessage(err, ArtifactProcessingFailedErrorCode, "failed processing artifacts")
 		p.Logger.Error(e.Error())
-		return run, e
+		return result, e
 	}
 
 	p.Logger.Success("\nProcessing completed successfully.")
-	return run, nil
+	return result, nil
 }
 
-func (p Pipeline) logRunResult(run RunResult) {
+func (p Pipeline) logResult(run PipelineResult) {
 	p.Logger.Info(fmt.Sprintf("\nRun Mode: %s", run.RunMode))
 	p.Logger.Info(fmt.Sprintf("Started At: %s", run.StartedAt))
 	p.Logger.Info(fmt.Sprintf("Ended at: %s", run.EndedAt))
