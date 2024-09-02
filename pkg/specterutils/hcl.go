@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package specter
+package specterutils
 
 import (
 	"fmt"
@@ -21,25 +21,33 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsimple"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/morebec/go-errors/errors"
+	"github.com/morebec/specter/pkg/specter"
 	"github.com/zclconf/go-cty/cty"
 )
 
 const (
-	HCLSourceFormat SourceFormat = "hcl"
+	HCLSourceFormat specter.SourceFormat = "hcl"
 )
 
-const InvalidHCLErrorCode = "invalid_hcl"
+const InvalidHCLErrorCode = "specter.spec_loading.invalid_hcl"
+
+// NewHCLGenericSpecLoader this  SpecificationLoader will load all Specifications to instances of GenericSpecification.
+func NewHCLGenericSpecLoader() *HCLGenericSpecLoader {
+	return &HCLGenericSpecLoader{
+		Parser: *hclparse.NewParser(),
+	}
+}
 
 // HCLGenericSpecLoader this SpecificationLoader loads Specifications as GenericSpecification.
 type HCLGenericSpecLoader struct {
 	hclparse.Parser
 }
 
-func (l HCLGenericSpecLoader) SupportsSource(s Source) bool {
+func (l HCLGenericSpecLoader) SupportsSource(s specter.Source) bool {
 	return s.Format == HCLSourceFormat
 }
 
-func (l HCLGenericSpecLoader) Load(s Source) ([]Specification, error) {
+func (l HCLGenericSpecLoader) Load(s specter.Source) ([]specter.Specification, error) {
 	ctx := &hcl.EvalContext{
 		Variables: map[string]cty.Value{},
 	}
@@ -47,7 +55,7 @@ func (l HCLGenericSpecLoader) Load(s Source) ([]Specification, error) {
 	// Although the caller is responsible for calling HCLGenericSpecLoader.SupportsSource, guard against it.
 	if !l.SupportsSource(s) {
 		return nil, errors.NewWithMessage(
-			UnsupportedSourceErrorCode,
+			specter.UnsupportedSourceErrorCode,
 			fmt.Sprintf(
 				"invalid specification source %q, unsupported format %q",
 				s.Location,
@@ -61,7 +69,7 @@ func (l HCLGenericSpecLoader) Load(s Source) ([]Specification, error) {
 		return nil, errors.Wrap(diags, InvalidHCLErrorCode)
 	}
 
-	var specifications []Specification
+	var specifications []specter.Specification
 
 	body := file.Body.(*hclsyntax.Body)
 	for _, block := range body.Blocks {
@@ -99,8 +107,8 @@ func (l HCLGenericSpecLoader) Load(s Source) ([]Specification, error) {
 
 		// Create specification and add to list
 		specifications = append(specifications, &GenericSpecification{
-			name:       SpecificationName(block.Labels[0]),
-			typ:        SpecificationType(block.Type),
+			name:       specter.SpecificationName(block.Labels[0]),
+			typ:        specter.SpecificationType(block.Type),
 			source:     s,
 			Attributes: specAttributes,
 		})
@@ -164,7 +172,7 @@ type HCLSpecLoaderFileConfigurationProvider func() HCLFileConfig
 
 // HCLFileConfig interface that is to be implemented to define the structure of HCL specification files.
 type HCLFileConfig interface {
-	Specifications() []Specification
+	Specifications() []specter.Specification
 }
 
 // HCLVariableConfig represents a block configuration that allows defining variables.
@@ -192,11 +200,11 @@ func NewHCLSpecLoader(fileConfigProvider HCLSpecLoaderFileConfigurationProvider)
 	}
 }
 
-func (l HCLSpecLoader) Load(s Source) ([]Specification, error) {
+func (l HCLSpecLoader) Load(s specter.Source) ([]specter.Specification, error) {
 	// Although the caller is responsible for calling HCLGenericSpecLoader.SupportsSource, guard against it.
 	if !l.SupportsSource(s) {
 		return nil, errors.NewWithMessage(
-			UnsupportedSourceErrorCode,
+			specter.UnsupportedSourceErrorCode,
 			fmt.Sprintf(
 				"invalid specification source %q, unsupported format %q",
 				s.Location,
@@ -243,6 +251,6 @@ func (l HCLSpecLoader) Load(s Source) ([]Specification, error) {
 	return specifications, nil
 }
 
-func (l HCLSpecLoader) SupportsSource(s Source) bool {
+func (l HCLSpecLoader) SupportsSource(s specter.Source) bool {
 	return s.Format == HCLSourceFormat
 }

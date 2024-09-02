@@ -12,165 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package specter
+package specter_test
 
 import (
+	. "github.com/morebec/specter/pkg/specter"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/zclconf/go-cty/cty"
 	"testing"
 )
-
-func TestGenericSpecification_Description(t *testing.T) {
-	tests := []struct {
-		name  string
-		given *GenericSpecification
-		then  string
-	}{
-		{
-			name: "GIVEN a specification with a description attribute THEN return the description",
-			given: &GenericSpecification{
-				Attributes: []GenericSpecAttribute{
-					{
-						Name:  "description",
-						Value: GenericValue{cty.StringVal("This is a test specification")},
-					},
-				},
-			},
-			then: "This is a test specification",
-		},
-		{
-			name: "GIVEN a specification without a description attribute THEN return an empty string",
-			given: &GenericSpecification{
-				Attributes: []GenericSpecAttribute{},
-			},
-			then: "",
-		},
-		{
-			name: "GIVEN a specification with a non-string description THEN return an empty string",
-			given: &GenericSpecification{
-				Attributes: []GenericSpecAttribute{
-					{
-						Name:  "description",
-						Value: GenericValue{cty.NumberIntVal(42)}, // Not a string value
-					},
-				},
-			},
-			then: "",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := tt.given.Description()
-			assert.Equal(t, tt.then, got)
-		})
-	}
-}
-
-func TestGenericSpecification_Attribute(t *testing.T) {
-	tests := []struct {
-		name  string
-		given *GenericSpecification
-		when  string
-		then  *GenericSpecAttribute
-	}{
-		{
-			name: "GIVEN a specification with a specific attribute WHEN Attribute is called THEN return the attribute",
-			given: &GenericSpecification{
-				Attributes: []GenericSpecAttribute{
-					{
-						Name:  "attr1",
-						Value: GenericValue{cty.StringVal("value1")},
-					},
-				},
-			},
-			when: "attr1",
-			then: &GenericSpecAttribute{
-				Name:  "attr1",
-				Value: GenericValue{cty.StringVal("value1")},
-			},
-		},
-		{
-			name: "GIVEN a specification without the specified attribute WHEN Attribute is called THEN return nil",
-			given: &GenericSpecification{
-				Attributes: []GenericSpecAttribute{},
-			},
-			when: "nonexistent",
-			then: nil,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := tt.given.Attribute(tt.when)
-			assert.Equal(t, tt.then, got)
-		})
-	}
-}
-
-func TestGenericSpecification_HasAttribute(t *testing.T) {
-	tests := []struct {
-		name  string
-		given *GenericSpecification
-		when  string
-		then  bool
-	}{
-		{
-			name: "GIVEN a specification with a specific attribute WHEN HasAttribute is called THEN return true",
-			given: &GenericSpecification{
-				Attributes: []GenericSpecAttribute{
-					{
-						Name:  "attr1",
-						Value: GenericValue{cty.StringVal("value1")},
-					},
-				},
-			},
-			when: "attr1",
-			then: true,
-		},
-		{
-			name: "GIVEN a specification without the specified attribute WHEN HasAttribute is called THEN return false",
-			given: &GenericSpecification{
-				Attributes: []GenericSpecAttribute{},
-			},
-			when: "nonexistent",
-			then: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := tt.given.HasAttribute(tt.when)
-			assert.Equal(t, tt.then, got)
-		})
-	}
-}
-
-func TestGenericSpecification_SetSource(t *testing.T) {
-	tests := []struct {
-		name  string
-		given *GenericSpecification
-		when  Source
-		then  Source
-	}{
-		{
-			name: "GIVEN a specification WHEN SetSource is called THEN updates the source",
-			given: &GenericSpecification{
-				source: Source{Location: "initial/path"},
-			},
-			when: Source{Location: "new/path"},
-			then: Source{Location: "new/path"},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.given.SetSource(tt.when)
-			assert.Equal(t, tt.then, tt.given.Source())
-		})
-	}
-}
 
 // Test cases for NewSpecGroup
 func TestNewSpecGroup(t *testing.T) {
@@ -193,13 +42,13 @@ func TestNewSpecGroup(t *testing.T) {
 		{
 			name: "GIVEN multiple specifications WHEN calling NewSpecGroup THEN return a group with those specifications",
 			given: []Specification{
-				NewGenericSpecification("spec1", "type", Source{}),
-				NewGenericSpecification("spec2", "type", Source{}),
+				&SpecificationStub{name: "spec1", typeName: "type", source: Source{}},
+				&SpecificationStub{name: "spec2", typeName: "type", source: Source{}},
 			},
 			when: func() SpecificationGroup {
 				return NewSpecGroup(
-					NewGenericSpecification("spec1", "type", Source{}),
-					NewGenericSpecification("spec2", "type", Source{}),
+					&SpecificationStub{name: "spec1", typeName: "type", source: Source{}},
+					&SpecificationStub{name: "spec2", typeName: "type", source: Source{}},
 				)
 			},
 			then: func(result SpecificationGroup) bool {
@@ -231,28 +80,28 @@ func TestSpecificationGroup_Merge(t *testing.T) {
 		{
 			name: "GIVEN two disjoint groups THEN return a group with all specifications",
 			given: NewSpecGroup(
-				NewGenericSpecification("spec1", "type", Source{}),
+				&SpecificationStub{name: "spec1", typeName: "type", source: Source{}},
 			),
 			when: NewSpecGroup(
-				NewGenericSpecification("spec2", "type", Source{}),
+				&SpecificationStub{name: "spec2", typeName: "type", source: Source{}},
 			),
 			then: NewSpecGroup(
-				NewGenericSpecification("spec1", "type", Source{}),
-				NewGenericSpecification("spec2", "type", Source{}),
+				&SpecificationStub{name: "spec1", typeName: "type", source: Source{}},
+				&SpecificationStub{name: "spec2", typeName: "type", source: Source{}},
 			),
 		},
 		{
 			name: "GIVEN two groups with overlapping specifications THEN return a group without duplicates",
 			given: NewSpecGroup(
-				NewGenericSpecification("spec1", "type", Source{}),
+				&SpecificationStub{name: "spec1", typeName: "type", source: Source{}},
 			),
 			when: NewSpecGroup(
-				NewGenericSpecification("spec1", "type", Source{}),
-				NewGenericSpecification("spec2", "type", Source{}),
+				&SpecificationStub{name: "spec1", typeName: "type", source: Source{}},
+				&SpecificationStub{name: "spec2", typeName: "type", source: Source{}},
 			),
 			then: NewSpecGroup(
-				NewGenericSpecification("spec1", "type", Source{}),
-				NewGenericSpecification("spec2", "type", Source{}),
+				&SpecificationStub{name: "spec1", typeName: "type", source: Source{}},
+				&SpecificationStub{name: "spec2", typeName: "type", source: Source{}},
 			),
 		},
 	}
@@ -275,7 +124,7 @@ func TestSpecificationGroup_Select(t *testing.T) {
 		{
 			name: "GIVEN no specifications matches, THEN return an empty group",
 			given: SpecificationGroup{
-				NewGenericSpecification("name", "type", Source{}),
+				&SpecificationStub{name: "spec2name", typeName: "type", source: Source{}},
 			},
 			when: func(s Specification) bool {
 				return false
@@ -285,14 +134,14 @@ func TestSpecificationGroup_Select(t *testing.T) {
 		{
 			name: "GIVEN specifications matches, THEN return a group with only matching specifications",
 			given: SpecificationGroup{
-				NewGenericSpecification("spec1", "type", Source{}),
-				NewGenericSpecification("spec2", "type", Source{}),
+				&SpecificationStub{name: "spec1", typeName: "type", source: Source{}},
+				&SpecificationStub{name: "spec2", typeName: "type", source: Source{}},
 			},
 			when: func(s Specification) bool {
 				return s.Name() == "spec2"
 			},
 			then: SpecificationGroup{
-				NewGenericSpecification("spec2", "type", Source{}),
+				&SpecificationStub{name: "spec2", typeName: "type", source: Source{}},
 			},
 		},
 	}
@@ -314,7 +163,7 @@ func TestSpecificationGroup_SelectType(t *testing.T) {
 		{
 			name: "GIVEN no specifications matches, THEN return an empty group",
 			given: SpecificationGroup{
-				NewGenericSpecification("name", "type", Source{}),
+				&SpecificationStub{name: "spec2name", typeName: "type", source: Source{}},
 			},
 			when: "not_found",
 			then: SpecificationGroup{},
@@ -322,12 +171,12 @@ func TestSpecificationGroup_SelectType(t *testing.T) {
 		{
 			name: "GIVEN a specification matches, THEN return a group with matching specification",
 			given: SpecificationGroup{
-				NewGenericSpecification("spec1", "type1", Source{}),
-				NewGenericSpecification("spec2", "type2", Source{}),
+				&SpecificationStub{name: "spec1", typeName: "type1", source: Source{}},
+				&SpecificationStub{name: "spec2", typeName: "type2", source: Source{}},
 			},
 			when: "type1",
 			then: SpecificationGroup{
-				NewGenericSpecification("spec1", "type1", Source{}),
+				&SpecificationStub{name: "spec1", typeName: "type1", source: Source{}},
 			},
 		},
 	}
@@ -349,17 +198,17 @@ func TestSpecificationGroup_SelectName(t *testing.T) {
 		{
 			name: "GIVEN a group with multiple specifications WHEN selecting an existing name THEN return the corresponding specification",
 			given: NewSpecGroup(
-				NewGenericSpecification("spec1", "type", Source{}),
-				NewGenericSpecification("spec2", "type", Source{}),
+				&SpecificationStub{name: "spec1", typeName: "type", source: Source{}},
+				&SpecificationStub{name: "spec2", typeName: "type", source: Source{}},
 			),
 			when: "spec2",
-			then: NewGenericSpecification("spec2", "type", Source{}),
+			then: &SpecificationStub{name: "spec2", typeName: "type", source: Source{}},
 		},
 		{
 			name: "GIVEN a group with multiple specifications WHEN selecting a non-existent name THEN return nil",
 			given: NewSpecGroup(
-				NewGenericSpecification("spec1", "type", Source{}),
-				NewGenericSpecification("spec2", "type", Source{}),
+				&SpecificationStub{name: "spec1", typeName: "type", source: Source{}},
+				&SpecificationStub{name: "spec2", typeName: "type", source: Source{}},
 			),
 			when: "spec3",
 			then: nil,
@@ -390,7 +239,7 @@ func TestSpecificationGroup_SelectNames(t *testing.T) {
 		{
 			name: "GIVEN no specifications matches, THEN return a group with no values",
 			given: SpecificationGroup{
-				NewGenericSpecification("name", "type", Source{}),
+				&SpecificationStub{name: "name", typeName: "type", source: Source{}},
 			},
 			when: []SpecificationName{"not_found"},
 			then: SpecificationGroup{},
@@ -398,12 +247,12 @@ func TestSpecificationGroup_SelectNames(t *testing.T) {
 		{
 			name: "GIVEN a specification matches, THEN return a group with matching specification",
 			given: SpecificationGroup{
-				NewGenericSpecification("spec1", "type", Source{}),
-				NewGenericSpecification("spec2", "type", Source{}),
+				&SpecificationStub{name: "spec1", typeName: "type", source: Source{}},
+				&SpecificationStub{name: "spec2", typeName: "type", source: Source{}},
 			},
 			when: []SpecificationName{"spec1"},
 			then: SpecificationGroup{
-				NewGenericSpecification("spec1", "type", Source{}),
+				&SpecificationStub{name: "spec1", typeName: "type", source: Source{}},
 			},
 		},
 	}
@@ -425,20 +274,20 @@ func TestSpecificationGroup_Exclude(t *testing.T) {
 		{
 			name: "GIVEN no specifications matches, THEN return a group with the same values",
 			given: SpecificationGroup{
-				NewGenericSpecification("name", "type", Source{}),
+				&SpecificationStub{name: "name", typeName: "type", source: Source{}},
 			},
 			when: func(s Specification) bool {
 				return false
 			},
 			then: SpecificationGroup{
-				NewGenericSpecification("name", "type", Source{}),
+				&SpecificationStub{name: "name", typeName: "type", source: Source{}},
 			},
 		},
 		{
 			name: "GIVEN specifications matches, THEN return a group without matching specifications",
 			given: SpecificationGroup{
-				NewGenericSpecification("spec1", "type", Source{}),
-				NewGenericSpecification("spec2", "type", Source{}),
+				&SpecificationStub{name: "spec1", typeName: "type", source: Source{}},
+				&SpecificationStub{name: "spec2", typeName: "type", source: Source{}},
 			},
 			when: func(s Specification) bool {
 				return true
@@ -464,22 +313,22 @@ func TestSpecificationGroup_ExcludeType(t *testing.T) {
 		{
 			name: "GIVEN no specifications matches, THEN return a group with the same values",
 			given: SpecificationGroup{
-				NewGenericSpecification("name", "type", Source{}),
+				&SpecificationStub{name: "spec2name", typeName: "type", source: Source{}},
 			},
 			when: "not_found",
 			then: SpecificationGroup{
-				NewGenericSpecification("name", "type", Source{}),
+				&SpecificationStub{name: "spec2name", typeName: "type", source: Source{}},
 			},
 		},
 		{
 			name: "GIVEN a specification matches, THEN return a group without matching specification",
 			given: SpecificationGroup{
-				NewGenericSpecification("spec1", "type1", Source{}),
-				NewGenericSpecification("spec2", "type2", Source{}),
+				&SpecificationStub{name: "spec1", typeName: "type1", source: Source{}},
+				&SpecificationStub{name: "spec2", typeName: "type2", source: Source{}},
 			},
 			when: "type1",
 			then: SpecificationGroup{
-				NewGenericSpecification("spec2", "type2", Source{}),
+				&SpecificationStub{name: "spec2", typeName: "type2", source: Source{}},
 			},
 		},
 	}
@@ -501,22 +350,22 @@ func TestSpecificationGroup_ExcludeNames(t *testing.T) {
 		{
 			name: "GIVEN no specifications matches, THEN return a group with the same values",
 			given: SpecificationGroup{
-				NewGenericSpecification("name", "type", Source{}),
+				&SpecificationStub{name: "spec2name", typeName: "type", source: Source{}},
 			},
 			when: []SpecificationName{"not_found"},
 			then: SpecificationGroup{
-				NewGenericSpecification("name", "type", Source{}),
+				&SpecificationStub{name: "spec2name", typeName: "type", source: Source{}},
 			},
 		},
 		{
 			name: "GIVEN a specification matches, THEN return a group without matching specification",
 			given: SpecificationGroup{
-				NewGenericSpecification("spec1", "type", Source{}),
-				NewGenericSpecification("spec2", "type", Source{}),
+				&SpecificationStub{name: "spec1", typeName: "type", source: Source{}},
+				&SpecificationStub{name: "spec2", typeName: "type", source: Source{}},
 			},
 			when: []SpecificationName{"spec1"},
 			then: SpecificationGroup{
-				NewGenericSpecification("spec2", "type", Source{}),
+				&SpecificationStub{name: "spec2", typeName: "type", source: Source{}},
 			},
 		},
 	}
@@ -538,8 +387,8 @@ func TestMapSpecGroup(t *testing.T) {
 		{
 			name: "GIVEN a group with multiple specifications WHEN mapped to their names THEN return a slice of specification names",
 			given: NewSpecGroup(
-				NewGenericSpecification("spec1", "type", Source{}),
-				NewGenericSpecification("spec2", "type", Source{}),
+				&SpecificationStub{name: "spec1", typeName: "type", source: Source{}},
+				&SpecificationStub{name: "spec2", typeName: "type", source: Source{}},
 			),
 			when: func(s Specification) string {
 				return string(s.Name())
@@ -557,8 +406,8 @@ func TestMapSpecGroup(t *testing.T) {
 		{
 			name: "GIVEN a group with multiple specifications WHEN mapped to a constant value THEN return a slice of that value",
 			given: NewSpecGroup(
-				NewGenericSpecification("spec1", "type", Source{}),
-				NewGenericSpecification("spec2", "type", Source{}),
+				&SpecificationStub{name: "spec1", typeName: "type", source: Source{}},
+				&SpecificationStub{name: "spec2", typeName: "type", source: Source{}},
 			),
 			when: func(s Specification) string {
 				return "constant"
@@ -573,11 +422,4 @@ func TestMapSpecGroup(t *testing.T) {
 			assert.Equal(t, tt.then, got)
 		})
 	}
-}
-
-func TestObjectValue_String(t *testing.T) {
-	o := ObjectValue{Type: "hello", Attributes: []GenericSpecAttribute{
-		{Name: "hello", Value: GenericValue{cty.StringVal("world")}},
-	}}
-	assert.Equal(t, "ObjectValue{Type: hello, Attributes: [{hello world}]}", o.String())
 }

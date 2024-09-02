@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package specter
+package specterutils
 
 import (
 	"fmt"
 	"github.com/morebec/go-errors/errors"
+	"github.com/morebec/specter/pkg/specter"
 	"strings"
 	"unicode"
 )
@@ -24,9 +25,9 @@ import (
 const LinterResultArtifactID = "_linting_processor_results"
 
 // UndefinedSpecificationName constant used to test against undefined SpecificationName.
-const UndefinedSpecificationName SpecificationName = ""
+const UndefinedSpecificationName specter.SpecificationName = ""
 
-const LintingErrorCode = "linting_error"
+const LintingErrorCode = "specter.spec_processing.linting_error"
 
 type LinterResultSeverity string
 
@@ -47,7 +48,7 @@ func (l LintingProcessor) Name() string {
 	return "linting_processor"
 }
 
-func (l LintingProcessor) Process(ctx ProcessingContext) (artifacts []Artifact, err error) {
+func (l LintingProcessor) Process(ctx specter.ProcessingContext) (artifacts []specter.Artifact, err error) {
 	linter := CompositeSpecificationLinter(l.linters...)
 	ctx.Logger.Info("\nLinting specifications ...")
 
@@ -76,8 +77,8 @@ func (l LintingProcessor) Process(ctx ProcessingContext) (artifacts []Artifact, 
 
 }
 
-func GetLintingResultsFromContext(ctx ProcessingContext) LinterResultSet {
-	return GetContextArtifact[LinterResultSet](ctx, LinterResultArtifactID)
+func GetLintingResultsFromContext(ctx specter.ProcessingContext) LinterResultSet {
+	return specter.GetContextArtifact[LinterResultSet](ctx, LinterResultArtifactID)
 }
 
 type LinterResult struct {
@@ -116,7 +117,7 @@ func (s LinterResultSet) Warnings() LinterResultSet {
 	return warns
 }
 
-func (s LinterResultSet) ID() ArtifactID {
+func (s LinterResultSet) ID() specter.ArtifactID {
 	return LinterResultArtifactID
 }
 
@@ -132,19 +133,19 @@ func (s LinterResultSet) HasWarnings() bool {
 
 // SpecificationLinter represents a function responsible for linting specifications.
 type SpecificationLinter interface {
-	Lint(specifications SpecificationGroup) LinterResultSet
+	Lint(specifications specter.SpecificationGroup) LinterResultSet
 }
 
 // SpecificationLinterFunc implementation of a SpecificationLinter that relies on a func
-type SpecificationLinterFunc func(specifications SpecificationGroup) LinterResultSet
+type SpecificationLinterFunc func(specifications specter.SpecificationGroup) LinterResultSet
 
-func (l SpecificationLinterFunc) Lint(specifications SpecificationGroup) LinterResultSet {
+func (l SpecificationLinterFunc) Lint(specifications specter.SpecificationGroup) LinterResultSet {
 	return l(specifications)
 }
 
 // CompositeSpecificationLinter A Composite linter is responsible for running multiple linters as one.
 func CompositeSpecificationLinter(linters ...SpecificationLinter) SpecificationLinterFunc {
-	return func(specifications SpecificationGroup) LinterResultSet {
+	return func(specifications specter.SpecificationGroup) LinterResultSet {
 		var result LinterResultSet
 		for _, linter := range linters {
 			lr := linter.Lint(specifications)
@@ -156,7 +157,7 @@ func CompositeSpecificationLinter(linters ...SpecificationLinter) SpecificationL
 
 // SpecificationMustNotHaveUndefinedNames ensures that no specification has an undefined name
 func SpecificationMustNotHaveUndefinedNames(severity LinterResultSeverity) SpecificationLinterFunc {
-	return func(specifications SpecificationGroup) LinterResultSet {
+	return func(specifications specter.SpecificationGroup) LinterResultSet {
 		var result LinterResultSet
 
 		for _, s := range specifications {
@@ -174,12 +175,12 @@ func SpecificationMustNotHaveUndefinedNames(severity LinterResultSeverity) Speci
 
 // SpecificationsMustHaveUniqueNames ensures that names are unique amongst specifications.
 func SpecificationsMustHaveUniqueNames(severity LinterResultSeverity) SpecificationLinterFunc {
-	return func(specifications SpecificationGroup) LinterResultSet {
+	return func(specifications specter.SpecificationGroup) LinterResultSet {
 
 		var result LinterResultSet
 
 		// Where key is the type FilePath and the array contains all the specification file locations where it was encountered.
-		encounteredNames := map[SpecificationName][]string{}
+		encounteredNames := map[specter.SpecificationName][]string{}
 
 		for _, s := range specifications {
 			if _, found := encounteredNames[s.Name()]; found {
@@ -218,7 +219,7 @@ func SpecificationsMustHaveUniqueNames(severity LinterResultSeverity) Specificat
 
 // SpecificationsMustHaveDescriptionAttribute ensures that all specifications have a description.
 func SpecificationsMustHaveDescriptionAttribute(severity LinterResultSeverity) SpecificationLinterFunc {
-	return func(specifications SpecificationGroup) LinterResultSet {
+	return func(specifications specter.SpecificationGroup) LinterResultSet {
 		var result LinterResultSet
 		for _, s := range specifications {
 			if s.Description() == "" {
@@ -234,7 +235,7 @@ func SpecificationsMustHaveDescriptionAttribute(severity LinterResultSeverity) S
 
 // SpecificationsDescriptionsMustStartWithACapitalLetter ensures that specification descriptions start with a capital letter.
 func SpecificationsDescriptionsMustStartWithACapitalLetter(severity LinterResultSeverity) SpecificationLinterFunc {
-	return func(specifications SpecificationGroup) LinterResultSet {
+	return func(specifications specter.SpecificationGroup) LinterResultSet {
 		var result LinterResultSet
 		for _, s := range specifications {
 			if s.Description() != "" {
@@ -254,7 +255,7 @@ func SpecificationsDescriptionsMustStartWithACapitalLetter(severity LinterResult
 
 // SpecificationsDescriptionsMustEndWithPeriod ensures that specification descriptions end with a period.
 func SpecificationsDescriptionsMustEndWithPeriod(severity LinterResultSeverity) SpecificationLinterFunc {
-	return func(specifications SpecificationGroup) LinterResultSet {
+	return func(specifications specter.SpecificationGroup) LinterResultSet {
 		var result LinterResultSet
 		for _, s := range specifications {
 			if !strings.HasSuffix(s.Description(), ".") {

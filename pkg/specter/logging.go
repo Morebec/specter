@@ -48,7 +48,7 @@ type DefaultLoggerConfig struct {
 
 type DefaultLogger struct {
 	color  aurora.Aurora
-	writer io.Writer
+	Writer io.Writer
 	mux    sync.Mutex
 }
 
@@ -60,7 +60,7 @@ func NewDefaultLogger(c DefaultLoggerConfig) *DefaultLogger {
 
 	return &DefaultLogger{
 		color:  aurora.NewAurora(!c.DisableColors),
-		writer: writer,
+		Writer: writer,
 	}
 }
 
@@ -87,5 +87,5 @@ func (l *DefaultLogger) Success(msg string) {
 func (l *DefaultLogger) Log(msg string) {
 	defer l.mux.Unlock()
 	l.mux.Lock()
-	_, _ = fmt.Fprintln(l.writer, msg)
+	_, _ = fmt.Fprintln(l.Writer, msg)
 }

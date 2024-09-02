@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package specter
+package specterutils
 
 import (
+	"github.com/morebec/specter/pkg/specter"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
@@ -23,7 +24,7 @@ import (
 
 func TestHCLGenericSpecLoader_SupportsSource(t *testing.T) {
 	type when struct {
-		source Source
+		source specter.Source
 	}
 	type then struct {
 		supports bool
@@ -36,14 +37,14 @@ func TestHCLGenericSpecLoader_SupportsSource(t *testing.T) {
 		{
 			name: "WHEN a non HCL format THEN return false",
 			when: when{
-				Source{Format: HCLSourceFormat},
+				specter.Source{Format: HCLSourceFormat},
 			},
 			then: then{supports: true},
 		},
 		{
 			name: "WHEN a non HCL format THEN return false",
 			when: when{
-				Source{Format: "txt"},
+				specter.Source{Format: "txt"},
 			},
 			then: then{supports: false},
 		},
@@ -58,10 +59,10 @@ func TestHCLGenericSpecLoader_SupportsSource(t *testing.T) {
 
 func TestHCLGenericSpecLoader_Load(t *testing.T) {
 	type when struct {
-		source Source
+		source specter.Source
 	}
 	type then struct {
-		expectedSpecifications []Specification
+		expectedSpecifications []specter.Specification
 		expectedError          require.ErrorAssertionFunc
 	}
 
@@ -75,7 +76,7 @@ func TestHCLGenericSpecLoader_Load(t *testing.T) {
 		{
 			name: "WHEN an empty file THEN return nil",
 			when: when{
-				source: Source{
+				source: specter.Source{
 					Format: HCLSourceFormat,
 					Data:   []byte(``),
 				},
@@ -91,7 +92,7 @@ func TestHCLGenericSpecLoader_Load(t *testing.T) {
 				source: mockFile.source(),
 			},
 			then: then{
-				expectedSpecifications: []Specification{
+				expectedSpecifications: []specter.Specification{
 					mockFile.genericSpecification(),
 				},
 				expectedError: require.NoError,
@@ -100,19 +101,19 @@ func TestHCLGenericSpecLoader_Load(t *testing.T) {
 		{
 			name: "WHEN an unsupported file format THEN an error should be returned",
 			when: when{
-				source: Source{
+				source: specter.Source{
 					Format: "txt",
 				},
 			},
 			then: then{
 				expectedSpecifications: nil,
-				expectedError:          requireErrorWithCode(UnsupportedSourceErrorCode),
+				expectedError:          RequireErrorWithCode(specter.UnsupportedSourceErrorCode),
 			},
 		},
 		{
 			name: "WHEN an unparsable hcl file THEN an error should be returned",
 			when: when{
-				source: Source{
+				source: specter.Source{
 					Data: []byte(`
 con st = var o
 `),
@@ -121,13 +122,13 @@ con st = var o
 			},
 			then: then{
 				expectedSpecifications: nil,
-				expectedError:          requireErrorWithCode(InvalidHCLErrorCode),
+				expectedError:          RequireErrorWithCode(InvalidHCLErrorCode),
 			},
 		},
 		{
 			name: "WHEN a spec type without name THEN an error should be returned",
 			when: when{
-				source: Source{
+				source: specter.Source{
 					Data: []byte(`
 block {
 }
@@ -137,14 +138,14 @@ block {
 			},
 			then: then{
 				expectedSpecifications: nil,
-				expectedError:          requireErrorWithCode(InvalidHCLErrorCode),
+				expectedError:          RequireErrorWithCode(InvalidHCLErrorCode),
 			},
 		},
 		// ATTRIBUTES
 		{
 			name: "WHEN an attribute is invalid THEN an error should be returned",
 			when: when{
-				source: Source{
+				source: specter.Source{
 					Data: []byte(`
 specType "specName" {
 	attribute = var.example ? 12 : "hello"
@@ -155,13 +156,13 @@ specType "specName" {
 			},
 			then: then{
 				expectedSpecifications: nil,
-				expectedError:          requireErrorWithCode(InvalidHCLErrorCode),
+				expectedError:          RequireErrorWithCode(InvalidHCLErrorCode),
 			},
 		},
 		{
 			name: "WHEN an attribute in a nested block is invalid THEN an error should be returned",
 			when: when{
-				source: Source{
+				source: specter.Source{
 					Data: []byte(`
 specType "specName" {
 	block "name" {
@@ -174,7 +175,7 @@ specType "specName" {
 			},
 			then: then{
 				expectedSpecifications: nil,
-				expectedError:          requireErrorWithCode(InvalidHCLErrorCode),
+				expectedError:          RequireErrorWithCode(InvalidHCLErrorCode),
 			},
 		},
 	}
@@ -198,10 +199,10 @@ specType "specName" {
 
 func TestHCLSpecLoader_Load(t *testing.T) {
 	type when struct {
-		source Source
+		source specter.Source
 	}
 	type then struct {
-		expectedSpecifications []Specification
+		expectedSpecifications []specter.Specification
 		expectedError          require.ErrorAssertionFunc
 	}
 
@@ -215,7 +216,7 @@ func TestHCLSpecLoader_Load(t *testing.T) {
 		{
 			name: "WHEN an empty file THEN return nil",
 			when: when{
-				source: Source{
+				source: specter.Source{
 					Format: HCLSourceFormat,
 					Data:   []byte(``),
 				},
@@ -228,19 +229,19 @@ func TestHCLSpecLoader_Load(t *testing.T) {
 		{
 			name: "WHEN an unsupported file format THEN an error should be returned",
 			when: when{
-				source: Source{
+				source: specter.Source{
 					Format: "txt",
 				},
 			},
 			then: then{
 				expectedSpecifications: nil,
-				expectedError:          requireErrorWithCode(UnsupportedSourceErrorCode),
+				expectedError:          RequireErrorWithCode(specter.UnsupportedSourceErrorCode),
 			},
 		},
 		{
 			name: "WHEN an unparsable hcl file THEN an error should be returned",
 			when: when{
-				source: Source{
+				source: specter.Source{
 					Data: []byte(`
 con st = var o
 `),
@@ -249,7 +250,7 @@ con st = var o
 			},
 			then: then{
 				expectedSpecifications: nil,
-				expectedError:          requireErrorWithCode(InvalidHCLErrorCode),
+				expectedError:          RequireErrorWithCode(InvalidHCLErrorCode),
 			},
 		},
 		{
@@ -258,7 +259,7 @@ con st = var o
 				source: mockFile.source(),
 			},
 			then: then{
-				expectedSpecifications: []Specification{
+				expectedSpecifications: []specter.Specification{
 					mockFile.genericSpecification(),
 				},
 			},
@@ -306,8 +307,8 @@ service "specter" {
 `)
 }
 
-func (m *HclConfigMock) Specifications() []Specification {
-	return []Specification{
+func (m *HclConfigMock) Specifications() []specter.Specification {
+	return []specter.Specification{
 		m.genericSpecification(),
 	}
 }
@@ -338,8 +339,8 @@ func (m *HclConfigMock) genericSpecification() *GenericSpecification {
 	return spec
 }
 
-func (m *HclConfigMock) source() Source {
-	return Source{
+func (m *HclConfigMock) source() specter.Source {
+	return specter.Source{
 		Location: "specter.hcl",
 		Data:     m.data(),
 		Format:   HCLSourceFormat,

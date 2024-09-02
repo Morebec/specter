@@ -12,48 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package specter
+package specter_test
 
 import (
-	"github.com/stretchr/testify/mock"
+	. "github.com/morebec/specter/pkg/specter"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
 
-// MockArtifactRegistry is a mock implementation of ArtifactRegistry
-type MockArtifactRegistry struct {
-	mock.Mock
-}
-
-func (m *MockArtifactRegistry) Load() error {
-	args := m.Called()
-	return args.Error(0)
-}
-
-func (m *MockArtifactRegistry) Save() error {
-	args := m.Called()
-	return args.Error(0)
-}
-
-func (m *MockArtifactRegistry) Add(processorName string, artifactID ArtifactID) {
-	m.Called(processorName, artifactID)
-}
-
-func (m *MockArtifactRegistry) Remove(processorName string, artifactID ArtifactID) {
-	m.Called(processorName, artifactID)
-}
-
-func (m *MockArtifactRegistry) Artifacts(processorName string) []ArtifactID {
-	args := m.Called(processorName)
-	return args.Get(0).([]ArtifactID)
-}
-
 func TestProcessorArtifactRegistry_Add(t *testing.T) {
 	r := &InMemoryArtifactRegistry{}
-	pr := ProcessorArtifactRegistry{
-		processorName: "unit_tester",
-		registry:      r,
-	}
+	pr := NewProcessorArtifactRegistry("unit_tester", r)
 
 	err := pr.Add("an_artifact", nil)
 	require.NoError(t, err)
@@ -65,10 +34,7 @@ func TestProcessorArtifactRegistry_Add(t *testing.T) {
 
 func TestProcessorArtifactRegistry_Remove(t *testing.T) {
 	r := &InMemoryArtifactRegistry{}
-	pr := ProcessorArtifactRegistry{
-		processorName: "unit_tester",
-		registry:      r,
-	}
+	pr := NewProcessorArtifactRegistry("unit_tester", r)
 
 	err := r.Add("unit_tester", ArtifactRegistryEntry{
 		ArtifactID: "an_artifact",
@@ -86,10 +52,7 @@ func TestProcessorArtifactRegistry_Remove(t *testing.T) {
 
 func TestProcessorArtifactRegistry_FindByID(t *testing.T) {
 	r := &InMemoryArtifactRegistry{}
-	pr := ProcessorArtifactRegistry{
-		processorName: "unit_tester",
-		registry:      r,
-	}
+	pr := NewProcessorArtifactRegistry("unit_tester", r)
 
 	err := r.Add("unit_tester", ArtifactRegistryEntry{
 		ArtifactID: "an_artifact",
@@ -100,4 +63,51 @@ func TestProcessorArtifactRegistry_FindByID(t *testing.T) {
 	_, found, err := pr.FindByID("an_artifact")
 	require.NoError(t, err)
 	require.True(t, found)
+}
+
+func TestGetContextArtifact(t *testing.T) {
+	type when struct {
+		ctx ProcessingContext
+		id  ArtifactID
+	}
+	type then[T Artifact] struct {
+		artifact T
+	}
+	type testCase[T Artifact] struct {
+		name string
+		when when
+		then then[T]
+	}
+	tests := []testCase[*FileArtifact]{
+		{
+			name: "GIVEN no artifact matches THEN return nil",
+			when: when{
+				ctx: ProcessingContext{},
+				id:  "not_found",
+			},
+			then: then[*FileArtifact]{
+				artifact: nil,
+			},
+		},
+		{
+			name: "GIVEN artifact matches THEN return artifact",
+			when: when{
+				ctx: ProcessingContext{
+					Artifacts: []Artifact{
+						&FileArtifact{Path: "/path/to/file"},
+					},
+				},
+				id: "/path/to/file",
+			},
+			then: then[*FileArtifact]{
+				artifact: &FileArtifact{Path: "/path/to/file"},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actualArtifact := GetContextArtifact[*FileArtifact](tt.when.ctx, tt.when.id)
+			require.Equal(t, tt.then.artifact, actualArtifact)
+		})
+	}
 }

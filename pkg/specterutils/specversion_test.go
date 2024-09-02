@@ -12,30 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package specter
+package specterutils
 
 import (
+	"github.com/morebec/specter/pkg/specter"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
 
 // Mock implementations for the Specification and HasVersion interfaces
 
-var _ Specification = (*mockSpecification)(nil)
+var _ specter.Specification = (*mockSpecification)(nil)
 
 type mockSpecification struct {
-	name        SpecificationName
+	name        specter.SpecificationName
 	description string
-	source      Source
+	source      specter.Source
 	version     SpecificationVersion
-	typeName    SpecificationType
+	typeName    specter.SpecificationType
 }
 
-func (m *mockSpecification) Name() SpecificationName {
+func (m *mockSpecification) Name() specter.SpecificationName {
 	return m.name
 }
 
-func (m *mockSpecification) Type() SpecificationType {
+func (m *mockSpecification) Type() specter.SpecificationType {
 	return m.typeName
 }
 
@@ -43,11 +44,11 @@ func (m *mockSpecification) Description() string {
 	return m.description
 }
 
-func (m *mockSpecification) SetSource(s Source) {
+func (m *mockSpecification) SetSource(s specter.Source) {
 	m.source = s
 }
 
-func (m *mockSpecification) Source() Source {
+func (m *mockSpecification) Source() specter.Source {
 	return m.source
 }
 
@@ -58,22 +59,22 @@ func (m *mockSpecification) Version() SpecificationVersion {
 func TestHasVersionMustHaveAVersionLinter(t *testing.T) {
 	tests := []struct {
 		name            string
-		when            SpecificationGroup
+		when            specter.SpecificationGroup
 		expectedResults LinterResultSet
 		givenSeverity   LinterResultSeverity
 	}{
 		{
 			name: "WHEN some specification does not implement HasVersion, THEN ignore said specification",
-			when: SpecificationGroup{
+			when: specter.SpecificationGroup{
 				&mockSpecification{name: "spec1", version: "v1"},
-				NewGenericSpecification("not-versioned", "spec", Source{}),
+				NewGenericSpecification("not-versioned", "spec", specter.Source{}),
 			},
 			givenSeverity:   WarningSeverity,
 			expectedResults: LinterResultSet(nil),
 		},
 		{
 			name: "WHEN all specifications have a version THEN return no warnings or errors",
-			when: SpecificationGroup{
+			when: specter.SpecificationGroup{
 				&mockSpecification{name: "spec1", version: "v1"},
 				&mockSpecification{name: "spec2", version: "v2"},
 			},
@@ -82,7 +83,7 @@ func TestHasVersionMustHaveAVersionLinter(t *testing.T) {
 		},
 		{
 			name: "WHEN one specification is missing a version and severity is Warning THEN return a warning",
-			when: SpecificationGroup{
+			when: specter.SpecificationGroup{
 				&mockSpecification{name: "spec1", version: "v1"},
 				&mockSpecification{name: "spec2", version: ""},
 			},
@@ -96,7 +97,7 @@ func TestHasVersionMustHaveAVersionLinter(t *testing.T) {
 		},
 		{
 			name: "WHEN one specification is missing a version and severity is error THEN return an error",
-			when: SpecificationGroup{
+			when: specter.SpecificationGroup{
 				&mockSpecification{name: "spec1", version: "v1"},
 				&mockSpecification{name: "spec2", version: ""},
 			},
@@ -110,7 +111,7 @@ func TestHasVersionMustHaveAVersionLinter(t *testing.T) {
 		},
 		{
 			name: "multiple specifications are missing versions",
-			when: SpecificationGroup{
+			when: specter.SpecificationGroup{
 				&mockSpecification{name: "spec1", version: ""},
 				&mockSpecification{name: "spec2", version: ""},
 			},
