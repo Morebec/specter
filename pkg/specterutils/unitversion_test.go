@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package specterutils
+package specterutils_test
 
 import (
 	"github.com/morebec/specter/pkg/specter"
+	"github.com/morebec/specter/pkg/specterutils"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
@@ -28,7 +29,7 @@ type mockUnit struct {
 	name        specter.UnitName
 	description string
 	source      specter.Source
-	version     UnitVersion
+	version     specterutils.UnitVersion
 	typeName    specter.UnitType
 }
 
@@ -52,7 +53,7 @@ func (m *mockUnit) Source() specter.Source {
 	return m.source
 }
 
-func (m *mockUnit) Version() UnitVersion {
+func (m *mockUnit) Version() specterutils.UnitVersion {
 	return m.version
 }
 
@@ -60,17 +61,17 @@ func TestHasVersionMustHaveAVersionLinter(t *testing.T) {
 	tests := []struct {
 		name            string
 		when            specter.UnitGroup
-		expectedResults LinterResultSet
-		givenSeverity   LinterResultSeverity
+		expectedResults specterutils.LinterResultSet
+		givenSeverity   specterutils.LinterResultSeverity
 	}{
 		{
 			name: "WHEN some unit does not implement HasVersion, THEN ignore said unit",
 			when: specter.UnitGroup{
 				&mockUnit{name: "spec1", version: "v1"},
-				NewGenericUnit("not-versioned", "unit", specter.Source{}),
+				specterutils.NewGenericUnit("not-versioned", "unit", specter.Source{}),
 			},
-			givenSeverity:   WarningSeverity,
-			expectedResults: LinterResultSet(nil),
+			givenSeverity:   specterutils.WarningSeverity,
+			expectedResults: specterutils.LinterResultSet(nil),
 		},
 		{
 			name: "WHEN all units have a version THEN return no warnings or errors",
@@ -78,8 +79,8 @@ func TestHasVersionMustHaveAVersionLinter(t *testing.T) {
 				&mockUnit{name: "spec1", version: "v1"},
 				&mockUnit{name: "spec2", version: "v2"},
 			},
-			givenSeverity:   WarningSeverity,
-			expectedResults: LinterResultSet(nil),
+			givenSeverity:   specterutils.WarningSeverity,
+			expectedResults: specterutils.LinterResultSet(nil),
 		},
 		{
 			name: "WHEN one unit is missing a version and severity is Warning THEN return a warning",
@@ -87,10 +88,10 @@ func TestHasVersionMustHaveAVersionLinter(t *testing.T) {
 				&mockUnit{name: "spec1", version: "v1"},
 				&mockUnit{name: "spec2", version: ""},
 			},
-			givenSeverity: WarningSeverity,
-			expectedResults: LinterResultSet{
+			givenSeverity: specterutils.WarningSeverity,
+			expectedResults: specterutils.LinterResultSet{
 				{
-					Severity: WarningSeverity,
+					Severity: specterutils.WarningSeverity,
 					Message:  `unit "spec2" at "" should have a version`,
 				},
 			},
@@ -101,10 +102,10 @@ func TestHasVersionMustHaveAVersionLinter(t *testing.T) {
 				&mockUnit{name: "spec1", version: "v1"},
 				&mockUnit{name: "spec2", version: ""},
 			},
-			givenSeverity: ErrorSeverity,
-			expectedResults: LinterResultSet{
+			givenSeverity: specterutils.ErrorSeverity,
+			expectedResults: specterutils.LinterResultSet{
 				{
-					Severity: ErrorSeverity,
+					Severity: specterutils.ErrorSeverity,
 					Message:  `unit "spec2" at "" should have a version`,
 				},
 			},
@@ -115,14 +116,14 @@ func TestHasVersionMustHaveAVersionLinter(t *testing.T) {
 				&mockUnit{name: "spec1", version: ""},
 				&mockUnit{name: "spec2", version: ""},
 			},
-			givenSeverity: ErrorSeverity,
-			expectedResults: LinterResultSet{
+			givenSeverity: specterutils.ErrorSeverity,
+			expectedResults: specterutils.LinterResultSet{
 				{
-					Severity: ErrorSeverity,
+					Severity: specterutils.ErrorSeverity,
 					Message:  `unit "spec1" at "" should have a version`,
 				},
 				{
-					Severity: ErrorSeverity,
+					Severity: specterutils.ErrorSeverity,
 					Message:  `unit "spec2" at "" should have a version`,
 				},
 			},
@@ -131,7 +132,7 @@ func TestHasVersionMustHaveAVersionLinter(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			linter := HasVersionMustHaveAVersionLinter(tt.givenSeverity)
+			linter := specterutils.HasVersionMustHaveAVersionLinter(tt.givenSeverity)
 			results := linter.Lint(tt.when)
 			require.Equal(t, tt.expectedResults, results)
 		})

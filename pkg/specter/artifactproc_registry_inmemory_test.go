@@ -15,7 +15,7 @@
 package specter_test
 
 import (
-	. "github.com/morebec/specter/pkg/specter"
+	"github.com/morebec/specter/pkg/specter"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -23,22 +23,22 @@ import (
 
 func TestInMemoryArtifactRegistry_InterfaceCompliance(t *testing.T) {
 	// InMemoryArtifactRegistry
-	assertArtifactRegistryCompliance(t, "InMemoryArtifactRegistry", func() *InMemoryArtifactRegistry {
-		return &InMemoryArtifactRegistry{}
+	assertArtifactRegistryCompliance(t, "InMemoryArtifactRegistry", func() *specter.InMemoryArtifactRegistry {
+		return &specter.InMemoryArtifactRegistry{}
 	})
 }
 
 func TestInMemoryArtifactRegistry_Add(t *testing.T) {
 	type given struct {
-		EntriesMap map[string][]ArtifactRegistryEntry
+		EntriesMap map[string][]specter.ArtifactRegistryEntry
 	}
 	type when struct {
 		processorName string
-		entry         ArtifactRegistryEntry
+		entry         specter.ArtifactRegistryEntry
 	}
 	type then struct {
 		expectedError   assert.ErrorAssertionFunc
-		expectedEntries []ArtifactRegistryEntry
+		expectedEntries []specter.ArtifactRegistryEntry
 	}
 	tests := []struct {
 		name  string
@@ -49,16 +49,16 @@ func TestInMemoryArtifactRegistry_Add(t *testing.T) {
 		{
 			name: "Given non nil entry map When an entry is added Then the entry should be in the registry",
 			given: given{
-				EntriesMap: map[string][]ArtifactRegistryEntry{},
+				EntriesMap: map[string][]specter.ArtifactRegistryEntry{},
 			},
 			when: when{
 				processorName: "processor1",
-				entry: ArtifactRegistryEntry{
+				entry: specter.ArtifactRegistryEntry{
 					ArtifactID: "an_artifact",
 				},
 			},
 			then: then{
-				expectedEntries: []ArtifactRegistryEntry{
+				expectedEntries: []specter.ArtifactRegistryEntry{
 					{
 						ArtifactID: "an_artifact",
 					},
@@ -73,12 +73,12 @@ func TestInMemoryArtifactRegistry_Add(t *testing.T) {
 			},
 			when: when{
 				processorName: "processor1",
-				entry: ArtifactRegistryEntry{
+				entry: specter.ArtifactRegistryEntry{
 					ArtifactID: "an_artifact",
 				},
 			},
 			then: then{
-				expectedEntries: []ArtifactRegistryEntry{
+				expectedEntries: []specter.ArtifactRegistryEntry{
 					{
 						ArtifactID: "an_artifact",
 					},
@@ -89,7 +89,7 @@ func TestInMemoryArtifactRegistry_Add(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := &InMemoryArtifactRegistry{
+			r := &specter.InMemoryArtifactRegistry{
 				EntriesMap: tt.given.EntriesMap,
 			}
 			err := r.Add(tt.when.processorName, tt.when.entry)
@@ -105,13 +105,13 @@ func TestInMemoryArtifactRegistry_Add(t *testing.T) {
 
 func TestInMemoryArtifactRegistry_FindAll(t *testing.T) {
 	type given struct {
-		EntriesMap map[string][]ArtifactRegistryEntry
+		EntriesMap map[string][]specter.ArtifactRegistryEntry
 	}
 	type when struct {
 		processorName string
 	}
 	type then struct {
-		expectedArtifacts []ArtifactRegistryEntry
+		expectedArtifacts []specter.ArtifactRegistryEntry
 		expectedError     assert.ErrorAssertionFunc
 	}
 	tests := []struct {
@@ -136,7 +136,7 @@ func TestInMemoryArtifactRegistry_FindAll(t *testing.T) {
 		{
 			name: "Given non nil empty entry map Then return nil",
 			given: given{
-				EntriesMap: map[string][]ArtifactRegistryEntry{},
+				EntriesMap: map[string][]specter.ArtifactRegistryEntry{},
 			},
 			when: when{
 				processorName: "unit_tester",
@@ -149,7 +149,7 @@ func TestInMemoryArtifactRegistry_FindAll(t *testing.T) {
 		{
 			name: "Given nil slice for processor name Then return nil",
 			given: given{
-				EntriesMap: map[string][]ArtifactRegistryEntry{
+				EntriesMap: map[string][]specter.ArtifactRegistryEntry{
 					"unit_tester": nil,
 				},
 			},
@@ -164,7 +164,7 @@ func TestInMemoryArtifactRegistry_FindAll(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := &InMemoryArtifactRegistry{
+			r := &specter.InMemoryArtifactRegistry{
 				EntriesMap: tt.given.EntriesMap,
 			}
 			artifacts, err := r.FindAll(tt.when.processorName)
@@ -177,25 +177,25 @@ func TestInMemoryArtifactRegistry_FindAll(t *testing.T) {
 }
 
 func TestInMemoryArtifactRegistry_Load(t *testing.T) {
-	r := &InMemoryArtifactRegistry{}
+	r := &specter.InMemoryArtifactRegistry{}
 	require.Nil(t, r.Load())
 }
 
 func TestInMemoryArtifactRegistry_Save(t *testing.T) {
-	r := &InMemoryArtifactRegistry{}
+	r := &specter.InMemoryArtifactRegistry{}
 	require.Nil(t, r.Save())
 }
 
 func TestInMemoryArtifactRegistry_Remove(t *testing.T) {
 	type given struct {
-		EntriesMap map[string][]ArtifactRegistryEntry
+		EntriesMap map[string][]specter.ArtifactRegistryEntry
 	}
 	type when struct {
 		processorName string
-		artifactID    ArtifactID
+		artifactID    specter.ArtifactID
 	}
 	type then struct {
-		expectedEntries []ArtifactRegistryEntry
+		expectedEntries []specter.ArtifactRegistryEntry
 		expectedError   assert.ErrorAssertionFunc
 	}
 	tests := []struct {
@@ -221,7 +221,7 @@ func TestInMemoryArtifactRegistry_Remove(t *testing.T) {
 		{
 			name: "Given empty entry map Then return nil",
 			given: given{
-				EntriesMap: map[string][]ArtifactRegistryEntry{},
+				EntriesMap: map[string][]specter.ArtifactRegistryEntry{},
 			},
 			when: when{
 				processorName: "unit_tester",
@@ -235,7 +235,7 @@ func TestInMemoryArtifactRegistry_Remove(t *testing.T) {
 		{
 			name: "Given nil slice for processor Then return nil",
 			given: given{
-				EntriesMap: map[string][]ArtifactRegistryEntry{
+				EntriesMap: map[string][]specter.ArtifactRegistryEntry{
 					"unit_tester": nil,
 				},
 			},
@@ -251,7 +251,7 @@ func TestInMemoryArtifactRegistry_Remove(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := &InMemoryArtifactRegistry{
+			r := &specter.InMemoryArtifactRegistry{
 				EntriesMap: tt.given.EntriesMap,
 			}
 

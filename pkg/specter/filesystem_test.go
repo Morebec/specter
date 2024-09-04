@@ -15,7 +15,7 @@
 package specter_test
 
 import (
-	. "github.com/morebec/specter/pkg/specter"
+	"github.com/morebec/specter/pkg/specter"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io/fs"
@@ -40,7 +40,7 @@ func TestLocalFileSystem_ReadFile(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			l := LocalFileSystem{}
+			l := specter.LocalFileSystem{}
 			got, err := l.ReadFile(tt.given)
 
 			if tt.thenErrContains != "" {
@@ -56,7 +56,7 @@ func TestLocalFileSystem_ReadFile(t *testing.T) {
 
 func TestLocalFileSystem_WalkDir(t *testing.T) {
 	// Make sure the closure gets called.
-	lfs := LocalFileSystem{}
+	lfs := specter.LocalFileSystem{}
 	closureCalled := false
 	err := lfs.WalkDir("/fake/dir", func(path string, d fs.DirEntry, err error) error {
 		closureCalled = true
@@ -67,7 +67,7 @@ func TestLocalFileSystem_WalkDir(t *testing.T) {
 }
 
 func TestLocalFileSystem_StatPath(t *testing.T) {
-	lfs := LocalFileSystem{}
+	lfs := specter.LocalFileSystem{}
 	_, filename, _, ok := runtime.Caller(0)
 	require.True(t, ok)
 	stat, err := lfs.StatPath(filename)
@@ -76,10 +76,10 @@ func TestLocalFileSystem_StatPath(t *testing.T) {
 }
 
 func TestLocalFileSystem_Mkdir(t *testing.T) {
-	lfs := LocalFileSystem{}
+	lfs := specter.LocalFileSystem{}
 	dirPath := path.Join(os.TempDir(), "specter", "TestLocalFileSystem_Mkdir")
 	err := lfs.Mkdir(dirPath, os.ModePerm)
-	defer func(lfs LocalFileSystem, path string) {
+	defer func(lfs specter.LocalFileSystem, path string) {
 		err = lfs.Remove(dirPath)
 		require.NoError(t, err)
 	}(lfs, dirPath)
@@ -87,7 +87,7 @@ func TestLocalFileSystem_Mkdir(t *testing.T) {
 }
 
 func TestLocalFileSystem_Remove(t *testing.T) {
-	lfs := LocalFileSystem{}
+	lfs := specter.LocalFileSystem{}
 	dirPath := path.Join(os.TempDir(), "specter", "TestLocalFileSystem_Remove")
 	err := lfs.Mkdir(dirPath, os.ModePerm)
 	require.NoError(t, err)
@@ -97,7 +97,7 @@ func TestLocalFileSystem_Remove(t *testing.T) {
 }
 
 func TestLocalFileSystem_WriteFile(t *testing.T) {
-	lfs := LocalFileSystem{}
+	lfs := specter.LocalFileSystem{}
 	dirPath := path.Join(os.TempDir(), "specter", "TestLocalFileSystem_WriteFile")
 	err := lfs.Mkdir(dirPath, os.ModePerm)
 	defer func() {
@@ -116,7 +116,7 @@ func TestLocalFileSystem_WriteFile(t *testing.T) {
 }
 
 func TestLocalFileSystem_Rel(t *testing.T) {
-	lfs := LocalFileSystem{}
+	lfs := specter.LocalFileSystem{}
 	specterTestDir := path.Join(os.TempDir(), "specter")
 	dirPath := path.Join(specterTestDir, "TestLocalFileSystem_Rel")
 	err := lfs.Mkdir(dirPath, os.ModePerm)

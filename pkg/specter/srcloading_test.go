@@ -16,7 +16,8 @@ package specter_test
 
 import (
 	"github.com/morebec/go-errors/errors"
-	. "github.com/morebec/specter/pkg/specter"
+	"github.com/morebec/specter/pkg/specter"
+	"github.com/morebec/specter/pkg/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io/fs"
@@ -52,7 +53,7 @@ func TestLocalFileSourceLoader_Supports(t *testing.T) {
 			if tt.setup != nil {
 				tt.setup()
 			}
-			l := NewLocalFileSourceLoader()
+			l := specter.NewLocalFileSourceLoader()
 			require.Equal(t, tt.then, l.Supports(tt.given))
 		})
 	}
@@ -60,58 +61,58 @@ func TestLocalFileSourceLoader_Supports(t *testing.T) {
 
 func TestLocalFileSourceLoader_Load(t *testing.T) {
 	tests := []struct {
-		given        FileSystem
+		given        specter.FileSystem
 		whenLocation string
 		name         string
 		expectedErr  error
-		expectedSrc  []Source
+		expectedSrc  []specter.Source
 	}{
 		{
 			name:         "WHEN an empty location THEN return error",
-			given:        &mockFileSystem{},
+			given:        &testutils.MockFileSystem{},
 			whenLocation: "",
 			expectedErr:  errors.New("cannot load an empty location"),
 		},
 		{
 			name: "WHEN a file does not exist THEN return error",
-			given: &mockFileSystem{
-				files:   map[string][]byte{},
-				statErr: os.ErrNotExist,
+			given: &testutils.MockFileSystem{
+				Files:   map[string][]byte{},
+				StatErr: os.ErrNotExist,
 			},
 			whenLocation: "does-not-exist",
 			expectedErr:  fs.ErrNotExist,
 		},
 		{
 			name: "Given a directory with files WHEN we load the directory THEN return its files",
-			given: &mockFileSystem{
-				files: map[string][]byte{
+			given: &testutils.MockFileSystem{
+				Files: map[string][]byte{
 					"/fake/dir/file1.txt": []byte("file1 content"),
 					"/fake/dir/file2.txt": []byte("file2 content"),
 				},
-				dirs: map[string]bool{
+				Dirs: map[string]bool{
 					"/fake/dir": true,
 				},
 			},
 			whenLocation: "/fake/dir",
-			expectedSrc: []Source{
+			expectedSrc: []specter.Source{
 				{Location: "/fake/dir/file1.txt", Data: []byte("file1 content"), Format: "txt"},
 				{Location: "/fake/dir/file2.txt", Data: []byte("file2 content"), Format: "txt"},
 			},
 		},
 		{
 			name: "Given a directory with corrupted files WHEN we load the directory THEN return error",
-			given: &mockFileSystem{
-				files: map[string][]byte{
+			given: &testutils.MockFileSystem{
+				Files: map[string][]byte{
 					"/fake/dir/file1.txt": []byte("file1 content"),
 					"/fake/dir/file2.txt": []byte("file2 content"),
 				},
-				dirs: map[string]bool{
+				Dirs: map[string]bool{
 					"/fake/dir": true,
 				},
-				readFileErr: assert.AnError,
+				ReadFileErr: assert.AnError,
 			},
 			whenLocation: "/fake/dir",
-			expectedSrc: []Source{
+			expectedSrc: []specter.Source{
 				{Location: "/fake/dir/file1.txt", Data: []byte("file1 content"), Format: "txt"},
 				{Location: "/fake/dir/file2.txt", Data: []byte("file2 content"), Format: "txt"},
 			},
@@ -119,11 +120,11 @@ func TestLocalFileSourceLoader_Load(t *testing.T) {
 		},
 		{
 			name: "Given cannot stat file WHEN we load the file THEN return err",
-			given: &mockFileSystem{
-				files: map[string][]byte{
+			given: &testutils.MockFileSystem{
+				Files: map[string][]byte{
 					"/fake/dir/file1.txt": []byte("file1 content"),
 				},
-				statErr: assert.AnError,
+				StatErr: assert.AnError,
 			},
 			whenLocation: "/fake/dir/file1.txt",
 			expectedErr:  assert.AnError,
@@ -131,35 +132,35 @@ func TestLocalFileSourceLoader_Load(t *testing.T) {
 		{
 
 			name: "Given a file WHEN we load the file path THEN return the file",
-			given: &mockFileSystem{
-				files: map[string][]byte{
+			given: &testutils.MockFileSystem{
+				Files: map[string][]byte{
 					"/fake/file.txt": []byte("file content"),
 				},
 			},
 			whenLocation: "/fake/file.txt",
-			expectedSrc: []Source{
+			expectedSrc: []specter.Source{
 				{Location: "/fake/file.txt", Data: []byte("file content"), Format: "txt"},
 			},
 		},
 		{
 			name: "GIVEN a file with no extension WHEN this file location THEN return a source without format",
-			given: &mockFileSystem{
-				files: map[string][]byte{
+			given: &testutils.MockFileSystem{
+				Files: map[string][]byte{
 					"file1": []byte("file1 content"),
 				},
 			},
 			whenLocation: "file1",
-			expectedSrc: []Source{
+			expectedSrc: []specter.Source{
 				{Location: "file1", Data: []byte("file1 content"), Format: ""},
 			},
 		},
 		{
 			name: "GIVEN a corrupted file WHEN this file location THEN return error",
-			given: &mockFileSystem{
-				files: map[string][]byte{
+			given: &testutils.MockFileSystem{
+				Files: map[string][]byte{
 					"file1": []byte("file1 content"),
 				},
-				readFileErr: assert.AnError,
+				ReadFileErr: assert.AnError,
 			},
 			whenLocation: "file1",
 			expectedErr:  assert.AnError,
@@ -168,7 +169,7 @@ func TestLocalFileSourceLoader_Load(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			loader := NewFileSystemSourceLoader(tt.given)
+			loader := specter.NewFileSystemSourceLoader(tt.given)
 			src, err := loader.Load(tt.whenLocation)
 
 			if tt.expectedErr != nil {

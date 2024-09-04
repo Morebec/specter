@@ -15,14 +15,14 @@
 package specter_test
 
 import (
-	. "github.com/morebec/specter/pkg/specter"
+	"github.com/morebec/specter/pkg/specter"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
 
 func TestProcessorArtifactRegistry_Add(t *testing.T) {
-	r := &InMemoryArtifactRegistry{}
-	pr := NewProcessorArtifactRegistry("unit_tester", r)
+	r := &specter.InMemoryArtifactRegistry{}
+	pr := specter.NewProcessorArtifactRegistry("unit_tester", r)
 
 	err := pr.Add("an_artifact", nil)
 	require.NoError(t, err)
@@ -33,10 +33,10 @@ func TestProcessorArtifactRegistry_Add(t *testing.T) {
 }
 
 func TestProcessorArtifactRegistry_Remove(t *testing.T) {
-	r := &InMemoryArtifactRegistry{}
-	pr := NewProcessorArtifactRegistry("unit_tester", r)
+	r := &specter.InMemoryArtifactRegistry{}
+	pr := specter.NewProcessorArtifactRegistry("unit_tester", r)
 
-	err := r.Add("unit_tester", ArtifactRegistryEntry{
+	err := r.Add("unit_tester", specter.ArtifactRegistryEntry{
 		ArtifactID: "an_artifact",
 		Metadata:   nil,
 	})
@@ -51,10 +51,10 @@ func TestProcessorArtifactRegistry_Remove(t *testing.T) {
 }
 
 func TestProcessorArtifactRegistry_FindByID(t *testing.T) {
-	r := &InMemoryArtifactRegistry{}
-	pr := NewProcessorArtifactRegistry("unit_tester", r)
+	r := &specter.InMemoryArtifactRegistry{}
+	pr := specter.NewProcessorArtifactRegistry("unit_tester", r)
 
-	err := r.Add("unit_tester", ArtifactRegistryEntry{
+	err := r.Add("unit_tester", specter.ArtifactRegistryEntry{
 		ArtifactID: "an_artifact",
 		Metadata:   nil,
 	})
@@ -67,46 +67,46 @@ func TestProcessorArtifactRegistry_FindByID(t *testing.T) {
 
 func TestGetContextArtifact(t *testing.T) {
 	type when struct {
-		ctx ProcessingContext
-		id  ArtifactID
+		ctx specter.ProcessingContext
+		id  specter.ArtifactID
 	}
-	type then[T Artifact] struct {
+	type then[T specter.Artifact] struct {
 		artifact T
 	}
-	type testCase[T Artifact] struct {
+	type testCase[T specter.Artifact] struct {
 		name string
 		when when
 		then then[T]
 	}
-	tests := []testCase[*FileArtifact]{
+	tests := []testCase[*specter.FileArtifact]{
 		{
 			name: "GIVEN no artifact matches THEN return nil",
 			when: when{
-				ctx: ProcessingContext{},
+				ctx: specter.ProcessingContext{},
 				id:  "not_found",
 			},
-			then: then[*FileArtifact]{
+			then: then[*specter.FileArtifact]{
 				artifact: nil,
 			},
 		},
 		{
 			name: "GIVEN artifact matches THEN return artifact",
 			when: when{
-				ctx: ProcessingContext{
-					Artifacts: []Artifact{
-						&FileArtifact{Path: "/path/to/file"},
+				ctx: specter.ProcessingContext{
+					Artifacts: []specter.Artifact{
+						&specter.FileArtifact{Path: "/path/to/file"},
 					},
 				},
 				id: "/path/to/file",
 			},
-			then: then[*FileArtifact]{
-				artifact: &FileArtifact{Path: "/path/to/file"},
+			then: then[*specter.FileArtifact]{
+				artifact: &specter.FileArtifact{Path: "/path/to/file"},
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			actualArtifact := GetContextArtifact[*FileArtifact](tt.when.ctx, tt.when.id)
+			actualArtifact := specter.GetContextArtifact[*specter.FileArtifact](tt.when.ctx, tt.when.id)
 			require.Equal(t, tt.then.artifact, actualArtifact)
 		})
 	}

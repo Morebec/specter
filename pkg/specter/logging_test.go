@@ -17,7 +17,7 @@ package specter_test
 import (
 	"bytes"
 	"github.com/logrusorgru/aurora"
-	. "github.com/morebec/specter/pkg/specter"
+	"github.com/morebec/specter/pkg/specter"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"os"
@@ -28,13 +28,13 @@ func TestNewDefaultLogger(t *testing.T) {
 	buffer := &bytes.Buffer{}
 	tests := []struct {
 		name  string
-		given DefaultLoggerConfig
-		want  func(*DefaultLogger)
+		given specter.DefaultLoggerConfig
+		want  func(*specter.DefaultLogger)
 	}{
 		{
 			name:  "GIVEN a zero value config, THEN have a logger with os.Stdout as a writer and colors enabled",
-			given: DefaultLoggerConfig{},
-			want: func(l *DefaultLogger) {
+			given: specter.DefaultLoggerConfig{},
+			want: func(l *specter.DefaultLogger) {
 				require.NotNil(t, l)
 				require.Equal(t, os.Stdout, l.Writer)
 
@@ -48,10 +48,10 @@ func TestNewDefaultLogger(t *testing.T) {
 		},
 		{
 			name: "GIVEN a config with color disabled, THEN have a logger with no colors enabled",
-			given: DefaultLoggerConfig{
+			given: specter.DefaultLoggerConfig{
 				DisableColors: true,
 			},
-			want: func(l *DefaultLogger) {
+			want: func(l *specter.DefaultLogger) {
 				// Check colors enabled
 				buffer := bytes.Buffer{}
 				l.Writer = &buffer
@@ -64,7 +64,7 @@ func TestNewDefaultLogger(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			buffer.Reset()
-			logger := NewDefaultLogger(tt.given)
+			logger := specter.NewDefaultLogger(tt.given)
 			tt.want(logger)
 		})
 	}
@@ -72,7 +72,7 @@ func TestNewDefaultLogger(t *testing.T) {
 
 func TestDefaultLogger_Trace(t *testing.T) {
 	buffer := &bytes.Buffer{}
-	logger := NewDefaultLogger(DefaultLoggerConfig{
+	logger := specter.NewDefaultLogger(specter.DefaultLoggerConfig{
 		Writer: buffer,
 	})
 
@@ -82,7 +82,7 @@ func TestDefaultLogger_Trace(t *testing.T) {
 
 func TestDefaultLogger_Info(t *testing.T) {
 	buffer := &bytes.Buffer{}
-	logger := NewDefaultLogger(DefaultLoggerConfig{
+	logger := specter.NewDefaultLogger(specter.DefaultLoggerConfig{
 		Writer: buffer,
 	})
 
@@ -92,7 +92,7 @@ func TestDefaultLogger_Info(t *testing.T) {
 
 func TestDefaultLogger_Warning(t *testing.T) {
 	buffer := &bytes.Buffer{}
-	logger := NewDefaultLogger(DefaultLoggerConfig{
+	logger := specter.NewDefaultLogger(specter.DefaultLoggerConfig{
 		Writer: buffer,
 	})
 
@@ -102,7 +102,7 @@ func TestDefaultLogger_Warning(t *testing.T) {
 
 func TestDefaultLogger_Success(t *testing.T) {
 	buffer := &bytes.Buffer{}
-	logger := NewDefaultLogger(DefaultLoggerConfig{
+	logger := specter.NewDefaultLogger(specter.DefaultLoggerConfig{
 		Writer: buffer,
 	})
 
@@ -112,7 +112,7 @@ func TestDefaultLogger_Success(t *testing.T) {
 
 func TestDefaultLogger_Error(t *testing.T) {
 	buffer := &bytes.Buffer{}
-	logger := NewDefaultLogger(DefaultLoggerConfig{
+	logger := specter.NewDefaultLogger(specter.DefaultLoggerConfig{
 		Writer: buffer,
 	})
 

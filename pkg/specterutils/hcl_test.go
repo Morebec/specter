@@ -12,10 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package specterutils
+package specterutils_test
 
 import (
 	"github.com/morebec/specter/pkg/specter"
+	"github.com/morebec/specter/pkg/specterutils"
+	"github.com/morebec/specter/pkg/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
@@ -37,7 +39,7 @@ func TestHCLGenericUnitLoader_SupportsSource(t *testing.T) {
 		{
 			name: "WHEN a non HCL format THEN return false",
 			when: when{
-				specter.Source{Format: HCLSourceFormat},
+				specter.Source{Format: specterutils.HCLSourceFormat},
 			},
 			then: then{supports: true},
 		},
@@ -51,7 +53,7 @@ func TestHCLGenericUnitLoader_SupportsSource(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			l := NewHCLGenericUnitLoader()
+			l := specterutils.NewHCLGenericUnitLoader()
 			assert.Equalf(t, tt.then.supports, l.SupportsSource(tt.when.source), "SupportsSource(%v)", tt.when.source)
 		})
 	}
@@ -77,7 +79,7 @@ func TestHCLGenericUnitLoader_Load(t *testing.T) {
 			name: "WHEN an empty file THEN return nil",
 			when: when{
 				source: specter.Source{
-					Format: HCLSourceFormat,
+					Format: specterutils.HCLSourceFormat,
 					Data:   []byte(``),
 				},
 			},
@@ -107,7 +109,7 @@ func TestHCLGenericUnitLoader_Load(t *testing.T) {
 			},
 			then: then{
 				expectedUnits: nil,
-				expectedError: RequireErrorWithCode(specter.UnsupportedSourceErrorCode),
+				expectedError: testutils.RequireErrorWithCode(specter.UnsupportedSourceErrorCode),
 			},
 		},
 		{
@@ -117,12 +119,12 @@ func TestHCLGenericUnitLoader_Load(t *testing.T) {
 					Data: []byte(`
 con st = var o
 `),
-					Format: HCLSourceFormat,
+					Format: specterutils.HCLSourceFormat,
 				},
 			},
 			then: then{
 				expectedUnits: nil,
-				expectedError: RequireErrorWithCode(InvalidHCLErrorCode),
+				expectedError: testutils.RequireErrorWithCode(specterutils.InvalidHCLErrorCode),
 			},
 		},
 		{
@@ -133,12 +135,12 @@ con st = var o
 block {
 }
 `),
-					Format: HCLSourceFormat,
+					Format: specterutils.HCLSourceFormat,
 				},
 			},
 			then: then{
 				expectedUnits: nil,
-				expectedError: RequireErrorWithCode(InvalidHCLErrorCode),
+				expectedError: testutils.RequireErrorWithCode(specterutils.InvalidHCLErrorCode),
 			},
 		},
 		// ATTRIBUTES
@@ -151,12 +153,12 @@ specType "specName" {
 	attribute = var.example ? 12 : "hello"
 }
 `),
-					Format: HCLSourceFormat,
+					Format: specterutils.HCLSourceFormat,
 				},
 			},
 			then: then{
 				expectedUnits: nil,
-				expectedError: RequireErrorWithCode(InvalidHCLErrorCode),
+				expectedError: testutils.RequireErrorWithCode(specterutils.InvalidHCLErrorCode),
 			},
 		},
 		{
@@ -170,18 +172,18 @@ specType "specName" {
 	}
 }
 `),
-					Format: HCLSourceFormat,
+					Format: specterutils.HCLSourceFormat,
 				},
 			},
 			then: then{
 				expectedUnits: nil,
-				expectedError: RequireErrorWithCode(InvalidHCLErrorCode),
+				expectedError: testutils.RequireErrorWithCode(specterutils.InvalidHCLErrorCode),
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			l := NewHCLGenericUnitLoader()
+			l := specterutils.NewHCLGenericUnitLoader()
 
 			actualUnits, err := l.Load(tt.when.source)
 			if tt.then.expectedError != nil {
@@ -217,7 +219,7 @@ func TestHCLUnitLoader_Load(t *testing.T) {
 			name: "WHEN an empty file THEN return nil",
 			when: when{
 				source: specter.Source{
-					Format: HCLSourceFormat,
+					Format: specterutils.HCLSourceFormat,
 					Data:   []byte(``),
 				},
 			},
@@ -235,7 +237,7 @@ func TestHCLUnitLoader_Load(t *testing.T) {
 			},
 			then: then{
 				expectedUnits: nil,
-				expectedError: RequireErrorWithCode(specter.UnsupportedSourceErrorCode),
+				expectedError: testutils.RequireErrorWithCode(specter.UnsupportedSourceErrorCode),
 			},
 		},
 		{
@@ -245,12 +247,12 @@ func TestHCLUnitLoader_Load(t *testing.T) {
 					Data: []byte(`
 con st = var o
 `),
-					Format: HCLSourceFormat,
+					Format: specterutils.HCLSourceFormat,
 				},
 			},
 			then: then{
 				expectedUnits: nil,
-				expectedError: RequireErrorWithCode(InvalidHCLErrorCode),
+				expectedError: testutils.RequireErrorWithCode(specterutils.InvalidHCLErrorCode),
 			},
 		},
 		{
@@ -267,7 +269,7 @@ con st = var o
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			l := NewHCLUnitLoader(func() HCLFileConfig {
+			l := specterutils.NewHCLUnitLoader(func() specterutils.HCLFileConfig {
 				return &HclConfigMock{}
 			})
 
@@ -283,7 +285,7 @@ con st = var o
 	}
 }
 
-var _ HCLFileConfig = (*HclConfigMock)(nil)
+var _ specterutils.HCLFileConfig = (*HclConfigMock)(nil)
 
 type HclConfigMock struct {
 	Service struct {
@@ -313,23 +315,23 @@ func (m *HclConfigMock) Units() []specter.Unit {
 	}
 }
 
-func (m *HclConfigMock) genericUnit() *GenericUnit {
-	unit := NewGenericUnit("specter", "service", m.source())
+func (m *HclConfigMock) genericUnit() *specterutils.GenericUnit {
+	unit := specterutils.NewGenericUnit("specter", "service", m.source())
 
-	unit.Attributes = append(unit.Attributes, GenericUnitAttribute{
+	unit.Attributes = append(unit.Attributes, specterutils.GenericUnitAttribute{
 		Name: "image",
-		Value: GenericValue{
+		Value: specterutils.GenericValue{
 			Value: cty.StringVal("specter:1.0.0"),
 		},
 	})
-	unit.Attributes = append(unit.Attributes, GenericUnitAttribute{
+	unit.Attributes = append(unit.Attributes, specterutils.GenericUnitAttribute{
 		Name: "dev",
-		Value: ObjectValue{
+		Value: specterutils.ObjectValue{
 			Type: "environment",
-			Attributes: []GenericUnitAttribute{
+			Attributes: []specterutils.GenericUnitAttribute{
 				{
 					Name: "MYSQL_ROOT_PASSWORD",
-					Value: GenericValue{
+					Value: specterutils.GenericValue{
 						Value: cty.StringVal("password"),
 					},
 				},
@@ -343,6 +345,6 @@ func (m *HclConfigMock) source() specter.Source {
 	return specter.Source{
 		Location: "specter.hcl",
 		Data:     m.data(),
-		Format:   HCLSourceFormat,
+		Format:   specterutils.HCLSourceFormat,
 	}
 }

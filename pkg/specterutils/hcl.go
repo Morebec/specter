@@ -107,7 +107,7 @@ func (l HCLGenericUnitLoader) Load(s specter.Source) ([]specter.Unit, error) {
 
 		// Create unit and add to list
 		units = append(units, &GenericUnit{
-			name:       specter.UnitName(block.Labels[0]),
+			UnitName:   specter.UnitName(block.Labels[0]),
 			typ:        specter.UnitType(block.Type),
 			source:     s,
 			Attributes: specAttributes,

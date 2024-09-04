@@ -16,7 +16,7 @@ package specter_test
 
 import (
 	"context"
-	. "github.com/morebec/specter/pkg/specter"
+	"github.com/morebec/specter/pkg/specter"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -24,7 +24,7 @@ import (
 )
 
 func TestRunResult_ExecutionTime(t *testing.T) {
-	r := PipelineResult{}
+	r := specter.PipelineResult{}
 	r.StartedAt = time.Date(2024, 01, 01, 0, 0, 0, 0, time.UTC)
 	r.EndedAt = time.Date(2024, 01, 01, 1, 0, 0, 0, time.UTC)
 
@@ -35,17 +35,17 @@ func TestUnitter_Run(t *testing.T) {
 	testDay := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	type given struct {
-		pipeline func() *Pipeline
+		pipeline func() *specter.Pipeline
 	}
 
 	type when struct {
 		context         context.Context
 		sourceLocations []string
-		executionMode   RunMode
+		executionMode   specter.RunMode
 	}
 
 	type then struct {
-		expectedRunResult PipelineResult
+		expectedRunResult specter.PipelineResult
 		expectedError     assert.ErrorAssertionFunc
 	}
 
@@ -58,20 +58,20 @@ func TestUnitter_Run(t *testing.T) {
 		{
 			name: "WHEN no source locations provided THEN return with no error",
 			given: given{
-				pipeline: func() *Pipeline {
-					return NewPipeline(
-						WithTimeProvider(staticTimeProvider(testDay)),
+				pipeline: func() *specter.Pipeline {
+					return specter.NewPipeline(
+						specter.WithTimeProvider(staticTimeProvider(testDay)),
 					)
 				},
 			},
 			when: when{
 				context:         context.Background(),
 				sourceLocations: nil,
-				executionMode:   PreviewMode,
+				executionMode:   specter.PreviewMode,
 			},
 			then: then{
-				expectedRunResult: PipelineResult{
-					RunMode:   PreviewMode,
+				expectedRunResult: specter.PipelineResult{
+					RunMode:   specter.PreviewMode,
 					Sources:   nil,
 					Units:     nil,
 					Artifacts: nil,
@@ -84,9 +84,9 @@ func TestUnitter_Run(t *testing.T) {
 		{
 			name: "WHEN no execution mode provided THEN assume Preview mode",
 			given: given{
-				pipeline: func() *Pipeline {
-					return NewPipeline(
-						WithTimeProvider(staticTimeProvider(testDay)),
+				pipeline: func() *specter.Pipeline {
+					return specter.NewPipeline(
+						specter.WithTimeProvider(staticTimeProvider(testDay)),
 					)
 				},
 			},
@@ -96,8 +96,8 @@ func TestUnitter_Run(t *testing.T) {
 				executionMode:   "", // No execution mode should default to preview
 			},
 			then: then{
-				expectedRunResult: PipelineResult{
-					RunMode:   PreviewMode,
+				expectedRunResult: specter.PipelineResult{
+					RunMode:   specter.PreviewMode,
 					Sources:   nil,
 					Units:     nil,
 					Artifacts: nil,
@@ -110,9 +110,9 @@ func TestUnitter_Run(t *testing.T) {
 		{
 			name: "WHEN no context is provided THEN assume a context.Background and do not fail",
 			given: given{
-				pipeline: func() *Pipeline {
-					return NewPipeline(
-						WithTimeProvider(staticTimeProvider(testDay)),
+				pipeline: func() *specter.Pipeline {
+					return specter.NewPipeline(
+						specter.WithTimeProvider(staticTimeProvider(testDay)),
 					)
 				},
 			},
@@ -122,8 +122,8 @@ func TestUnitter_Run(t *testing.T) {
 				executionMode:   "", // No execution mode should default to preview
 			},
 			then: then{
-				expectedRunResult: PipelineResult{
-					RunMode:   PreviewMode,
+				expectedRunResult: specter.PipelineResult{
+					RunMode:   specter.PreviewMode,
 					Sources:   nil,
 					Units:     nil,
 					Artifacts: nil,

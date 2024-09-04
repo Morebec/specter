@@ -15,7 +15,8 @@
 package specter_test
 
 import (
-	. "github.com/morebec/specter/pkg/specter"
+	"github.com/morebec/specter/pkg/specter"
+	"github.com/morebec/specter/pkg/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"os"
@@ -25,19 +26,19 @@ import (
 
 func TestJSONArtifactRegistry_InterfaceCompliance(t *testing.T) {
 	// JSON Artifact Registry
-	assertArtifactRegistryCompliance(t, "JSONArtifactRegistry", func() *JSONArtifactRegistry {
-		return NewJSONArtifactRegistry(DefaultJSONArtifactRegistryFileName, &mockFileSystem{})
+	assertArtifactRegistryCompliance(t, "JSONArtifactRegistry", func() *specter.JSONArtifactRegistry {
+		return specter.NewJSONArtifactRegistry(specter.DefaultJSONArtifactRegistryFileName, &testutils.MockFileSystem{})
 	})
 }
 
 func TestJSONArtifactRegistry_Load(t *testing.T) {
 	type given struct {
 		jsonFileContent string
-		fileSystem      FileSystem
+		fileSystem      specter.FileSystem
 	}
 	type then struct {
 		expectedError   require.ErrorAssertionFunc
-		expectedEntries map[string][]ArtifactRegistryEntry
+		expectedEntries map[string][]specter.ArtifactRegistryEntry
 	}
 	tests := []struct {
 		name  string
@@ -47,7 +48,7 @@ func TestJSONArtifactRegistry_Load(t *testing.T) {
 		{
 			name: "Given entries in json file Then entries should be loaded Successfully",
 			given: given{
-				fileSystem: &mockFileSystem{},
+				fileSystem: &testutils.MockFileSystem{},
 				jsonFileContent: `{
   "generatedAt" : "2024-01-01T00:00:00Z",
   "entries" : {
@@ -60,7 +61,7 @@ func TestJSONArtifactRegistry_Load(t *testing.T) {
 			},
 			then: then{
 				expectedError: nil,
-				expectedEntries: map[string][]ArtifactRegistryEntry{
+				expectedEntries: map[string][]specter.ArtifactRegistryEntry{
 					"processor1": {
 						{
 							ArtifactID: "file1.txt",
@@ -72,7 +73,7 @@ func TestJSONArtifactRegistry_Load(t *testing.T) {
 		{
 			name: "Given file content is empty Then no entries should be loaded",
 			given: given{
-				fileSystem:      &mockFileSystem{},
+				fileSystem:      &testutils.MockFileSystem{},
 				jsonFileContent: "",
 			},
 			then: then{
@@ -83,7 +84,7 @@ func TestJSONArtifactRegistry_Load(t *testing.T) {
 		{
 			name: "Given JSON is malformed Then no entries should be loaded and an error should be returned",
 			given: given{
-				fileSystem:      &mockFileSystem{},
+				fileSystem:      &testutils.MockFileSystem{},
 				jsonFileContent: `{"entries":{`,
 			},
 			then: then{
@@ -95,7 +96,7 @@ func TestJSONArtifactRegistry_Load(t *testing.T) {
 			name: "Given json contains invalid entries Then entries should be loaded Successfully",
 			// Invalid entries being processors without a name or artifacts without an ID
 			given: given{
-				fileSystem: &mockFileSystem{},
+				fileSystem: &testutils.MockFileSystem{},
 				jsonFileContent: `{
   "generatedAt" : "2024-01-01T00:00:00Z",
   "entries" : {
@@ -113,8 +114,8 @@ func TestJSONArtifactRegistry_Load(t *testing.T) {
 		{
 			name: "Given file does not exist Then return no error",
 			given: given{
-				fileSystem: &mockFileSystem{
-					readFileErr: os.ErrNotExist,
+				fileSystem: &testutils.MockFileSystem{
+					ReadFileErr: os.ErrNotExist,
 				},
 				jsonFileContent: "",
 			},
@@ -126,8 +127,8 @@ func TestJSONArtifactRegistry_Load(t *testing.T) {
 		{
 			name: "Given filesystem returns an error when reading files Then return an error",
 			given: given{
-				fileSystem: &mockFileSystem{
-					readFileErr: assert.AnError,
+				fileSystem: &testutils.MockFileSystem{
+					ReadFileErr: assert.AnError,
 				},
 				jsonFileContent: "",
 			},
@@ -146,11 +147,11 @@ func TestJSONArtifactRegistry_Load(t *testing.T) {
 
 			err := fs.WriteFile(filePath, []byte(tt.given.jsonFileContent), os.ModePerm)
 			require.NoError(t, err)
-			defer func(fs FileSystem, path string) {
+			defer func(fs specter.FileSystem, path string) {
 				require.NoError(t, fs.Remove(path))
 			}(fs, filePath)
 
-			registry := NewJSONArtifactRegistry(filePath, fs)
+			registry := specter.NewJSONArtifactRegistry(filePath, fs)
 			registry.TimeProvider = staticTimeProvider(time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC))
 
 			err = registry.Load()
@@ -168,8 +169,8 @@ func TestJSONArtifactRegistry_Load(t *testing.T) {
 
 func TestJSONArtifactRegistry_Save(t *testing.T) {
 	type given struct {
-		entries    map[string][]ArtifactRegistryEntry
-		fileSystem FileSystem
+		entries    map[string][]specter.ArtifactRegistryEntry
+		fileSystem specter.FileSystem
 	}
 
 	type then struct {
@@ -185,8 +186,8 @@ func TestJSONArtifactRegistry_Save(t *testing.T) {
 		{
 			name: "GIVEN a set of entries THEN registry should be saved as JSON",
 			given: given{
-				fileSystem: &mockFileSystem{},
-				entries: map[string][]ArtifactRegistryEntry{
+				fileSystem: &testutils.MockFileSystem{},
+				entries: map[string][]specter.ArtifactRegistryEntry{
 					"processor1": {
 						{ArtifactID: "file1.txt"},
 					},
@@ -208,7 +209,7 @@ func TestJSONArtifactRegistry_Save(t *testing.T) {
 		{
 			name: "GIVEN no entries THEN registry should be saved as JSON successfully",
 			given: given{
-				fileSystem: &mockFileSystem{},
+				fileSystem: &testutils.MockFileSystem{},
 				entries:    nil,
 			},
 			then: then{
@@ -222,8 +223,8 @@ func TestJSONArtifactRegistry_Save(t *testing.T) {
 		{
 			name: "GIVEN filesystem has errors writing files THEN an error should be returned",
 			given: given{
-				fileSystem: &mockFileSystem{
-					writeFileErr: assert.AnError,
+				fileSystem: &testutils.MockFileSystem{
+					WriteFileErr: assert.AnError,
 				},
 				entries: nil,
 			},
@@ -238,9 +239,9 @@ func TestJSONArtifactRegistry_Save(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			fs := tt.given.fileSystem
 
-			registryFilePath := DefaultJSONArtifactRegistryFileName
+			registryFilePath := specter.DefaultJSONArtifactRegistryFileName
 
-			registry := NewJSONArtifactRegistry(registryFilePath, fs)
+			registry := specter.NewJSONArtifactRegistry(registryFilePath, fs)
 			registry.TimeProvider = staticTimeProvider(time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC))
 
 			// Add initial entries

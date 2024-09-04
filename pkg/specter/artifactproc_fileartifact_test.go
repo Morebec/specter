@@ -17,7 +17,8 @@ package specter_test
 import (
 	"context"
 	"github.com/morebec/go-errors/errors"
-	. "github.com/morebec/specter/pkg/specter"
+	"github.com/morebec/specter/pkg/specter"
+	"github.com/morebec/specter/pkg/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io/fs"
@@ -28,12 +29,12 @@ import (
 
 func TestWriteFileArtifactProcessor_Process(t *testing.T) {
 	type processGiven struct {
-		fileSystem      FileSystem
-		registryEntries []ArtifactRegistryEntry
+		fileSystem      specter.FileSystem
+		registryEntries []specter.ArtifactRegistryEntry
 		contextTimeout  time.Duration
 	}
 	type processWhen struct {
-		artifacts []Artifact
+		artifacts []specter.Artifact
 	}
 	type processThen struct {
 		expectedFiles []string
@@ -50,7 +51,7 @@ func TestWriteFileArtifactProcessor_Process(t *testing.T) {
 		{
 			name: "WHEN context cancels Then return context error",
 			given: processGiven{
-				fileSystem:     &mockFileSystem{},
+				fileSystem:     &testutils.MockFileSystem{},
 				contextTimeout: time.Nanosecond,
 			},
 			then: processThen{
@@ -66,8 +67,8 @@ func TestWriteFileArtifactProcessor_Process(t *testing.T) {
 				"WHEN cleanup fails as a result " +
 				"THEN an error should be returned",
 			given: processGiven{
-				fileSystem: &mockFileSystem{},
-				registryEntries: []ArtifactRegistryEntry{
+				fileSystem: &testutils.MockFileSystem{},
+				registryEntries: []specter.ArtifactRegistryEntry{
 					{
 						ArtifactID: "/path/to/file1",
 						Metadata:   nil,
@@ -75,7 +76,7 @@ func TestWriteFileArtifactProcessor_Process(t *testing.T) {
 				},
 			},
 			then: processThen{
-				expectedError: RequireErrorWithCode(FileArtifactProcessorCleanUpFailedErrorCode),
+				expectedError: testutils.RequireErrorWithCode(specter.FileArtifactProcessorCleanUpFailedErrorCode),
 			},
 		},
 		{
@@ -83,19 +84,19 @@ func TestWriteFileArtifactProcessor_Process(t *testing.T) {
 				"WHEN cleanup fails as a result " +
 				"THEN an error should be returned",
 			given: processGiven{
-				fileSystem: &mockFileSystem{},
-				registryEntries: []ArtifactRegistryEntry{
+				fileSystem: &testutils.MockFileSystem{},
+				registryEntries: []specter.ArtifactRegistryEntry{
 					{
 						ArtifactID: "/path/to/file1",
 						Metadata: map[string]any{
 							"path":      "", // no path
-							"writeMode": string(WriteOnceMode),
+							"writeMode": string(specter.WriteOnceMode),
 						},
 					},
 				},
 			},
 			then: processThen{
-				expectedError: RequireErrorWithCode(FileArtifactProcessorCleanUpFailedErrorCode),
+				expectedError: testutils.RequireErrorWithCode(specter.FileArtifactProcessorCleanUpFailedErrorCode),
 			},
 		},
 		{
@@ -103,8 +104,8 @@ func TestWriteFileArtifactProcessor_Process(t *testing.T) {
 				"WHEN cleanup fails as a result " +
 				"THEN an error should be returned",
 			given: processGiven{
-				fileSystem: &mockFileSystem{},
-				registryEntries: []ArtifactRegistryEntry{
+				fileSystem: &testutils.MockFileSystem{},
+				registryEntries: []specter.ArtifactRegistryEntry{
 					{
 						ArtifactID: "/path/to/file1",
 						Metadata: map[string]any{
@@ -115,7 +116,7 @@ func TestWriteFileArtifactProcessor_Process(t *testing.T) {
 				},
 			},
 			then: processThen{
-				expectedError: RequireErrorWithCode(FileArtifactProcessorCleanUpFailedErrorCode),
+				expectedError: testutils.RequireErrorWithCode(specter.FileArtifactProcessorCleanUpFailedErrorCode),
 			},
 		},
 		{
@@ -123,30 +124,30 @@ func TestWriteFileArtifactProcessor_Process(t *testing.T) {
 				"WHEN processing cleanup fails as a result" +
 				"THEN an error should be returned",
 			given: processGiven{
-				fileSystem: &mockFileSystem{
-					rmErr: assert.AnError,
-					files: map[string][]byte{
+				fileSystem: &testutils.MockFileSystem{
+					RmErr: assert.AnError,
+					Files: map[string][]byte{
 						"/path/to/file1": []byte("file content"),
 					},
 				},
-				registryEntries: []ArtifactRegistryEntry{
+				registryEntries: []specter.ArtifactRegistryEntry{
 					{
 						ArtifactID: "/path/to/file1",
 						Metadata: map[string]interface{}{
 							"path":      "/path/to/file1",
-							"writeMode": string(RecreateMode),
+							"writeMode": string(specter.RecreateMode),
 						},
 					},
 				},
 			},
 			when: processWhen{
-				artifacts: []Artifact{
-					&FileArtifact{Path: "/path/to/file1", FileMode: os.ModePerm, WriteMode: RecreateMode},
+				artifacts: []specter.Artifact{
+					&specter.FileArtifact{Path: "/path/to/file1", FileMode: os.ModePerm, WriteMode: specter.RecreateMode},
 				},
 			},
 			then: processThen{
 				expectedFiles: []string{},
-				expectedError: RequireErrorWithCode(FileArtifactProcessorCleanUpFailedErrorCode),
+				expectedError: testutils.RequireErrorWithCode(specter.FileArtifactProcessorCleanUpFailedErrorCode),
 			},
 		},
 		{
@@ -154,17 +155,17 @@ func TestWriteFileArtifactProcessor_Process(t *testing.T) {
 				"WHEN processing cleanup" +
 				"THEN the file should not be cleaned",
 			given: processGiven{
-				fileSystem: &mockFileSystem{
-					files: map[string][]byte{
+				fileSystem: &testutils.MockFileSystem{
+					Files: map[string][]byte{
 						"/path/to/file1": []byte("file write once"),
 					},
 				},
-				registryEntries: []ArtifactRegistryEntry{
+				registryEntries: []specter.ArtifactRegistryEntry{
 					{
 						ArtifactID: "/path/to/file1",
 						Metadata: map[string]interface{}{
 							"path":      "/path/to/file1",
-							"writeMode": string(WriteOnceMode),
+							"writeMode": string(specter.WriteOnceMode),
 						},
 					},
 				},
@@ -184,17 +185,17 @@ func TestWriteFileArtifactProcessor_Process(t *testing.T) {
 				"WHEN processing cleanup" +
 				"THEN the file should be removed",
 			given: processGiven{
-				fileSystem: &mockFileSystem{
-					files: map[string][]byte{
+				fileSystem: &testutils.MockFileSystem{
+					Files: map[string][]byte{
 						"/path/to/file1": []byte("file to clean"),
 					},
 				},
-				registryEntries: []ArtifactRegistryEntry{
+				registryEntries: []specter.ArtifactRegistryEntry{
 					{
 						ArtifactID: "/path/to/file1",
 						Metadata: map[string]interface{}{
 							"path":      "/path/to/file1",
-							"writeMode": string(RecreateMode),
+							"writeMode": string(specter.RecreateMode),
 						},
 					},
 				},
@@ -212,14 +213,14 @@ func TestWriteFileArtifactProcessor_Process(t *testing.T) {
 		{
 			name: "WHEN valid file artifacts THEN file should be created successfully",
 			given: processGiven{
-				fileSystem: &mockFileSystem{},
+				fileSystem: &testutils.MockFileSystem{},
 			},
 			when: processWhen{
-				artifacts: []Artifact{
+				artifacts: []specter.Artifact{
 					// Valid file artifacts
-					&FileArtifact{Path: "/path/to/file1", FileMode: os.ModePerm, WriteMode: RecreateMode},
-					&FileArtifact{Path: "/path/to/file2", FileMode: os.ModePerm, WriteMode: RecreateMode},
-					NewDirectoryArtifact("/path/to/file3", os.ModePerm, RecreateMode),
+					&specter.FileArtifact{Path: "/path/to/file1", FileMode: os.ModePerm, WriteMode: specter.RecreateMode},
+					&specter.FileArtifact{Path: "/path/to/file2", FileMode: os.ModePerm, WriteMode: specter.RecreateMode},
+					specter.NewDirectoryArtifact("/path/to/file3", os.ModePerm, specter.RecreateMode),
 				},
 			},
 			then: processThen{
@@ -231,12 +232,12 @@ func TestWriteFileArtifactProcessor_Process(t *testing.T) {
 			name: "WHEN some artifacts are not FileArtifact " +
 				"THEN non FileArtifacts should be skipped and no error should be returned",
 			given: processGiven{
-				fileSystem: &mockFileSystem{},
+				fileSystem: &testutils.MockFileSystem{},
 			},
 			when: processWhen{
-				artifacts: []Artifact{
-					&FileArtifact{Path: "/path/to/file1", FileMode: os.ModePerm},
-					ArtifactStub{}, // this should be skipped.
+				artifacts: []specter.Artifact{
+					&specter.FileArtifact{Path: "/path/to/file1", FileMode: os.ModePerm},
+					testutils.ArtifactStub{}, // this should be skipped.
 				},
 			},
 			then: processThen{
@@ -247,33 +248,33 @@ func TestWriteFileArtifactProcessor_Process(t *testing.T) {
 		{
 			name: "GIVEN file system fails writing files THEN an error should be returned",
 			given: processGiven{
-				fileSystem: &mockFileSystem{
-					writeFileErr: assert.AnError,
+				fileSystem: &testutils.MockFileSystem{
+					WriteFileErr: assert.AnError,
 				},
 			},
 			when: processWhen{
-				artifacts: []Artifact{
-					&FileArtifact{Path: "/path/to/file1", FileMode: os.ModePerm},
+				artifacts: []specter.Artifact{
+					&specter.FileArtifact{Path: "/path/to/file1", FileMode: os.ModePerm},
 				},
 			},
 			then: processThen{
 				expectedFiles: []string{},
-				expectedError: RequireErrorWithCode(FileArtifactProcessorProcessingFailedErrorCode),
+				expectedError: testutils.RequireErrorWithCode(specter.FileArtifactProcessorProcessingFailedErrorCode),
 			},
 		},
 		{
 			name: "GIVEN file already exists WHEN write mode is Once THEN do not write file",
 			given: processGiven{
-				fileSystem: &mockFileSystem{
-					writeFileErr: assert.AnError, // Returning an error to make the test fail if it tries to write it.
-					files: map[string][]byte{
+				fileSystem: &testutils.MockFileSystem{
+					WriteFileErr: assert.AnError, // Returning an error to make the test fail if it tries to write it.
+					Files: map[string][]byte{
 						"/path/to/file1": []byte("file content"), // already exists
 					},
 				},
 			},
 			when: processWhen{
-				artifacts: []Artifact{
-					&FileArtifact{Path: "/path/to/file1", FileMode: os.ModePerm, WriteMode: WriteOnceMode},
+				artifacts: []specter.Artifact{
+					&specter.FileArtifact{Path: "/path/to/file1", FileMode: os.ModePerm, WriteMode: specter.WriteOnceMode},
 				},
 			},
 			then: processThen{
@@ -284,25 +285,25 @@ func TestWriteFileArtifactProcessor_Process(t *testing.T) {
 		{
 			name: "WHEN artifact without path THEN return error",
 			given: processGiven{
-				fileSystem: &mockFileSystem{},
+				fileSystem: &testutils.MockFileSystem{},
 			},
 			when: processWhen{
-				artifacts: []Artifact{
-					&FileArtifact{Path: "", FileMode: os.ModePerm, WriteMode: WriteOnceMode},
+				artifacts: []specter.Artifact{
+					&specter.FileArtifact{Path: "", FileMode: os.ModePerm, WriteMode: specter.WriteOnceMode},
 				},
 			},
 			then: processThen{
-				expectedError: RequireErrorWithCode(FileArtifactProcessorProcessingFailedErrorCode),
+				expectedError: testutils.RequireErrorWithCode(specter.FileArtifactProcessorProcessingFailedErrorCode),
 			},
 		},
 		{
 			name: "WHEN artifact without writeMode THEN no error should be returned as WRITE_ONCE will be used.",
 			given: processGiven{
-				fileSystem: &mockFileSystem{},
+				fileSystem: &testutils.MockFileSystem{},
 			},
 			when: processWhen{
-				artifacts: []Artifact{
-					&FileArtifact{Path: "/path/to/file", FileMode: os.ModePerm, WriteMode: ""},
+				artifacts: []specter.Artifact{
+					&specter.FileArtifact{Path: "/path/to/file", FileMode: os.ModePerm, WriteMode: ""},
 				},
 			},
 			then: processThen{
@@ -316,74 +317,74 @@ func TestWriteFileArtifactProcessor_Process(t *testing.T) {
 		{
 			name: "GIVEN file system cant resolve paths THEN return error",
 			given: processGiven{
-				fileSystem: &mockFileSystem{
-					absErr: assert.AnError,
+				fileSystem: &testutils.MockFileSystem{
+					AbsErr: assert.AnError,
 				},
 			},
 			when: processWhen{
-				artifacts: []Artifact{
-					&FileArtifact{Path: "/some/path", FileMode: os.ModePerm, WriteMode: WriteOnceMode},
+				artifacts: []specter.Artifact{
+					&specter.FileArtifact{Path: "/some/path", FileMode: os.ModePerm, WriteMode: specter.WriteOnceMode},
 				},
 			},
 			then: processThen{
-				expectedError: RequireErrorWithCode(FileArtifactProcessorProcessingFailedErrorCode),
+				expectedError: testutils.RequireErrorWithCode(specter.FileArtifactProcessorProcessingFailedErrorCode),
 			},
 		},
 		{
 			name: "GIVEN file system cant stat paths WHEN artifact without path THEN an error should be returned",
 			given: processGiven{
-				fileSystem: &mockFileSystem{
-					statErr: assert.AnError,
+				fileSystem: &testutils.MockFileSystem{
+					StatErr: assert.AnError,
 				},
 			},
 			when: processWhen{
-				artifacts: []Artifact{
-					&FileArtifact{Path: "/some/path", FileMode: 0755, WriteMode: WriteOnceMode},
+				artifacts: []specter.Artifact{
+					&specter.FileArtifact{Path: "/some/path", FileMode: 0755, WriteMode: specter.WriteOnceMode},
 				},
 			},
 			then: processThen{
-				expectedError: RequireErrorWithCode(FileArtifactProcessorProcessingFailedErrorCode),
+				expectedError: testutils.RequireErrorWithCode(specter.FileArtifactProcessorProcessingFailedErrorCode),
 			},
 		},
 		{
 			name: "GIVEN file system cant write files THEN an error should be returned",
 			given: processGiven{
-				fileSystem: &mockFileSystem{
-					writeFileErr: assert.AnError,
+				fileSystem: &testutils.MockFileSystem{
+					WriteFileErr: assert.AnError,
 				},
 			},
 			when: processWhen{
-				artifacts: []Artifact{
-					&FileArtifact{Path: "/some/path", FileMode: 0755, WriteMode: RecreateMode},
+				artifacts: []specter.Artifact{
+					&specter.FileArtifact{Path: "/some/path", FileMode: 0755, WriteMode: specter.RecreateMode},
 				},
 			},
 			then: processThen{
-				expectedError: RequireErrorWithCode(FileArtifactProcessorProcessingFailedErrorCode),
+				expectedError: testutils.RequireErrorWithCode(specter.FileArtifactProcessorProcessingFailedErrorCode),
 			},
 		},
 		{
 			name: "GIVEN file system cant make directories THEN an error should be returned",
 			given: processGiven{
-				fileSystem: &mockFileSystem{
-					mkdirErr: assert.AnError,
+				fileSystem: &testutils.MockFileSystem{
+					MkdirErr: assert.AnError,
 				},
 			},
 			when: processWhen{
-				artifacts: []Artifact{
-					NewDirectoryArtifact("/path/to/file", os.ModePerm, RecreateMode),
+				artifacts: []specter.Artifact{
+					specter.NewDirectoryArtifact("/path/to/file", os.ModePerm, specter.RecreateMode),
 				},
 			},
 			then: processThen{
-				expectedError: RequireErrorWithCode(FileArtifactProcessorProcessingFailedErrorCode),
+				expectedError: testutils.RequireErrorWithCode(specter.FileArtifactProcessorProcessingFailedErrorCode),
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			processor := FileArtifactProcessor{FileSystem: tt.given.fileSystem}
+			processor := specter.FileArtifactProcessor{FileSystem: tt.given.fileSystem}
 
-			registry := &InMemoryArtifactRegistry{}
+			registry := &specter.InMemoryArtifactRegistry{}
 			if len(tt.given.registryEntries) != 0 {
 				for _, e := range tt.given.registryEntries {
 					assert.NoError(t, registry.Add(processor.Name(), e))
@@ -397,11 +398,11 @@ func TestWriteFileArtifactProcessor_Process(t *testing.T) {
 				defer cancelFunc()
 			}
 
-			ctx := ArtifactProcessingContext{
+			ctx := specter.ArtifactProcessingContext{
 				Context:          parentCtx,
 				Artifacts:        tt.when.artifacts,
-				Logger:           NewDefaultLogger(DefaultLoggerConfig{}),
-				ArtifactRegistry: NewProcessorArtifactRegistry(processor.Name(), registry),
+				Logger:           specter.NewDefaultLogger(specter.DefaultLoggerConfig{}),
+				ArtifactRegistry: specter.NewProcessorArtifactRegistry(processor.Name(), registry),
 			}
 			err := processor.Process(ctx)
 
@@ -433,22 +434,22 @@ func TestWriteFileArtifactProcessor_Process_clean(t *testing.T) {
 }
 
 func TestWriteFileArtifactProcessor_Name(t *testing.T) {
-	assert.NotEqual(t, "", FileArtifactProcessor{}.Name())
+	assert.NotEqual(t, "", specter.FileArtifactProcessor{}.Name())
 }
 
 func TestNewDirectoryArtifact(t *testing.T) {
-	dir := NewDirectoryArtifact("/dir", os.ModePerm, RecreateMode)
+	dir := specter.NewDirectoryArtifact("/dir", os.ModePerm, specter.RecreateMode)
 	require.NotNil(t, dir)
 	assert.Equal(t, dir.Path, "/dir")
 	assert.Equal(t, dir.FileMode, os.ModePerm|os.ModeDir)
-	assert.Equal(t, dir.WriteMode, RecreateMode)
+	assert.Equal(t, dir.WriteMode, specter.RecreateMode)
 	assert.Nil(t, dir.Data)
 }
 
 func TestFileArtifact_IsDir(t *testing.T) {
-	f := &FileArtifact{FileMode: os.ModePerm}
+	f := &specter.FileArtifact{FileMode: os.ModePerm}
 	assert.False(t, f.IsDir())
 
-	f = &FileArtifact{FileMode: os.ModePerm | os.ModeDir}
+	f = &specter.FileArtifact{FileMode: os.ModePerm | os.ModeDir}
 	assert.True(t, f.IsDir())
 }

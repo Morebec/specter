@@ -15,7 +15,8 @@
 package specter_test
 
 import (
-	. "github.com/morebec/specter/pkg/specter"
+	"github.com/morebec/specter/pkg/specter"
+	"github.com/morebec/specter/pkg/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -25,33 +26,33 @@ import (
 func TestNewUnitGroup(t *testing.T) {
 	tests := []struct {
 		name  string
-		given []Unit
-		when  func() UnitGroup
-		then  func(UnitGroup) bool
+		given []specter.Unit
+		when  func() specter.UnitGroup
+		then  func(specter.UnitGroup) bool
 	}{
 		{
 			name:  "GIVEN no units WHEN calling NewUnitGroup THEN return an empty group",
-			given: []Unit{},
-			when: func() UnitGroup {
-				return NewUnitGroup()
+			given: []specter.Unit{},
+			when: func() specter.UnitGroup {
+				return specter.NewUnitGroup()
 			},
-			then: func(result UnitGroup) bool {
+			then: func(result specter.UnitGroup) bool {
 				return len(result) == 0
 			},
 		},
 		{
 			name: "GIVEN multiple units WHEN calling NewUnitGroup THEN return a group with those units",
-			given: []Unit{
-				&UnitStub{name: "unit1", typeName: "type", source: Source{}},
-				&UnitStub{name: "unit2", typeName: "type", source: Source{}},
+			given: []specter.Unit{
+				&testutils.UnitStub{Name_: "unit1", TypeName: "type", Src: specter.Source{}},
+				&testutils.UnitStub{Name_: "unit2", TypeName: "type", Src: specter.Source{}},
 			},
-			when: func() UnitGroup {
-				return NewUnitGroup(
-					&UnitStub{name: "unit1", typeName: "type", source: Source{}},
-					&UnitStub{name: "unit2", typeName: "type", source: Source{}},
+			when: func() specter.UnitGroup {
+				return specter.NewUnitGroup(
+					&testutils.UnitStub{Name_: "unit1", TypeName: "type", Src: specter.Source{}},
+					&testutils.UnitStub{Name_: "unit2", TypeName: "type", Src: specter.Source{}},
 				)
 			},
-			then: func(result UnitGroup) bool {
+			then: func(result specter.UnitGroup) bool {
 				return len(result) == 2 &&
 					result[0].Name() == "unit1" &&
 					result[1].Name() == "unit2"
@@ -73,35 +74,35 @@ func TestNewUnitGroup(t *testing.T) {
 func TestUnitGroup_Merge(t *testing.T) {
 	tests := []struct {
 		name  string
-		given UnitGroup
-		when  UnitGroup
-		then  UnitGroup
+		given specter.UnitGroup
+		when  specter.UnitGroup
+		then  specter.UnitGroup
 	}{
 		{
 			name: "GIVEN two disjoint groups THEN return a group with all units",
-			given: NewUnitGroup(
-				&UnitStub{name: "unit1", typeName: "type", source: Source{}},
+			given: specter.NewUnitGroup(
+				&testutils.UnitStub{Name_: "unit1", TypeName: "type", Src: specter.Source{}},
 			),
-			when: NewUnitGroup(
-				&UnitStub{name: "unit2", typeName: "type", source: Source{}},
+			when: specter.NewUnitGroup(
+				&testutils.UnitStub{Name_: "unit2", TypeName: "type", Src: specter.Source{}},
 			),
-			then: NewUnitGroup(
-				&UnitStub{name: "unit1", typeName: "type", source: Source{}},
-				&UnitStub{name: "unit2", typeName: "type", source: Source{}},
+			then: specter.NewUnitGroup(
+				&testutils.UnitStub{Name_: "unit1", TypeName: "type", Src: specter.Source{}},
+				&testutils.UnitStub{Name_: "unit2", TypeName: "type", Src: specter.Source{}},
 			),
 		},
 		{
 			name: "GIVEN two groups with overlapping units THEN return a group without duplicates",
-			given: NewUnitGroup(
-				&UnitStub{name: "unit1", typeName: "type", source: Source{}},
+			given: specter.NewUnitGroup(
+				&testutils.UnitStub{Name_: "unit1", TypeName: "type", Src: specter.Source{}},
 			),
-			when: NewUnitGroup(
-				&UnitStub{name: "unit1", typeName: "type", source: Source{}},
-				&UnitStub{name: "unit2", typeName: "type", source: Source{}},
+			when: specter.NewUnitGroup(
+				&testutils.UnitStub{Name_: "unit1", TypeName: "type", Src: specter.Source{}},
+				&testutils.UnitStub{Name_: "unit2", TypeName: "type", Src: specter.Source{}},
 			),
-			then: NewUnitGroup(
-				&UnitStub{name: "unit1", typeName: "type", source: Source{}},
-				&UnitStub{name: "unit2", typeName: "type", source: Source{}},
+			then: specter.NewUnitGroup(
+				&testutils.UnitStub{Name_: "unit1", TypeName: "type", Src: specter.Source{}},
+				&testutils.UnitStub{Name_: "unit2", TypeName: "type", Src: specter.Source{}},
 			),
 		},
 	}
@@ -117,31 +118,31 @@ func TestUnitGroup_Merge(t *testing.T) {
 func TestUnitGroup_Select(t *testing.T) {
 	tests := []struct {
 		name  string
-		given UnitGroup
-		when  func(u Unit) bool
-		then  UnitGroup
+		given specter.UnitGroup
+		when  func(u specter.Unit) bool
+		then  specter.UnitGroup
 	}{
 		{
 			name: "GIVEN no units matches, THEN return an empty group",
-			given: UnitGroup{
-				&UnitStub{name: "unit2name", typeName: "type", source: Source{}},
+			given: specter.UnitGroup{
+				&testutils.UnitStub{Name_: "unit2name", TypeName: "type", Src: specter.Source{}},
 			},
-			when: func(u Unit) bool {
+			when: func(u specter.Unit) bool {
 				return false
 			},
-			then: UnitGroup{},
+			then: specter.UnitGroup{},
 		},
 		{
 			name: "GIVEN units matches, THEN return a group with only matching units",
-			given: UnitGroup{
-				&UnitStub{name: "unit1", typeName: "type", source: Source{}},
-				&UnitStub{name: "unit2", typeName: "type", source: Source{}},
+			given: specter.UnitGroup{
+				&testutils.UnitStub{Name_: "unit1", TypeName: "type", Src: specter.Source{}},
+				&testutils.UnitStub{Name_: "unit2", TypeName: "type", Src: specter.Source{}},
 			},
-			when: func(u Unit) bool {
+			when: func(u specter.Unit) bool {
 				return u.Name() == "unit2"
 			},
-			then: UnitGroup{
-				&UnitStub{name: "unit2", typeName: "type", source: Source{}},
+			then: specter.UnitGroup{
+				&testutils.UnitStub{Name_: "unit2", TypeName: "type", Src: specter.Source{}},
 			},
 		},
 	}
@@ -156,27 +157,27 @@ func TestUnitGroup_Select(t *testing.T) {
 func TestUnitGroup_SelectType(t *testing.T) {
 	tests := []struct {
 		name  string
-		given UnitGroup
-		when  UnitType
-		then  UnitGroup
+		given specter.UnitGroup
+		when  specter.UnitType
+		then  specter.UnitGroup
 	}{
 		{
 			name: "GIVEN no units matches, THEN return an empty group",
-			given: UnitGroup{
-				&UnitStub{name: "unit2name", typeName: "type", source: Source{}},
+			given: specter.UnitGroup{
+				&testutils.UnitStub{Name_: "unit2name", TypeName: "type", Src: specter.Source{}},
 			},
 			when: "not_found",
-			then: UnitGroup{},
+			then: specter.UnitGroup{},
 		},
 		{
 			name: "GIVEN a unit matches, THEN return a group with matching unit",
-			given: UnitGroup{
-				&UnitStub{name: "unit1", typeName: "type1", source: Source{}},
-				&UnitStub{name: "unit2", typeName: "type2", source: Source{}},
+			given: specter.UnitGroup{
+				&testutils.UnitStub{Name_: "unit1", TypeName: "type1", Src: specter.Source{}},
+				&testutils.UnitStub{Name_: "unit2", TypeName: "type2", Src: specter.Source{}},
 			},
 			when: "type1",
-			then: UnitGroup{
-				&UnitStub{name: "unit1", typeName: "type1", source: Source{}},
+			then: specter.UnitGroup{
+				&testutils.UnitStub{Name_: "unit1", TypeName: "type1", Src: specter.Source{}},
 			},
 		},
 	}
@@ -191,31 +192,31 @@ func TestUnitGroup_SelectType(t *testing.T) {
 func TestUnitGroup_SelectName(t *testing.T) {
 	tests := []struct {
 		name  string
-		given UnitGroup
-		when  UnitName
-		then  Unit
+		given specter.UnitGroup
+		when  specter.UnitName
+		then  specter.Unit
 	}{
 		{
 			name: "GIVEN a group with multiple units WHEN selecting an existing name THEN return the corresponding unit",
-			given: NewUnitGroup(
-				&UnitStub{name: "unit1", typeName: "type", source: Source{}},
-				&UnitStub{name: "unit2", typeName: "type", source: Source{}},
+			given: specter.NewUnitGroup(
+				&testutils.UnitStub{Name_: "unit1", TypeName: "type", Src: specter.Source{}},
+				&testutils.UnitStub{Name_: "unit2", TypeName: "type", Src: specter.Source{}},
 			),
 			when: "unit2",
-			then: &UnitStub{name: "unit2", typeName: "type", source: Source{}},
+			then: &testutils.UnitStub{Name_: "unit2", TypeName: "type", Src: specter.Source{}},
 		},
 		{
 			name: "GIVEN a group with multiple units WHEN selecting a non-existent name THEN return nil",
-			given: NewUnitGroup(
-				&UnitStub{name: "unit1", typeName: "type", source: Source{}},
-				&UnitStub{name: "unit2", typeName: "type", source: Source{}},
+			given: specter.NewUnitGroup(
+				&testutils.UnitStub{Name_: "unit1", TypeName: "type", Src: specter.Source{}},
+				&testutils.UnitStub{Name_: "unit2", TypeName: "type", Src: specter.Source{}},
 			),
 			when: "spec3",
 			then: nil,
 		},
 		{
 			name:  "GIVEN an empty group WHEN selecting a name THEN return nil",
-			given: NewUnitGroup(),
+			given: specter.NewUnitGroup(),
 			when:  "unit1",
 			then:  nil,
 		},
@@ -232,27 +233,27 @@ func TestUnitGroup_SelectName(t *testing.T) {
 func TestUnitGroup_SelectNames(t *testing.T) {
 	tests := []struct {
 		name  string
-		given UnitGroup
-		when  []UnitName
-		then  UnitGroup
+		given specter.UnitGroup
+		when  []specter.UnitName
+		then  specter.UnitGroup
 	}{
 		{
 			name: "GIVEN no units matches, THEN return a group with no values",
-			given: UnitGroup{
-				&UnitStub{name: "name", typeName: "type", source: Source{}},
+			given: specter.UnitGroup{
+				&testutils.UnitStub{Name_: "name", TypeName: "type", Src: specter.Source{}},
 			},
-			when: []UnitName{"not_found"},
-			then: UnitGroup{},
+			when: []specter.UnitName{"not_found"},
+			then: specter.UnitGroup{},
 		},
 		{
 			name: "GIVEN a unit matches, THEN return a group with matching unit",
-			given: UnitGroup{
-				&UnitStub{name: "unit1", typeName: "type", source: Source{}},
-				&UnitStub{name: "unit2", typeName: "type", source: Source{}},
+			given: specter.UnitGroup{
+				&testutils.UnitStub{Name_: "unit1", TypeName: "type", Src: specter.Source{}},
+				&testutils.UnitStub{Name_: "unit2", TypeName: "type", Src: specter.Source{}},
 			},
-			when: []UnitName{"unit1"},
-			then: UnitGroup{
-				&UnitStub{name: "unit1", typeName: "type", source: Source{}},
+			when: []specter.UnitName{"unit1"},
+			then: specter.UnitGroup{
+				&testutils.UnitStub{Name_: "unit1", TypeName: "type", Src: specter.Source{}},
 			},
 		},
 	}
@@ -267,32 +268,32 @@ func TestUnitGroup_SelectNames(t *testing.T) {
 func TestUnitGroup_Exclude(t *testing.T) {
 	tests := []struct {
 		name  string
-		given UnitGroup
-		when  func(u Unit) bool
-		then  UnitGroup
+		given specter.UnitGroup
+		when  func(u specter.Unit) bool
+		then  specter.UnitGroup
 	}{
 		{
 			name: "GIVEN no units matches, THEN return a group with the same values",
-			given: UnitGroup{
-				&UnitStub{name: "name", typeName: "type", source: Source{}},
+			given: specter.UnitGroup{
+				&testutils.UnitStub{Name_: "name", TypeName: "type", Src: specter.Source{}},
 			},
-			when: func(u Unit) bool {
+			when: func(u specter.Unit) bool {
 				return false
 			},
-			then: UnitGroup{
-				&UnitStub{name: "name", typeName: "type", source: Source{}},
+			then: specter.UnitGroup{
+				&testutils.UnitStub{Name_: "name", TypeName: "type", Src: specter.Source{}},
 			},
 		},
 		{
 			name: "GIVEN units matches, THEN return a group without matching units",
-			given: UnitGroup{
-				&UnitStub{name: "unit1", typeName: "type", source: Source{}},
-				&UnitStub{name: "unit2", typeName: "type", source: Source{}},
+			given: specter.UnitGroup{
+				&testutils.UnitStub{Name_: "unit1", TypeName: "type", Src: specter.Source{}},
+				&testutils.UnitStub{Name_: "unit2", TypeName: "type", Src: specter.Source{}},
 			},
-			when: func(u Unit) bool {
+			when: func(u specter.Unit) bool {
 				return true
 			},
-			then: UnitGroup{},
+			then: specter.UnitGroup{},
 		},
 	}
 	for _, tt := range tests {
@@ -306,29 +307,29 @@ func TestUnitGroup_Exclude(t *testing.T) {
 func TestUnitGroup_ExcludeType(t *testing.T) {
 	tests := []struct {
 		name  string
-		given UnitGroup
-		when  UnitType
-		then  UnitGroup
+		given specter.UnitGroup
+		when  specter.UnitType
+		then  specter.UnitGroup
 	}{
 		{
 			name: "GIVEN no units matches, THEN return a group with the same values",
-			given: UnitGroup{
-				&UnitStub{name: "unit2name", typeName: "type", source: Source{}},
+			given: specter.UnitGroup{
+				&testutils.UnitStub{Name_: "unit2name", TypeName: "type", Src: specter.Source{}},
 			},
 			when: "not_found",
-			then: UnitGroup{
-				&UnitStub{name: "unit2name", typeName: "type", source: Source{}},
+			then: specter.UnitGroup{
+				&testutils.UnitStub{Name_: "unit2name", TypeName: "type", Src: specter.Source{}},
 			},
 		},
 		{
 			name: "GIVEN a unit matches, THEN return a group without matching unit",
-			given: UnitGroup{
-				&UnitStub{name: "unit1", typeName: "type1", source: Source{}},
-				&UnitStub{name: "unit2", typeName: "type2", source: Source{}},
+			given: specter.UnitGroup{
+				&testutils.UnitStub{Name_: "unit1", TypeName: "type1", Src: specter.Source{}},
+				&testutils.UnitStub{Name_: "unit2", TypeName: "type2", Src: specter.Source{}},
 			},
 			when: "type1",
-			then: UnitGroup{
-				&UnitStub{name: "unit2", typeName: "type2", source: Source{}},
+			then: specter.UnitGroup{
+				&testutils.UnitStub{Name_: "unit2", TypeName: "type2", Src: specter.Source{}},
 			},
 		},
 	}
@@ -343,29 +344,29 @@ func TestUnitGroup_ExcludeType(t *testing.T) {
 func TestUnitGroup_ExcludeNames(t *testing.T) {
 	tests := []struct {
 		name  string
-		given UnitGroup
-		when  []UnitName
-		then  UnitGroup
+		given specter.UnitGroup
+		when  []specter.UnitName
+		then  specter.UnitGroup
 	}{
 		{
 			name: "GIVEN no units matches, THEN return a group with the same values",
-			given: UnitGroup{
-				&UnitStub{name: "unit2name", typeName: "type", source: Source{}},
+			given: specter.UnitGroup{
+				&testutils.UnitStub{Name_: "unit2name", TypeName: "type", Src: specter.Source{}},
 			},
-			when: []UnitName{"not_found"},
-			then: UnitGroup{
-				&UnitStub{name: "unit2name", typeName: "type", source: Source{}},
+			when: []specter.UnitName{"not_found"},
+			then: specter.UnitGroup{
+				&testutils.UnitStub{Name_: "unit2name", TypeName: "type", Src: specter.Source{}},
 			},
 		},
 		{
 			name: "GIVEN a unit matches, THEN return a group without matching unit",
-			given: UnitGroup{
-				&UnitStub{name: "unit1", typeName: "type", source: Source{}},
-				&UnitStub{name: "unit2", typeName: "type", source: Source{}},
+			given: specter.UnitGroup{
+				&testutils.UnitStub{Name_: "unit1", TypeName: "type", Src: specter.Source{}},
+				&testutils.UnitStub{Name_: "unit2", TypeName: "type", Src: specter.Source{}},
 			},
-			when: []UnitName{"unit1"},
-			then: UnitGroup{
-				&UnitStub{name: "unit2", typeName: "type", source: Source{}},
+			when: []specter.UnitName{"unit1"},
+			then: specter.UnitGroup{
+				&testutils.UnitStub{Name_: "unit2", TypeName: "type", Src: specter.Source{}},
 			},
 		},
 	}
@@ -380,36 +381,36 @@ func TestUnitGroup_ExcludeNames(t *testing.T) {
 func TestMapUnitGroup(t *testing.T) {
 	tests := []struct {
 		name  string
-		given UnitGroup
-		when  func(Unit) string
+		given specter.UnitGroup
+		when  func(specter.Unit) string
 		then  []string
 	}{
 		{
 			name: "GIVEN a group with multiple units WHEN mapped to their names THEN return a slice of unit names",
-			given: NewUnitGroup(
-				&UnitStub{name: "unit1", typeName: "type", source: Source{}},
-				&UnitStub{name: "unit2", typeName: "type", source: Source{}},
+			given: specter.NewUnitGroup(
+				&testutils.UnitStub{Name_: "unit1", TypeName: "type", Src: specter.Source{}},
+				&testutils.UnitStub{Name_: "unit2", TypeName: "type", Src: specter.Source{}},
 			),
-			when: func(u Unit) string {
+			when: func(u specter.Unit) string {
 				return string(u.Name())
 			},
 			then: []string{"unit1", "unit2"},
 		},
 		{
 			name:  "GIVEN an empty group WHEN mapped THEN return a nil slice",
-			given: NewUnitGroup(),
-			when: func(u Unit) string {
+			given: specter.NewUnitGroup(),
+			when: func(u specter.Unit) string {
 				return string(u.Name())
 			},
 			then: nil,
 		},
 		{
 			name: "GIVEN a group with multiple units WHEN mapped to a constant value THEN return a slice of that value",
-			given: NewUnitGroup(
-				&UnitStub{name: "unit1", typeName: "type", source: Source{}},
-				&UnitStub{name: "unit2", typeName: "type", source: Source{}},
+			given: specter.NewUnitGroup(
+				&testutils.UnitStub{Name_: "unit1", TypeName: "type", Src: specter.Source{}},
+				&testutils.UnitStub{Name_: "unit2", TypeName: "type", Src: specter.Source{}},
 			),
-			when: func(u Unit) string {
+			when: func(u specter.Unit) string {
 				return "constant"
 			},
 			then: []string{"constant", "constant"},
@@ -418,7 +419,7 @@ func TestMapUnitGroup(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := MapUnitGroup(tt.given, tt.when)
+			got := specter.MapUnitGroup(tt.given, tt.when)
 			assert.Equal(t, tt.then, got)
 		})
 	}
