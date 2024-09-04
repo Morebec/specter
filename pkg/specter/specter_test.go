@@ -37,33 +37,33 @@ func RequireErrorWithCode(c string) require.ErrorAssertionFunc {
 	}
 }
 
-var _ specter.Specification = (*SpecificationStub)(nil)
+var _ specter.Unit = (*UnitStub)(nil)
 
-type SpecificationStub struct {
-	name     specter.SpecificationName
-	typeName specter.SpecificationType
+type UnitStub struct {
+	name     specter.UnitName
+	typeName specter.UnitType
 	source   specter.Source
 	desc     string
 }
 
-func (s *SpecificationStub) Name() specter.SpecificationName {
-	return s.name
+func (us *UnitStub) Name() specter.UnitName {
+	return us.name
 }
 
-func (s *SpecificationStub) Type() specter.SpecificationType {
-	return s.typeName
+func (us *UnitStub) Type() specter.UnitType {
+	return us.typeName
 }
 
-func (s *SpecificationStub) Description() string {
-	return s.desc
+func (us *UnitStub) Description() string {
+	return us.desc
 }
 
-func (s *SpecificationStub) Source() specter.Source {
-	return s.source
+func (us *UnitStub) Source() specter.Source {
+	return us.source
 }
 
-func (s *SpecificationStub) SetSource(src specter.Source) {
-	s.source = src
+func (us *UnitStub) SetSource(src specter.Source) {
+	us.source = src
 }
 
 // FILE SYSTEM

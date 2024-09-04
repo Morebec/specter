@@ -24,8 +24,8 @@ import (
 
 const LinterResultArtifactID = "_linting_processor_results"
 
-// UndefinedSpecificationName constant used to test against undefined SpecificationName.
-const UndefinedSpecificationName specter.SpecificationName = ""
+// UndefinedUnitName constant used to test against undefined UnitName.
+const UndefinedUnitName specter.UnitName = ""
 
 const LintingErrorCode = "specter.spec_processing.linting_error"
 
@@ -37,10 +37,10 @@ const (
 )
 
 type LintingProcessor struct {
-	linters []SpecificationLinter
+	linters []UnitLinter
 }
 
-func NewLintingProcessor(linters ...SpecificationLinter) *LintingProcessor {
+func NewLintingProcessor(linters ...UnitLinter) *LintingProcessor {
 	return &LintingProcessor{linters: linters}
 }
 
@@ -49,10 +49,10 @@ func (l LintingProcessor) Name() string {
 }
 
 func (l LintingProcessor) Process(ctx specter.ProcessingContext) (artifacts []specter.Artifact, err error) {
-	linter := CompositeSpecificationLinter(l.linters...)
-	ctx.Logger.Info("\nLinting specifications ...")
+	linter := CompositeUnitLinter(l.linters...)
+	ctx.Logger.Info("\nLinting units ...")
 
-	lr := linter.Lint(ctx.Specifications)
+	lr := linter.Lint(ctx.Units)
 
 	artifacts = append(artifacts, lr)
 
@@ -70,7 +70,7 @@ func (l LintingProcessor) Process(ctx specter.ProcessingContext) (artifacts []sp
 	}
 
 	if !lr.HasWarnings() && !lr.HasErrors() {
-		ctx.Logger.Success("Specifications linted successfully.")
+		ctx.Logger.Success("Units linted successfully.")
 	}
 
 	return artifacts, err
@@ -131,40 +131,40 @@ func (s LinterResultSet) HasWarnings() bool {
 	return len(s.Warnings()) != 0
 }
 
-// SpecificationLinter represents a function responsible for linting specifications.
-type SpecificationLinter interface {
-	Lint(specifications specter.SpecificationGroup) LinterResultSet
+// UnitLinter represents a function responsible for linting units.
+type UnitLinter interface {
+	Lint(units specter.UnitGroup) LinterResultSet
 }
 
-// SpecificationLinterFunc implementation of a SpecificationLinter that relies on a func
-type SpecificationLinterFunc func(specifications specter.SpecificationGroup) LinterResultSet
+// UnitLinterFunc implementation of a UnitLinter that relies on a func
+type UnitLinterFunc func(units specter.UnitGroup) LinterResultSet
 
-func (l SpecificationLinterFunc) Lint(specifications specter.SpecificationGroup) LinterResultSet {
-	return l(specifications)
+func (l UnitLinterFunc) Lint(units specter.UnitGroup) LinterResultSet {
+	return l(units)
 }
 
-// CompositeSpecificationLinter A Composite linter is responsible for running multiple linters as one.
-func CompositeSpecificationLinter(linters ...SpecificationLinter) SpecificationLinterFunc {
-	return func(specifications specter.SpecificationGroup) LinterResultSet {
+// CompositeUnitLinter A Composite linter is responsible for running multiple linters as one.
+func CompositeUnitLinter(linters ...UnitLinter) UnitLinterFunc {
+	return func(units specter.UnitGroup) LinterResultSet {
 		var result LinterResultSet
 		for _, linter := range linters {
-			lr := linter.Lint(specifications)
+			lr := linter.Lint(units)
 			result = append(result, lr...)
 		}
 		return result
 	}
 }
 
-// SpecificationMustNotHaveUndefinedNames ensures that no specification has an undefined name
-func SpecificationMustNotHaveUndefinedNames(severity LinterResultSeverity) SpecificationLinterFunc {
-	return func(specifications specter.SpecificationGroup) LinterResultSet {
+// UnitMustNotHaveUndefinedNames ensures that no unit has an undefined name
+func UnitMustNotHaveUndefinedNames(severity LinterResultSeverity) UnitLinterFunc {
+	return func(units specter.UnitGroup) LinterResultSet {
 		var result LinterResultSet
 
-		for _, s := range specifications {
-			if s.Name() == UndefinedSpecificationName {
+		for _, u := range units {
+			if u.Name() == UndefinedUnitName {
 				result = append(result, LinterResult{
 					Severity: severity,
-					Message:  fmt.Sprintf("specification at %q has an undefined name", s.Source().Location),
+					Message:  fmt.Sprintf("unit at %q has an undefined name", u.Source().Location),
 				})
 			}
 		}
@@ -173,20 +173,20 @@ func SpecificationMustNotHaveUndefinedNames(severity LinterResultSeverity) Speci
 	}
 }
 
-// SpecificationsMustHaveUniqueNames ensures that names are unique amongst specifications.
-func SpecificationsMustHaveUniqueNames(severity LinterResultSeverity) SpecificationLinterFunc {
-	return func(specifications specter.SpecificationGroup) LinterResultSet {
+// UnitsMustHaveUniqueNames ensures that names are unique amongst units.
+func UnitsMustHaveUniqueNames(severity LinterResultSeverity) UnitLinterFunc {
+	return func(units specter.UnitGroup) LinterResultSet {
 
 		var result LinterResultSet
 
-		// Where key is the type FilePath and the array contains all the specification file locations where it was encountered.
-		encounteredNames := map[specter.SpecificationName][]string{}
+		// Where key is the type FilePath and the array contains all the unit file locations where it was encountered.
+		encounteredNames := map[specter.UnitName][]string{}
 
-		for _, s := range specifications {
-			if _, found := encounteredNames[s.Name()]; found {
-				encounteredNames[s.Name()] = append(encounteredNames[s.Name()], s.Source().Location)
+		for _, u := range units {
+			if _, found := encounteredNames[u.Name()]; found {
+				encounteredNames[u.Name()] = append(encounteredNames[u.Name()], u.Source().Location)
 			} else {
-				encounteredNames[s.Name()] = []string{s.Source().Location}
+				encounteredNames[u.Name()] = []string{u.Source().Location}
 			}
 		}
 
@@ -205,7 +205,7 @@ func SpecificationsMustHaveUniqueNames(severity LinterResultSeverity) Specificat
 				result = append(result, LinterResult{
 					Severity: severity,
 					Message: fmt.Sprintf(
-						"duplicate specification name detected for %q in the following file(s): %s",
+						"duplicate unit name detected for %q in the following file(s): %s",
 						name,
 						strings.Join(fileNames, ", "),
 					),
@@ -217,15 +217,15 @@ func SpecificationsMustHaveUniqueNames(severity LinterResultSeverity) Specificat
 	}
 }
 
-// SpecificationsMustHaveDescriptionAttribute ensures that all specifications have a description.
-func SpecificationsMustHaveDescriptionAttribute(severity LinterResultSeverity) SpecificationLinterFunc {
-	return func(specifications specter.SpecificationGroup) LinterResultSet {
+// UnitsMustHaveDescriptionAttribute ensures that all units have a description.
+func UnitsMustHaveDescriptionAttribute(severity LinterResultSeverity) UnitLinterFunc {
+	return func(units specter.UnitGroup) LinterResultSet {
 		var result LinterResultSet
-		for _, s := range specifications {
-			if s.Description() == "" {
+		for _, u := range units {
+			if u.Description() == "" {
 				result = append(result, LinterResult{
 					Severity: severity,
-					Message:  fmt.Sprintf("specification %q at location %q does not have a description", s.Name(), s.Source().Location),
+					Message:  fmt.Sprintf("unit %q at location %q does not have a description", u.Name(), u.Source().Location),
 				})
 			}
 		}
@@ -233,35 +233,35 @@ func SpecificationsMustHaveDescriptionAttribute(severity LinterResultSeverity) S
 	}
 }
 
-// SpecificationsDescriptionsMustStartWithACapitalLetter ensures that specification descriptions start with a capital letter.
-func SpecificationsDescriptionsMustStartWithACapitalLetter(severity LinterResultSeverity) SpecificationLinterFunc {
-	return func(specifications specter.SpecificationGroup) LinterResultSet {
+// UnitsDescriptionsMustStartWithACapitalLetter ensures that unit descriptions start with a capital letter.
+func UnitsDescriptionsMustStartWithACapitalLetter(severity LinterResultSeverity) UnitLinterFunc {
+	return func(units specter.UnitGroup) LinterResultSet {
 		var result LinterResultSet
-		for _, s := range specifications {
-			if s.Description() != "" {
-				firstLetter := rune(s.Description()[0])
+		for _, u := range units {
+			if u.Description() != "" {
+				firstLetter := rune(u.Description()[0])
 				if unicode.IsUpper(firstLetter) {
 					continue
 				}
 			}
 			result = append(result, LinterResult{
 				Severity: severity,
-				Message:  fmt.Sprintf("the description of specification %q at location %q does not start with a capital letter", s.Name(), s.Source().Location),
+				Message:  fmt.Sprintf("the description of unit %q at location %q does not start with a capital letter", u.Name(), u.Source().Location),
 			})
 		}
 		return result
 	}
 }
 
-// SpecificationsDescriptionsMustEndWithPeriod ensures that specification descriptions end with a period.
-func SpecificationsDescriptionsMustEndWithPeriod(severity LinterResultSeverity) SpecificationLinterFunc {
-	return func(specifications specter.SpecificationGroup) LinterResultSet {
+// UnitsDescriptionsMustEndWithPeriod ensures that unit descriptions end with a period.
+func UnitsDescriptionsMustEndWithPeriod(severity LinterResultSeverity) UnitLinterFunc {
+	return func(units specter.UnitGroup) LinterResultSet {
 		var result LinterResultSet
-		for _, s := range specifications {
-			if !strings.HasSuffix(s.Description(), ".") {
+		for _, u := range units {
+			if !strings.HasSuffix(u.Description(), ".") {
 				result = append(result, LinterResult{
 					Severity: severity,
-					Message:  fmt.Sprintf("the description of specification %q at location %q does not end with a period", s.Name(), s.Source().Location),
+					Message:  fmt.Sprintf("the description of unit %q at location %q does not end with a period", u.Name(), u.Source().Location),
 				})
 			}
 		}

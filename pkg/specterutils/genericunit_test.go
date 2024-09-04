@@ -22,35 +22,35 @@ import (
 	"testing"
 )
 
-func TestGenericSpecification_Description(t *testing.T) {
+func TestGenericUnit_Description(t *testing.T) {
 	tests := []struct {
 		name  string
-		given *specterutils.GenericSpecification
+		given *specterutils.GenericUnit
 		then  string
 	}{
 		{
-			name: "GIVEN a specification with a description attribute THEN return the description",
-			given: &specterutils.GenericSpecification{
-				Attributes: []specterutils.GenericSpecAttribute{
+			name: "GIVEN a unit with a description attribute THEN return the description",
+			given: &specterutils.GenericUnit{
+				Attributes: []specterutils.GenericUnitAttribute{
 					{
 						Name:  "description",
-						Value: specterutils.GenericValue{Value: cty.StringVal("This is a test specification")},
+						Value: specterutils.GenericValue{Value: cty.StringVal("This is a test unit")},
 					},
 				},
 			},
-			then: "This is a test specification",
+			then: "This is a test unit",
 		},
 		{
-			name: "GIVEN a specification without a description attribute THEN return an empty string",
-			given: &specterutils.GenericSpecification{
-				Attributes: []specterutils.GenericSpecAttribute{},
+			name: "GIVEN a unit without a description attribute THEN return an empty string",
+			given: &specterutils.GenericUnit{
+				Attributes: []specterutils.GenericUnitAttribute{},
 			},
 			then: "",
 		},
 		{
-			name: "GIVEN a specification with a non-string description THEN return an empty string",
-			given: &specterutils.GenericSpecification{
-				Attributes: []specterutils.GenericSpecAttribute{
+			name: "GIVEN a unit with a non-string description THEN return an empty string",
+			given: &specterutils.GenericUnit{
+				Attributes: []specterutils.GenericUnitAttribute{
 					{
 						Name:  "description",
 						Value: specterutils.GenericValue{Value: cty.NumberIntVal(42)}, // Not a string value
@@ -69,17 +69,17 @@ func TestGenericSpecification_Description(t *testing.T) {
 	}
 }
 
-func TestGenericSpecification_Attribute(t *testing.T) {
+func TestGenericUnit_Attribute(t *testing.T) {
 	tests := []struct {
 		name  string
-		given *specterutils.GenericSpecification
+		given *specterutils.GenericUnit
 		when  string
-		then  *specterutils.GenericSpecAttribute
+		then  *specterutils.GenericUnitAttribute
 	}{
 		{
-			name: "GIVEN a specification with a specific attribute WHEN Attribute is called THEN return the attribute",
-			given: &specterutils.GenericSpecification{
-				Attributes: []specterutils.GenericSpecAttribute{
+			name: "GIVEN a unit with a specific attribute WHEN Attribute is called THEN return the attribute",
+			given: &specterutils.GenericUnit{
+				Attributes: []specterutils.GenericUnitAttribute{
 					{
 						Name:  "attr1",
 						Value: specterutils.GenericValue{Value: cty.StringVal("value1")},
@@ -87,15 +87,15 @@ func TestGenericSpecification_Attribute(t *testing.T) {
 				},
 			},
 			when: "attr1",
-			then: &specterutils.GenericSpecAttribute{
+			then: &specterutils.GenericUnitAttribute{
 				Name:  "attr1",
 				Value: specterutils.GenericValue{Value: cty.StringVal("value1")},
 			},
 		},
 		{
-			name: "GIVEN a specification without the specified attribute WHEN Attribute is called THEN return nil",
-			given: &specterutils.GenericSpecification{
-				Attributes: []specterutils.GenericSpecAttribute{},
+			name: "GIVEN a unit without the specified attribute WHEN Attribute is called THEN return nil",
+			given: &specterutils.GenericUnit{
+				Attributes: []specterutils.GenericUnitAttribute{},
 			},
 			when: "nonexistent",
 			then: nil,
@@ -110,17 +110,17 @@ func TestGenericSpecification_Attribute(t *testing.T) {
 	}
 }
 
-func TestGenericSpecification_HasAttribute(t *testing.T) {
+func TestGenericUnit_HasAttribute(t *testing.T) {
 	tests := []struct {
 		name  string
-		given *specterutils.GenericSpecification
+		given *specterutils.GenericUnit
 		when  string
 		then  bool
 	}{
 		{
-			name: "GIVEN a specification with a specific attribute WHEN HasAttribute is called THEN return true",
-			given: &specterutils.GenericSpecification{
-				Attributes: []specterutils.GenericSpecAttribute{
+			name: "GIVEN a unit with a specific attribute WHEN HasAttribute is called THEN return true",
+			given: &specterutils.GenericUnit{
+				Attributes: []specterutils.GenericUnitAttribute{
 					{
 						Name:  "attr1",
 						Value: specterutils.GenericValue{Value: cty.StringVal("value1")},
@@ -131,9 +131,9 @@ func TestGenericSpecification_HasAttribute(t *testing.T) {
 			then: true,
 		},
 		{
-			name: "GIVEN a specification without the specified attribute WHEN HasAttribute is called THEN return false",
-			given: &specterutils.GenericSpecification{
-				Attributes: []specterutils.GenericSpecAttribute{},
+			name: "GIVEN a unit without the specified attribute WHEN HasAttribute is called THEN return false",
+			given: &specterutils.GenericUnit{
+				Attributes: []specterutils.GenericUnitAttribute{},
 			},
 			when: "nonexistent",
 			then: false,
@@ -148,16 +148,16 @@ func TestGenericSpecification_HasAttribute(t *testing.T) {
 	}
 }
 
-func TestGenericSpecification_SetSource(t *testing.T) {
+func TestGenericUnit_SetSource(t *testing.T) {
 	tests := []struct {
 		name  string
-		given *specterutils.GenericSpecification
+		given *specterutils.GenericUnit
 		when  specter.Source
 		then  specter.Source
 	}{
 		{
-			name:  "GIVEN a specification WHEN SetSource is called THEN updates the source",
-			given: specterutils.NewGenericSpecification("name", "type", specter.Source{Location: "initial/path"}),
+			name:  "GIVEN a unit WHEN SetSource is called THEN updates the source",
+			given: specterutils.NewGenericUnit("name", "type", specter.Source{Location: "initial/path"}),
 			when:  specter.Source{Location: "new/path"},
 			then:  specter.Source{Location: "new/path"},
 		},
@@ -172,7 +172,7 @@ func TestGenericSpecification_SetSource(t *testing.T) {
 }
 
 func TestObjectValue_String(t *testing.T) {
-	o := specterutils.ObjectValue{Type: "hello", Attributes: []specterutils.GenericSpecAttribute{
+	o := specterutils.ObjectValue{Type: "hello", Attributes: []specterutils.GenericUnitAttribute{
 		{Name: "hello", Value: specterutils.GenericValue{Value: cty.StringVal("world")}},
 	}}
 	assert.Equal(t, "ObjectValue{Type: hello, Attributes: [{hello world}]}", o.String())

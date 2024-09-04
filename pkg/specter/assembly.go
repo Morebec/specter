@@ -35,50 +35,50 @@ type PipelineOption func(s *Pipeline)
 
 // WithLogger configures the Logger of a Pipeline instance.
 func WithLogger(l Logger) PipelineOption {
-	return func(s *Pipeline) {
-		s.Logger = l
+	return func(p *Pipeline) {
+		p.Logger = l
 	}
 }
 
 // WithSourceLoaders configures the SourceLoader of a Pipeline instance.
 func WithSourceLoaders(loaders ...SourceLoader) PipelineOption {
-	return func(s *Pipeline) {
-		s.SourceLoaders = append(s.SourceLoaders, loaders...)
+	return func(p *Pipeline) {
+		p.SourceLoaders = append(p.SourceLoaders, loaders...)
 	}
 }
 
-// WithLoaders configures the SpecificationLoader of a Pipeline instance.
-func WithLoaders(loaders ...SpecificationLoader) PipelineOption {
-	return func(s *Pipeline) {
-		s.Loaders = append(s.Loaders, loaders...)
+// WithLoaders configures the UnitLoader of a Pipeline instance.
+func WithLoaders(loaders ...UnitLoader) PipelineOption {
+	return func(p *Pipeline) {
+		p.Loaders = append(p.Loaders, loaders...)
 	}
 }
 
-// WithProcessors configures the SpecProcess of a Pipeline instance.
-func WithProcessors(processors ...SpecificationProcessor) PipelineOption {
-	return func(s *Pipeline) {
-		s.Processors = append(s.Processors, processors...)
+// WithProcessors configures the UnitProcess of a Pipeline instance.
+func WithProcessors(processors ...UnitProcessor) PipelineOption {
+	return func(p *Pipeline) {
+		p.Processors = append(p.Processors, processors...)
 	}
 }
 
 // WithArtifactProcessors configures the ArtifactProcessor of a Pipeline instance.
 func WithArtifactProcessors(processors ...ArtifactProcessor) PipelineOption {
-	return func(s *Pipeline) {
-		s.ArtifactProcessors = append(s.ArtifactProcessors, processors...)
+	return func(p *Pipeline) {
+		p.ArtifactProcessors = append(p.ArtifactProcessors, processors...)
 	}
 }
 
 // WithTimeProvider configures the TimeProvider of a Pipeline instance.
 func WithTimeProvider(tp TimeProvider) PipelineOption {
-	return func(s *Pipeline) {
-		s.TimeProvider = tp
+	return func(p *Pipeline) {
+		p.TimeProvider = tp
 	}
 }
 
 // WithArtifactRegistry configures the ArtifactRegistry of a Pipeline instance.
 func WithArtifactRegistry(r ArtifactRegistry) PipelineOption {
-	return func(s *Pipeline) {
-		s.ArtifactRegistry = r
+	return func(p *Pipeline) {
+		p.ArtifactRegistry = r
 	}
 }
 

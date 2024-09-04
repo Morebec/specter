@@ -22,7 +22,7 @@ import (
 	"testing"
 )
 
-func TestHCLGenericSpecLoader_SupportsSource(t *testing.T) {
+func TestHCLGenericUnitLoader_SupportsSource(t *testing.T) {
 	type when struct {
 		source specter.Source
 	}
@@ -51,19 +51,19 @@ func TestHCLGenericSpecLoader_SupportsSource(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			l := NewHCLGenericSpecLoader()
+			l := NewHCLGenericUnitLoader()
 			assert.Equalf(t, tt.then.supports, l.SupportsSource(tt.when.source), "SupportsSource(%v)", tt.when.source)
 		})
 	}
 }
 
-func TestHCLGenericSpecLoader_Load(t *testing.T) {
+func TestHCLGenericUnitLoader_Load(t *testing.T) {
 	type when struct {
 		source specter.Source
 	}
 	type then struct {
-		expectedSpecifications []specter.Specification
-		expectedError          require.ErrorAssertionFunc
+		expectedUnits []specter.Unit
+		expectedError require.ErrorAssertionFunc
 	}
 
 	mockFile := HclConfigMock{}
@@ -82,8 +82,8 @@ func TestHCLGenericSpecLoader_Load(t *testing.T) {
 				},
 			},
 			then: then{
-				expectedSpecifications: nil,
-				expectedError:          require.NoError,
+				expectedUnits: nil,
+				expectedError: require.NoError,
 			},
 		},
 		{
@@ -92,8 +92,8 @@ func TestHCLGenericSpecLoader_Load(t *testing.T) {
 				source: mockFile.source(),
 			},
 			then: then{
-				expectedSpecifications: []specter.Specification{
-					mockFile.genericSpecification(),
+				expectedUnits: []specter.Unit{
+					mockFile.genericUnit(),
 				},
 				expectedError: require.NoError,
 			},
@@ -106,8 +106,8 @@ func TestHCLGenericSpecLoader_Load(t *testing.T) {
 				},
 			},
 			then: then{
-				expectedSpecifications: nil,
-				expectedError:          RequireErrorWithCode(specter.UnsupportedSourceErrorCode),
+				expectedUnits: nil,
+				expectedError: RequireErrorWithCode(specter.UnsupportedSourceErrorCode),
 			},
 		},
 		{
@@ -121,12 +121,12 @@ con st = var o
 				},
 			},
 			then: then{
-				expectedSpecifications: nil,
-				expectedError:          RequireErrorWithCode(InvalidHCLErrorCode),
+				expectedUnits: nil,
+				expectedError: RequireErrorWithCode(InvalidHCLErrorCode),
 			},
 		},
 		{
-			name: "WHEN a spec type without name THEN an error should be returned",
+			name: "WHEN a unit type without name THEN an error should be returned",
 			when: when{
 				source: specter.Source{
 					Data: []byte(`
@@ -137,8 +137,8 @@ block {
 				},
 			},
 			then: then{
-				expectedSpecifications: nil,
-				expectedError:          RequireErrorWithCode(InvalidHCLErrorCode),
+				expectedUnits: nil,
+				expectedError: RequireErrorWithCode(InvalidHCLErrorCode),
 			},
 		},
 		// ATTRIBUTES
@@ -155,8 +155,8 @@ specType "specName" {
 				},
 			},
 			then: then{
-				expectedSpecifications: nil,
-				expectedError:          RequireErrorWithCode(InvalidHCLErrorCode),
+				expectedUnits: nil,
+				expectedError: RequireErrorWithCode(InvalidHCLErrorCode),
 			},
 		},
 		{
@@ -174,36 +174,36 @@ specType "specName" {
 				},
 			},
 			then: then{
-				expectedSpecifications: nil,
-				expectedError:          RequireErrorWithCode(InvalidHCLErrorCode),
+				expectedUnits: nil,
+				expectedError: RequireErrorWithCode(InvalidHCLErrorCode),
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			l := NewHCLGenericSpecLoader()
+			l := NewHCLGenericUnitLoader()
 
-			actualSpecifications, err := l.Load(tt.when.source)
+			actualUnits, err := l.Load(tt.when.source)
 			if tt.then.expectedError != nil {
 				tt.then.expectedError(t, err)
 			} else {
 				require.NoError(t, err)
 			}
 
-			assert.Equal(t, tt.then.expectedSpecifications, actualSpecifications)
+			assert.Equal(t, tt.then.expectedUnits, actualUnits)
 		})
 	}
 }
 
 // CUSTOM CONFIG FILES //
 
-func TestHCLSpecLoader_Load(t *testing.T) {
+func TestHCLUnitLoader_Load(t *testing.T) {
 	type when struct {
 		source specter.Source
 	}
 	type then struct {
-		expectedSpecifications []specter.Specification
-		expectedError          require.ErrorAssertionFunc
+		expectedUnits []specter.Unit
+		expectedError require.ErrorAssertionFunc
 	}
 
 	mockFile := HclConfigMock{}
@@ -222,8 +222,8 @@ func TestHCLSpecLoader_Load(t *testing.T) {
 				},
 			},
 			then: then{
-				expectedSpecifications: nil,
-				expectedError:          require.NoError,
+				expectedUnits: nil,
+				expectedError: require.NoError,
 			},
 		},
 		{
@@ -234,8 +234,8 @@ func TestHCLSpecLoader_Load(t *testing.T) {
 				},
 			},
 			then: then{
-				expectedSpecifications: nil,
-				expectedError:          RequireErrorWithCode(specter.UnsupportedSourceErrorCode),
+				expectedUnits: nil,
+				expectedError: RequireErrorWithCode(specter.UnsupportedSourceErrorCode),
 			},
 		},
 		{
@@ -249,36 +249,36 @@ con st = var o
 				},
 			},
 			then: then{
-				expectedSpecifications: nil,
-				expectedError:          RequireErrorWithCode(InvalidHCLErrorCode),
+				expectedUnits: nil,
+				expectedError: RequireErrorWithCode(InvalidHCLErrorCode),
 			},
 		},
 		{
-			name: "WHEN valid hcl file THEN return specifications",
+			name: "WHEN valid hcl file THEN return units",
 			when: when{
 				source: mockFile.source(),
 			},
 			then: then{
-				expectedSpecifications: []specter.Specification{
-					mockFile.genericSpecification(),
+				expectedUnits: []specter.Unit{
+					mockFile.genericUnit(),
 				},
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			l := NewHCLSpecLoader(func() HCLFileConfig {
+			l := NewHCLUnitLoader(func() HCLFileConfig {
 				return &HclConfigMock{}
 			})
 
-			actualSpecifications, err := l.Load(tt.when.source)
+			actualUnits, err := l.Load(tt.when.source)
 			if tt.then.expectedError != nil {
 				tt.then.expectedError(t, err)
 			} else {
 				require.NoError(t, err)
 			}
 
-			assert.Equal(t, tt.then.expectedSpecifications, actualSpecifications)
+			assert.Equal(t, tt.then.expectedUnits, actualUnits)
 		})
 	}
 }
@@ -307,26 +307,26 @@ service "specter" {
 `)
 }
 
-func (m *HclConfigMock) Specifications() []specter.Specification {
-	return []specter.Specification{
-		m.genericSpecification(),
+func (m *HclConfigMock) Units() []specter.Unit {
+	return []specter.Unit{
+		m.genericUnit(),
 	}
 }
 
-func (m *HclConfigMock) genericSpecification() *GenericSpecification {
-	spec := NewGenericSpecification("specter", "service", m.source())
+func (m *HclConfigMock) genericUnit() *GenericUnit {
+	unit := NewGenericUnit("specter", "service", m.source())
 
-	spec.Attributes = append(spec.Attributes, GenericSpecAttribute{
+	unit.Attributes = append(unit.Attributes, GenericUnitAttribute{
 		Name: "image",
 		Value: GenericValue{
 			Value: cty.StringVal("specter:1.0.0"),
 		},
 	})
-	spec.Attributes = append(spec.Attributes, GenericSpecAttribute{
+	unit.Attributes = append(unit.Attributes, GenericUnitAttribute{
 		Name: "dev",
 		Value: ObjectValue{
 			Type: "environment",
-			Attributes: []GenericSpecAttribute{
+			Attributes: []GenericUnitAttribute{
 				{
 					Name: "MYSQL_ROOT_PASSWORD",
 					Value: GenericValue{
@@ -336,7 +336,7 @@ func (m *HclConfigMock) genericSpecification() *GenericSpecification {
 			},
 		},
 	})
-	return spec
+	return unit
 }
 
 func (m *HclConfigMock) source() specter.Source {

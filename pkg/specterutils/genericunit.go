@@ -20,47 +20,47 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-// GenericSpecification is a generic implementation of a Specification that saves its attributes in a list of attributes for introspection.
+// GenericUnit is a generic implementation of a Unit that saves its attributes in a list of attributes for introspection.
 // these can be useful for loaders that are looser in what they allow.
-type GenericSpecification struct {
-	name       specter.SpecificationName
-	typ        specter.SpecificationType
+type GenericUnit struct {
+	name       specter.UnitName
+	typ        specter.UnitType
 	source     specter.Source
-	Attributes []GenericSpecAttribute
+	Attributes []GenericUnitAttribute
 }
 
-func NewGenericSpecification(name specter.SpecificationName, typ specter.SpecificationType, source specter.Source) *GenericSpecification {
-	return &GenericSpecification{name: name, typ: typ, source: source}
+func NewGenericUnit(name specter.UnitName, typ specter.UnitType, source specter.Source) *GenericUnit {
+	return &GenericUnit{name: name, typ: typ, source: source}
 }
 
-func (s *GenericSpecification) SetSource(src specter.Source) {
-	s.source = src
+func (u *GenericUnit) SetSource(src specter.Source) {
+	u.source = src
 }
 
-func (s *GenericSpecification) Description() string {
-	if !s.HasAttribute("description") {
+func (u *GenericUnit) Description() string {
+	if !u.HasAttribute("description") {
 		return ""
 	}
 
-	attr := s.Attribute("description")
+	attr := u.Attribute("description")
 	return attr.Value.String()
 }
 
-func (s *GenericSpecification) Name() specter.SpecificationName {
-	return s.name
+func (u *GenericUnit) Name() specter.UnitName {
+	return u.name
 }
 
-func (s *GenericSpecification) Type() specter.SpecificationType {
-	return s.typ
+func (u *GenericUnit) Type() specter.UnitType {
+	return u.typ
 }
 
-func (s *GenericSpecification) Source() specter.Source {
-	return s.source
+func (u *GenericUnit) Source() specter.Source {
+	return u.source
 }
 
 // Attribute returns an attribute by its FilePath or nil if it was not found.
-func (s *GenericSpecification) Attribute(name string) *GenericSpecAttribute {
-	for _, a := range s.Attributes {
+func (u *GenericUnit) Attribute(name string) *GenericUnitAttribute {
+	for _, a := range u.Attributes {
 		if a.Name == name {
 			return &a
 		}
@@ -69,9 +69,9 @@ func (s *GenericSpecification) Attribute(name string) *GenericSpecAttribute {
 	return nil
 }
 
-// HasAttribute indicates if a specification has a certain attribute or not.
-func (s *GenericSpecification) HasAttribute(name string) bool {
-	for _, a := range s.Attributes {
+// HasAttribute indicates if a unit has a certain attribute or not.
+func (u *GenericUnit) HasAttribute(name string) bool {
+	for _, a := range u.Attributes {
 		if a.Name == name {
 			return true
 		}
@@ -87,9 +87,9 @@ const (
 	Unknown = "any"
 )
 
-// GenericSpecAttribute represents an attribute of a specification.
+// GenericUnitAttribute represents an attribute of a unit.
 // It relies on cty.Value to represent the loaded value.
-type GenericSpecAttribute struct {
+type GenericUnitAttribute struct {
 	Name  string
 	Value AttributeValue
 }
@@ -119,7 +119,7 @@ var _ AttributeValue = ObjectValue{}
 // ObjectValue represents a type of attribute value that is a nested data structure as opposed to a scalar value.
 type ObjectValue struct {
 	Type       AttributeType
-	Attributes []GenericSpecAttribute
+	Attributes []GenericUnitAttribute
 }
 
 func (o ObjectValue) String() string {
