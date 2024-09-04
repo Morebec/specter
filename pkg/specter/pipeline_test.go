@@ -31,7 +31,7 @@ func TestRunResult_ExecutionTime(t *testing.T) {
 	require.Equal(t, r.ExecutionTime(), time.Hour*1)
 }
 
-func TestSpecter_Run(t *testing.T) {
+func TestUnitter_Run(t *testing.T) {
 	testDay := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	type given struct {
@@ -71,12 +71,12 @@ func TestSpecter_Run(t *testing.T) {
 			},
 			then: then{
 				expectedRunResult: PipelineResult{
-					RunMode:        PreviewMode,
-					Sources:        nil,
-					Specifications: nil,
-					Artifacts:      nil,
-					StartedAt:      testDay,
-					EndedAt:        testDay,
+					RunMode:   PreviewMode,
+					Sources:   nil,
+					Units:     nil,
+					Artifacts: nil,
+					StartedAt: testDay,
+					EndedAt:   testDay,
 				},
 				expectedError: assert.NoError,
 			},
@@ -97,12 +97,12 @@ func TestSpecter_Run(t *testing.T) {
 			},
 			then: then{
 				expectedRunResult: PipelineResult{
-					RunMode:        PreviewMode,
-					Sources:        nil,
-					Specifications: nil,
-					Artifacts:      nil,
-					StartedAt:      testDay,
-					EndedAt:        testDay,
+					RunMode:   PreviewMode,
+					Sources:   nil,
+					Units:     nil,
+					Artifacts: nil,
+					StartedAt: testDay,
+					EndedAt:   testDay,
 				},
 				expectedError: assert.NoError,
 			},
@@ -123,12 +123,12 @@ func TestSpecter_Run(t *testing.T) {
 			},
 			then: then{
 				expectedRunResult: PipelineResult{
-					RunMode:        PreviewMode,
-					Sources:        nil,
-					Specifications: nil,
-					Artifacts:      nil,
-					StartedAt:      testDay,
-					EndedAt:        testDay,
+					RunMode:   PreviewMode,
+					Sources:   nil,
+					Units:     nil,
+					Artifacts: nil,
+					StartedAt: testDay,
+					EndedAt:   testDay,
 				},
 				expectedError: assert.NoError,
 			},
@@ -136,9 +136,9 @@ func TestSpecter_Run(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := tt.given.pipeline()
+			p := tt.given.pipeline()
 
-			actualResult, err := s.Run(tt.when.context, tt.when.sourceLocations, tt.when.executionMode)
+			actualResult, err := p.Run(tt.when.context, tt.when.sourceLocations, tt.when.executionMode)
 			if tt.then.expectedError != nil {
 				tt.then.expectedError(t, err)
 			} else {

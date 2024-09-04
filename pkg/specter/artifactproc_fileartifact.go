@@ -39,7 +39,7 @@ const DefaultWriteMode WriteMode = WriteOnceMode
 
 var _ Artifact = (*FileArtifact)(nil)
 
-// FileArtifact is a data structure that can be used by a SpecificationProcessor to generate file artifacts
+// FileArtifact is a data structure that can be used by a UnitProcessor to generate file artifacts
 // that can be written by the FileArtifactProcessor.
 type FileArtifact struct {
 	Path      string

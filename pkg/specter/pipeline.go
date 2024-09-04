@@ -32,15 +32,15 @@ const RunThrough RunMode = "run-through"
 const defaultRunMode = PreviewMode
 
 const SourceLoadingFailedErrorCode = "specter.source_loading_failed"
-const SpecificationLoadingFailedErrorCode = "specter.specification_loading_failed"
-const SpecificationProcessingFailedErrorCode = "specter.specification_processing_failed"
+const UnitLoadingFailedErrorCode = "specter.unit_loading_failed"
+const UnitProcessingFailedErrorCode = "specter.unit_processing_failed"
 const ArtifactProcessingFailedErrorCode = "specter.artifact_processing_failed"
 
 // Pipeline is the service responsible to run a specter pipeline.
 type Pipeline struct {
 	SourceLoaders      []SourceLoader
-	Loaders            []SpecificationLoader
-	Processors         []SpecificationProcessor
+	Loaders            []UnitLoader
+	Processors         []UnitProcessor
 	ArtifactProcessors []ArtifactProcessor
 	ArtifactRegistry   ArtifactRegistry
 	Logger             Logger
@@ -53,7 +53,7 @@ type PipelineResult struct {
 
 	SourceLocations []string
 	Sources         []Source
-	Specifications  []Specification
+	Units           []Unit
 	Artifacts       []Artifact
 	RunMode         RunMode
 }
@@ -92,18 +92,18 @@ func (p Pipeline) Run(ctx context.Context, sourceLocations []string, runMode Run
 		return result, e
 	}
 
-	// Load Specifications
-	result.Specifications, err = p.loadSpecifications(ctx, result.Sources)
+	// Load Units
+	result.Units, err = p.loadUnits(ctx, result.Sources)
 	if err != nil {
-		e := errors.WrapWithMessage(err, SpecificationLoadingFailedErrorCode, "failed loading specifications")
+		e := errors.WrapWithMessage(err, UnitLoadingFailedErrorCode, "failed loading units")
 		p.Logger.Error(e.Error())
 		return result, e
 	}
 
-	// Process Specifications
-	result.Artifacts, err = p.processSpecifications(ctx, result.Specifications)
+	// Process Units
+	result.Artifacts, err = p.processUnits(ctx, result.Units)
 	if err != nil {
-		e := errors.WrapWithMessage(err, SpecificationProcessingFailedErrorCode, "failed processing specifications")
+		e := errors.WrapWithMessage(err, UnitProcessingFailedErrorCode, "failed processing units")
 		p.Logger.Error(e.Error())
 		return result, e
 	}
@@ -114,7 +114,7 @@ func (p Pipeline) Run(ctx context.Context, sourceLocations []string, runMode Run
 	}
 
 	// Process Artifact
-	if err = p.processArtifacts(ctx, result.Specifications, result.Artifacts); err != nil {
+	if err = p.processArtifacts(ctx, result.Units, result.Artifacts); err != nil {
 		e := errors.WrapWithMessage(err, ArtifactProcessingFailedErrorCode, "failed processing artifacts")
 		p.Logger.Error(e.Error())
 		return result, e
@@ -131,7 +131,7 @@ func (p Pipeline) logResult(run PipelineResult) {
 	p.Logger.Info(fmt.Sprintf("Run time: %s", run.ExecutionTime()))
 	p.Logger.Info(fmt.Sprintf("Number of source locations: %d", len(run.SourceLocations)))
 	p.Logger.Info(fmt.Sprintf("Number of sources: %d", len(run.Sources)))
-	p.Logger.Info(fmt.Sprintf("Number of specifications: %d", len(run.Specifications)))
+	p.Logger.Info(fmt.Sprintf("Number of units: %d", len(run.Units)))
 	p.Logger.Info(fmt.Sprintf("Number of artifacts: %d", len(run.Artifacts)))
 }
 
@@ -171,12 +171,12 @@ func (p Pipeline) loadSources(ctx context.Context, sourceLocations []string) ([]
 	return sources, errors.GroupOrNil(errs)
 }
 
-// loadSpecifications performs the loading of Specifications.
-func (p Pipeline) loadSpecifications(ctx context.Context, sources []Source) ([]Specification, error) {
-	p.Logger.Info("\nLoading specifications ...")
+// loadUnits performs the loading of Units.
+func (p Pipeline) loadUnits(ctx context.Context, sources []Source) ([]Unit, error) {
+	p.Logger.Info("\nLoading units ...")
 
-	// Load specifications
-	var specifications []Specification
+	// Load units
+	var units []Unit
 	var sourcesNotLoaded []Source
 	errs := errors.NewGroup(errors.InternalErrorCode)
 
@@ -190,14 +190,14 @@ func (p Pipeline) loadSpecifications(ctx context.Context, sources []Source) ([]S
 				continue
 			}
 
-			loadedSpecs, err := l.Load(src)
+			loadedUnits, err := l.Load(src)
 			if err != nil {
 				p.Logger.Error(err.Error())
 				errs = errs.Append(err)
 				continue
 			}
 
-			specifications = append(specifications, loadedSpecs...)
+			units = append(units, loadedUnits...)
 			wasLoaded = true
 		}
 
@@ -211,24 +211,24 @@ func (p Pipeline) loadSpecifications(ctx context.Context, sources []Source) ([]S
 			p.Logger.Warning(fmt.Sprintf("%q could not be loaded.", src))
 		}
 
-		p.Logger.Warning("%d specifications were not loaded.")
+		p.Logger.Warning("%d units were not loaded.")
 	}
 
-	p.Logger.Info(fmt.Sprintf("%d specifications loaded.", len(specifications)))
+	p.Logger.Info(fmt.Sprintf("%d units loaded.", len(units)))
 
-	return specifications, errors.GroupOrNil(errs)
+	return units, errors.GroupOrNil(errs)
 }
 
-// processSpecifications sends the specifications to processors.
-func (p Pipeline) processSpecifications(ctx context.Context, specs []Specification) ([]Artifact, error) {
+// processUnits sends the units to processors.
+func (p Pipeline) processUnits(ctx context.Context, units []Unit) ([]Artifact, error) {
 	pctx := ProcessingContext{
-		Context:        ctx,
-		Specifications: specs,
-		Artifacts:      nil,
-		Logger:         p.Logger,
+		Context:   ctx,
+		Units:     units,
+		Artifacts: nil,
+		Logger:    p.Logger,
 	}
 
-	p.Logger.Info("\nProcessing specifications ...")
+	p.Logger.Info("\nProcessing units ...")
 	for _, processor := range p.Processors {
 		if err := ctx.Err(); err != nil {
 			return nil, err
@@ -245,12 +245,12 @@ func (p Pipeline) processSpecifications(ctx context.Context, specs []Specificati
 		p.Logger.Info(fmt.Sprintf("-> %s", o.ID()))
 	}
 
-	p.Logger.Success("Specifications processed successfully.")
+	p.Logger.Success("Units processed successfully.")
 	return pctx.Artifacts, nil
 }
 
 // processArtifacts sends a list of ProcessingArtifacts to the registered ArtifactProcessors.
-func (p Pipeline) processArtifacts(ctx context.Context, specifications []Specification, artifacts []Artifact) error {
+func (p Pipeline) processArtifacts(ctx context.Context, units []Unit, artifacts []Artifact) error {
 	if p.ArtifactRegistry == nil {
 		p.ArtifactRegistry = &InMemoryArtifactRegistry{}
 	}
@@ -273,10 +273,10 @@ func (p Pipeline) processArtifacts(ctx context.Context, specifications []Specifi
 
 		processorName := processor.Name()
 		artifactCtx := ArtifactProcessingContext{
-			Context:        ctx,
-			Specifications: specifications,
-			Artifacts:      artifacts,
-			Logger:         p.Logger,
+			Context:   ctx,
+			Units:     units,
+			Artifacts: artifacts,
+			Logger:    p.Logger,
 			ArtifactRegistry: ProcessorArtifactRegistry{
 				processorName: processorName,
 				registry:      p.ArtifactRegistry,

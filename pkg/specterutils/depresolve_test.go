@@ -26,25 +26,25 @@ import (
 
 // MockDependencyProvider is a mock implementation of DependencyProvider for testing.
 type MockDependencyProvider struct {
-	supportFunc func(s specter.Specification) bool
-	provideFunc func(s specter.Specification) []specter.SpecificationName
+	supportFunc func(specter.Unit) bool
+	provideFunc func(specter.Unit) []specter.UnitName
 }
 
-func (m *MockDependencyProvider) Supports(s specter.Specification) bool {
-	return m.supportFunc(s)
+func (m *MockDependencyProvider) Supports(u specter.Unit) bool {
+	return m.supportFunc(u)
 }
 
-func (m *MockDependencyProvider) Provide(s specter.Specification) []specter.SpecificationName {
-	return m.provideFunc(s)
+func (m *MockDependencyProvider) Provide(u specter.Unit) []specter.UnitName {
+	return m.provideFunc(u)
 }
 
 func TestDependencyResolutionProcessor_Process(t *testing.T) {
 	type args struct {
-		specifications []specter.Specification
-		providers      []DependencyProvider
+		units     []specter.Unit
+		providers []DependencyProvider
 	}
-	spec1 := NewGenericSpecification("spec1", "type", specter.Source{})
-	spec2 := NewGenericSpecification("spec2", "type", specter.Source{})
+	unit1 := NewGenericUnit("unit1", "type", specter.Source{})
+	unit2 := NewGenericUnit("unit2", "type", specter.Source{})
 	tests := []struct {
 		name          string
 		given         args
@@ -54,8 +54,8 @@ func TestDependencyResolutionProcessor_Process(t *testing.T) {
 		{
 			name: "GIVEN no providers THEN returns nil",
 			given: args{
-				providers:      nil,
-				specifications: nil,
+				providers: nil,
+				units:     nil,
 			},
 			then:          nil,
 			expectedError: nil,
@@ -65,33 +65,33 @@ func TestDependencyResolutionProcessor_Process(t *testing.T) {
 			given: args{
 				providers: []DependencyProvider{
 					&MockDependencyProvider{
-						supportFunc: func(s specter.Specification) bool {
+						supportFunc: func(_ specter.Unit) bool {
 							return false
 						},
-						provideFunc: func(s specter.Specification) []specter.SpecificationName {
+						provideFunc: func(_ specter.Unit) []specter.UnitName {
 							return nil
 						},
 					},
 					&MockDependencyProvider{
-						supportFunc: func(s specter.Specification) bool {
-							return s.Type() == "type"
+						supportFunc: func(u specter.Unit) bool {
+							return u.Type() == "type"
 						},
-						provideFunc: func(s specter.Specification) []specter.SpecificationName {
-							if s.Name() == "spec1" {
-								return []specter.SpecificationName{"spec2"}
+						provideFunc: func(u specter.Unit) []specter.UnitName {
+							if u.Name() == "unit1" {
+								return []specter.UnitName{"unit2"}
 							}
 							return nil
 						},
 					},
 				},
-				specifications: specter.SpecificationGroup{
-					spec1,
-					spec2,
+				units: specter.UnitGroup{
+					unit1,
+					unit2,
 				},
 			},
 			then: ResolvedDependencies{
-				spec2, // topological sort
-				spec1,
+				unit2, // topological sort
+				unit1,
 			},
 			expectedError: nil,
 		},
@@ -100,22 +100,22 @@ func TestDependencyResolutionProcessor_Process(t *testing.T) {
 			given: args{
 				providers: []DependencyProvider{
 					&MockDependencyProvider{
-						supportFunc: func(s specter.Specification) bool {
-							return s.Type() == "type"
+						supportFunc: func(u specter.Unit) bool {
+							return u.Type() == "type"
 						},
-						provideFunc: func(s specter.Specification) []specter.SpecificationName {
-							if s.Name() == "spec1" {
-								return []specter.SpecificationName{"spec2"}
-							} else if s.Name() == "spec2" {
-								return []specter.SpecificationName{"spec1"}
+						provideFunc: func(u specter.Unit) []specter.UnitName {
+							if u.Name() == "unit1" {
+								return []specter.UnitName{"unit2"}
+							} else if u.Name() == "unit2" {
+								return []specter.UnitName{"unit1"}
 							}
 							return nil
 						},
 					},
 				},
-				specifications: specter.SpecificationGroup{
-					spec1,
-					spec2,
+				units: specter.UnitGroup{
+					unit1,
+					unit2,
 				},
 			},
 			then:          nil,
@@ -126,17 +126,17 @@ func TestDependencyResolutionProcessor_Process(t *testing.T) {
 			given: args{
 				providers: []DependencyProvider{
 					&MockDependencyProvider{
-						supportFunc: func(s specter.Specification) bool {
-							return s.Type() == "type"
+						supportFunc: func(u specter.Unit) bool {
+							return u.Type() == "type"
 						},
-						provideFunc: func(s specter.Specification) []specter.SpecificationName {
-							return []specter.SpecificationName{"spec3"}
+						provideFunc: func(u specter.Unit) []specter.UnitName {
+							return []specter.UnitName{"spec3"}
 						},
 					},
 				},
-				specifications: specter.SpecificationGroup{
-					spec1,
-					spec2, // spec2 is not provided
+				units: specter.UnitGroup{
+					unit1,
+					unit2, // unit2 is not provided
 				},
 			},
 			then:          nil,
@@ -148,7 +148,7 @@ func TestDependencyResolutionProcessor_Process(t *testing.T) {
 			processor := NewDependencyResolutionProcessor(tt.given.providers...)
 
 			ctx := specter.ProcessingContext{
-				Specifications: tt.given.specifications,
+				Units: tt.given.units,
 				Logger: specter.NewDefaultLogger(specter.DefaultLoggerConfig{
 					DisableColors: true,
 					Writer:        os.Stdout,
@@ -183,12 +183,12 @@ func TestGetResolvedDependenciesFromContext(t *testing.T) {
 			given: specter.ProcessingContext{
 				Artifacts: []specter.Artifact{
 					ResolvedDependencies{
-						NewGenericSpecification("name", "type", specter.Source{}),
+						NewGenericUnit("name", "type", specter.Source{}),
 					},
 				},
 			},
 			want: ResolvedDependencies{
-				NewGenericSpecification("name", "type", specter.Source{}),
+				NewGenericUnit("name", "type", specter.Source{}),
 			},
 		},
 		{
@@ -219,49 +219,49 @@ func TestDependencyResolutionProcessor_Name(t *testing.T) {
 	assert.NotEqual(t, "", p.Name())
 }
 
-type hasDependencySpec struct {
+type hasDependencyUnit struct {
 	source       specter.Source
-	dependencies []specter.SpecificationName
+	dependencies []specter.UnitName
 }
 
-func (h *hasDependencySpec) Name() specter.SpecificationName {
-	return "spec"
+func (h *hasDependencyUnit) Name() specter.UnitName {
+	return "unit"
 }
 
-func (h *hasDependencySpec) Type() specter.SpecificationType {
-	return "spec"
+func (h *hasDependencyUnit) Type() specter.UnitType {
+	return "unit"
 }
 
-func (h *hasDependencySpec) Description() string {
+func (h *hasDependencyUnit) Description() string {
 	return "description"
 }
 
-func (h *hasDependencySpec) Source() specter.Source {
+func (h *hasDependencyUnit) Source() specter.Source {
 	return h.source
 }
 
-func (h *hasDependencySpec) SetSource(s specter.Source) {
+func (h *hasDependencyUnit) SetSource(s specter.Source) {
 	h.source = s
 }
 
-func (h *hasDependencySpec) Dependencies() []specter.SpecificationName {
+func (h *hasDependencyUnit) Dependencies() []specter.UnitName {
 	return h.dependencies
 }
 
 func TestHasDependenciesProvider_Supports(t *testing.T) {
 	tests := []struct {
 		name  string
-		given specter.Specification
+		given specter.Unit
 		then  bool
 	}{
 		{
-			name:  "GIVEN specification not implementing HasDependencies THEN return false",
-			given: &GenericSpecification{},
+			name:  "GIVEN unit not implementing HasDependencies THEN return false",
+			given: &GenericUnit{},
 			then:  false,
 		},
 		{
-			name:  "GIVEN specification implementing HasDependencies THEN return false",
-			given: &hasDependencySpec{},
+			name:  "GIVEN unit implementing HasDependencies THEN return false",
+			given: &hasDependencyUnit{},
 			then:  true,
 		},
 	}
@@ -276,18 +276,18 @@ func TestHasDependenciesProvider_Supports(t *testing.T) {
 func TestHasDependenciesProvider_Provide(t *testing.T) {
 	tests := []struct {
 		name  string
-		given specter.Specification
-		then  []specter.SpecificationName
+		given specter.Unit
+		then  []specter.UnitName
 	}{
 		{
-			name:  "GIVEN specification not implementing HasDependencies THEN return nil",
-			given: &GenericSpecification{},
+			name:  "GIVEN unit not implementing HasDependencies THEN return nil",
+			given: &GenericUnit{},
 			then:  nil,
 		},
 		{
-			name:  "GIVEN specification implementing HasDependencies THEN return dependencies",
-			given: &hasDependencySpec{dependencies: []specter.SpecificationName{"spec1"}},
-			then:  []specter.SpecificationName{"spec1"},
+			name:  "GIVEN unit implementing HasDependencies THEN return dependencies",
+			given: &hasDependencyUnit{dependencies: []specter.UnitName{"unit1"}},
+			then:  []specter.UnitName{"unit1"},
 		},
 	}
 	for _, tt := range tests {

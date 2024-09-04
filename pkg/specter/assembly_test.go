@@ -23,53 +23,53 @@ import (
 )
 
 func TestWithDefaultLogger(t *testing.T) {
-	s := NewPipeline(WithDefaultLogger())
-	assert.IsType(t, &DefaultLogger{}, s.Logger)
+	p := NewPipeline(WithDefaultLogger())
+	assert.IsType(t, &DefaultLogger{}, p.Logger)
 }
 
 func TestWithSourceLoaders(t *testing.T) {
 	loader := &FileSystemSourceLoader{}
-	s := NewPipeline(WithSourceLoaders(loader))
-	require.Contains(t, s.SourceLoaders, loader)
+	p := NewPipeline(WithSourceLoaders(loader))
+	require.Contains(t, p.SourceLoaders, loader)
 }
 
 func TestWithLoaders(t *testing.T) {
-	loader := &specterutils.HCLGenericSpecLoader{}
-	s := NewPipeline(WithLoaders(loader))
-	require.Contains(t, s.Loaders, loader)
+	loader := &specterutils.HCLGenericUnitLoader{}
+	p := NewPipeline(WithLoaders(loader))
+	require.Contains(t, p.Loaders, loader)
 }
 
 func TestWithProcessors(t *testing.T) {
 	processor := specterutils.LintingProcessor{}
-	s := NewPipeline(WithProcessors(processor))
-	require.Contains(t, s.Processors, processor)
+	p := NewPipeline(WithProcessors(processor))
+	require.Contains(t, p.Processors, processor)
 }
 
 func TestWithArtifactProcessors(t *testing.T) {
 	processor := FileArtifactProcessor{}
-	s := NewPipeline(WithArtifactProcessors(processor))
-	require.Contains(t, s.ArtifactProcessors, processor)
+	p := NewPipeline(WithArtifactProcessors(processor))
+	require.Contains(t, p.ArtifactProcessors, processor)
 }
 
 func TestWithTimeProvider(t *testing.T) {
 	tp := CurrentTimeProvider()
-	s := NewPipeline(WithTimeProvider(tp))
-	require.NotNil(t, s.TimeProvider)
+	p := NewPipeline(WithTimeProvider(tp))
+	require.NotNil(t, p.TimeProvider)
 }
 
 func TestWithArtifactRegistry(t *testing.T) {
 	registry := &InMemoryArtifactRegistry{}
-	s := NewPipeline(WithArtifactRegistry(registry))
-	require.Equal(t, s.ArtifactRegistry, registry)
+	p := NewPipeline(WithArtifactRegistry(registry))
+	require.Equal(t, p.ArtifactRegistry, registry)
 }
 
 func TestWithJSONArtifactRegistry(t *testing.T) {
 	fs := &mockFileSystem{}
 	filePath := DefaultJSONArtifactRegistryFileName
 
-	s := NewPipeline(WithJSONArtifactRegistry(filePath, fs))
-	require.IsType(t, &JSONArtifactRegistry{}, s.ArtifactRegistry)
-	registry := s.ArtifactRegistry.(*JSONArtifactRegistry)
+	p := NewPipeline(WithJSONArtifactRegistry(filePath, fs))
+	require.IsType(t, &JSONArtifactRegistry{}, p.ArtifactRegistry)
+	registry := p.ArtifactRegistry.(*JSONArtifactRegistry)
 
 	assert.Equal(t, registry.FileSystem, fs)
 	assert.Equal(t, registry.FilePath, filePath)

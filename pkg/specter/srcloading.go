@@ -26,7 +26,7 @@ import (
 // SourceFormat represents the format or syntax of a source.
 type SourceFormat string
 
-// Source represents the source code that was used to load a given specification.
+// Source represents the source code that was used to load a given unit.
 type Source struct {
 	// Location of the source, this can be a local file or a remote file.
 	Location string

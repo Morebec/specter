@@ -19,33 +19,33 @@ import (
 	"github.com/morebec/specter/pkg/specter"
 )
 
-type SpecificationVersion string
+type UnitVersion string
 
 type HasVersion interface {
-	specter.Specification
+	specter.Unit
 
-	Version() SpecificationVersion
+	Version() UnitVersion
 }
 
-func HasVersionMustHaveAVersionLinter(severity LinterResultSeverity) SpecificationLinter {
-	return SpecificationLinterFunc(func(specifications specter.SpecificationGroup) LinterResultSet {
+func HasVersionMustHaveAVersionLinter(severity LinterResultSeverity) UnitLinter {
+	return UnitLinterFunc(func(units specter.UnitGroup) LinterResultSet {
 		var r LinterResultSet
-		specs := specifications.Select(func(s specter.Specification) bool {
-			if _, ok := s.(HasVersion); ok {
+		specs := units.Select(func(u specter.Unit) bool {
+			if _, ok := u.(HasVersion); ok {
 				return true
 			}
 			return false
 		})
 
-		for _, spec := range specs {
-			s := spec.(HasVersion)
-			if s.Version() != "" {
+		for _, unit := range specs {
+			u := unit.(HasVersion)
+			if u.Version() != "" {
 				continue
 			}
 
 			r = append(r, LinterResult{
 				Severity: severity,
-				Message:  fmt.Sprintf("specification %q at %q should have a version", spec.Name(), spec.Source().Location),
+				Message:  fmt.Sprintf("unit %q at %q should have a version", unit.Name(), unit.Source().Location),
 			})
 		}
 		return r

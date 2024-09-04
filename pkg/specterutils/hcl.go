@@ -31,33 +31,33 @@ const (
 
 const InvalidHCLErrorCode = "specter.spec_loading.invalid_hcl"
 
-// NewHCLGenericSpecLoader this  SpecificationLoader will load all Specifications to instances of GenericSpecification.
-func NewHCLGenericSpecLoader() *HCLGenericSpecLoader {
-	return &HCLGenericSpecLoader{
+// NewHCLGenericUnitLoader this  UnitLoader will load all Units to instances of GenericUnit.
+func NewHCLGenericUnitLoader() *HCLGenericUnitLoader {
+	return &HCLGenericUnitLoader{
 		Parser: *hclparse.NewParser(),
 	}
 }
 
-// HCLGenericSpecLoader this SpecificationLoader loads Specifications as GenericSpecification.
-type HCLGenericSpecLoader struct {
+// HCLGenericUnitLoader this UnitLoader loads Units as GenericUnit.
+type HCLGenericUnitLoader struct {
 	hclparse.Parser
 }
 
-func (l HCLGenericSpecLoader) SupportsSource(s specter.Source) bool {
+func (l HCLGenericUnitLoader) SupportsSource(s specter.Source) bool {
 	return s.Format == HCLSourceFormat
 }
 
-func (l HCLGenericSpecLoader) Load(s specter.Source) ([]specter.Specification, error) {
+func (l HCLGenericUnitLoader) Load(s specter.Source) ([]specter.Unit, error) {
 	ctx := &hcl.EvalContext{
 		Variables: map[string]cty.Value{},
 	}
 
-	// Although the caller is responsible for calling HCLGenericSpecLoader.SupportsSource, guard against it.
+	// Although the caller is responsible for calling HCLGenericUnitLoader.SupportsSource, guard against it.
 	if !l.SupportsSource(s) {
 		return nil, errors.NewWithMessage(
 			specter.UnsupportedSourceErrorCode,
 			fmt.Sprintf(
-				"invalid specification source %q, unsupported format %q",
+				"invalid unit source %q, unsupported format %q",
 				s.Location,
 				s.Format,
 			),
@@ -69,7 +69,7 @@ func (l HCLGenericSpecLoader) Load(s specter.Source) ([]specter.Specification, e
 		return nil, errors.Wrap(diags, InvalidHCLErrorCode)
 	}
 
-	var specifications []specter.Specification
+	var units []specter.Unit
 
 	body := file.Body.(*hclsyntax.Body)
 	for _, block := range body.Blocks {
@@ -78,7 +78,7 @@ func (l HCLGenericSpecLoader) Load(s specter.Source) ([]specter.Specification, e
 			return nil, errors.NewWithMessage(
 				InvalidHCLErrorCode,
 				fmt.Sprintf(
-					"invalid specification source %q at line %d:%d, block %q should contain a name",
+					"invalid unit source %q at line %d:%d, block %q should contain a name",
 					s.Location,
 					block.Range().Start.Line,
 					block.Range().Start.Column,
@@ -96,8 +96,8 @@ func (l HCLGenericSpecLoader) Load(s specter.Source) ([]specter.Specification, e
 			//	err,
 			//	InvalidHCLErrorCode,
 			//	fmt.Sprintf(
-			//		"invalid specification source %q at line %d:%d for block %q",
-			//		s.Location,
+			//		"invalid unit source %q at line %d:%d for block %q",
+			//		u.Location,
 			//		block.Range().Start.Line,
 			//		block.Range().Start.Column,
 			//		block.Type,
@@ -105,10 +105,10 @@ func (l HCLGenericSpecLoader) Load(s specter.Source) ([]specter.Specification, e
 			//)
 		}
 
-		// Create specification and add to list
-		specifications = append(specifications, &GenericSpecification{
-			name:       specter.SpecificationName(block.Labels[0]),
-			typ:        specter.SpecificationType(block.Type),
+		// Create unit and add to list
+		units = append(units, &GenericUnit{
+			name:       specter.UnitName(block.Labels[0]),
+			typ:        specter.UnitType(block.Type),
 			source:     s,
 			Attributes: specAttributes,
 		})
@@ -121,11 +121,11 @@ func (l HCLGenericSpecLoader) Load(s specter.Source) ([]specter.Specification, e
 		}
 	}
 
-	return specifications, errors.GroupOrNil(group)
+	return units, errors.GroupOrNil(group)
 }
 
-func (l HCLGenericSpecLoader) extractAttributesFromBlock(ctx *hcl.EvalContext, block *hclsyntax.Block) ([]GenericSpecAttribute, hcl.Diagnostics) {
-	var attrs []GenericSpecAttribute
+func (l HCLGenericUnitLoader) extractAttributesFromBlock(ctx *hcl.EvalContext, block *hclsyntax.Block) ([]GenericUnitAttribute, hcl.Diagnostics) {
+	var attrs []GenericUnitAttribute
 
 	var diags hcl.Diagnostics
 
@@ -137,7 +137,7 @@ func (l HCLGenericSpecLoader) extractAttributesFromBlock(ctx *hcl.EvalContext, b
 			continue
 		}
 
-		attrs = append(attrs, GenericSpecAttribute{
+		attrs = append(attrs, GenericUnitAttribute{
 			Name:  a.Name,
 			Value: GenericValue{value},
 		})
@@ -156,7 +156,7 @@ func (l HCLGenericSpecLoader) extractAttributesFromBlock(ctx *hcl.EvalContext, b
 			continue
 		}
 
-		attrs = append(attrs, GenericSpecAttribute{
+		attrs = append(attrs, GenericUnitAttribute{
 			Name: bName,
 			Value: ObjectValue{
 				Type:       AttributeType(b.Type),
@@ -168,11 +168,11 @@ func (l HCLGenericSpecLoader) extractAttributesFromBlock(ctx *hcl.EvalContext, b
 	return attrs, diags
 }
 
-type HCLSpecLoaderFileConfigurationProvider func() HCLFileConfig
+type HCLUnitLoaderFileConfigurationProvider func() HCLFileConfig
 
-// HCLFileConfig interface that is to be implemented to define the structure of HCL specification files.
+// HCLFileConfig interface that is to be implemented to define the structure of HCL unit files.
 type HCLFileConfig interface {
-	Specifications() []specter.Specification
+	Units() []specter.Unit
 }
 
 // HCLVariableConfig represents a block configuration that allows defining variables.
@@ -182,16 +182,16 @@ type HCLVariableConfig struct {
 	Value       cty.Value `hcl:"value"`
 }
 
-// HCLSpecLoader this loader allows to load Specifications to typed structs by providing a HCLFileConfig.
-type HCLSpecLoader struct {
+// HCLUnitLoader this loader allows to load Units to typed structs by providing a HCLFileConfig.
+type HCLUnitLoader struct {
 	// represents the structure of a file that this HCL loader should support.
 	parser             *hclparse.Parser
-	fileConfigProvider HCLSpecLoaderFileConfigurationProvider
+	fileConfigProvider HCLUnitLoaderFileConfigurationProvider
 	evalCtx            *hcl.EvalContext
 }
 
-func NewHCLSpecLoader(fileConfigProvider HCLSpecLoaderFileConfigurationProvider) *HCLSpecLoader {
-	return &HCLSpecLoader{
+func NewHCLUnitLoader(fileConfigProvider HCLUnitLoaderFileConfigurationProvider) *HCLUnitLoader {
+	return &HCLUnitLoader{
 		fileConfigProvider: fileConfigProvider,
 		evalCtx: &hcl.EvalContext{
 			Variables: map[string]cty.Value{},
@@ -200,13 +200,13 @@ func NewHCLSpecLoader(fileConfigProvider HCLSpecLoaderFileConfigurationProvider)
 	}
 }
 
-func (l HCLSpecLoader) Load(s specter.Source) ([]specter.Specification, error) {
-	// Although the caller is responsible for calling HCLGenericSpecLoader.SupportsSource, guard against it.
+func (l HCLUnitLoader) Load(s specter.Source) ([]specter.Unit, error) {
+	// Although the caller is responsible for calling HCLGenericUnitLoader.SupportsSource, guard against it.
 	if !l.SupportsSource(s) {
 		return nil, errors.NewWithMessage(
 			specter.UnsupportedSourceErrorCode,
 			fmt.Sprintf(
-				"invalid specification source %q, unsupported format %q",
+				"invalid unit source %q, unsupported format %q",
 				s.Location,
 				s.Format,
 			),
@@ -217,7 +217,7 @@ func (l HCLSpecLoader) Load(s specter.Source) ([]specter.Specification, error) {
 	//// Parse const blocks to add them as Variables in the context.
 	//var diags hcl.Diagnostics
 	//var parsedFile *hcl.File
-	//parsedFile, diags = l.parser.ParseHCL(s.Data, s.Location)
+	//parsedFile, diags = l.parser.ParseHCL(u.Data, u.Location)
 	//
 	//body := parsedFile.Body.(*hclsyntax.Body)
 	//for _, b := range body.Blocks {
@@ -243,14 +243,14 @@ func (l HCLSpecLoader) Load(s specter.Source) ([]specter.Specification, error) {
 		return nil, errors.Wrap(err, InvalidHCLErrorCode)
 	}
 
-	// Set source for all specifications
-	specifications := fileConf.Specifications()
-	for _, sp := range specifications {
+	// Set source for all units
+	units := fileConf.Units()
+	for _, sp := range units {
 		sp.SetSource(s)
 	}
-	return specifications, nil
+	return units, nil
 }
 
-func (l HCLSpecLoader) SupportsSource(s specter.Source) bool {
+func (l HCLUnitLoader) SupportsSource(s specter.Source) bool {
 	return s.Format == HCLSourceFormat
 }
