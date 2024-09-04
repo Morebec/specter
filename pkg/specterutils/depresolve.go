@@ -1,4 +1,4 @@
-package specter
+package specterutils
 
 // Copyright 2022 Morébec
 //
@@ -17,6 +17,7 @@ package specter
 import (
 	"fmt"
 	"github.com/morebec/go-errors/errors"
+	"github.com/morebec/specter/pkg/specter"
 	"strings"
 )
 
@@ -24,18 +25,18 @@ const ResolvedDependenciesArtifactID = "_resolved_dependencies"
 
 // ResolvedDependencies represents an ordered list of Specification that should be processed in that specific order to avoid
 // unresolved types.
-type ResolvedDependencies SpecificationGroup
+type ResolvedDependencies specter.SpecificationGroup
 
-func (r ResolvedDependencies) ID() ArtifactID {
+func (r ResolvedDependencies) ID() specter.ArtifactID {
 	return ResolvedDependenciesArtifactID
 }
 
 type DependencyProvider interface {
-	Supports(s Specification) bool
-	Provide(s Specification) []SpecificationName
+	Supports(s specter.Specification) bool
+	Provide(s specter.Specification) []specter.SpecificationName
 }
 
-var _ SpecificationProcessor = DependencyResolutionProcessor{}
+var _ specter.SpecificationProcessor = DependencyResolutionProcessor{}
 
 type DependencyResolutionProcessor struct {
 	providers []DependencyProvider
@@ -49,7 +50,7 @@ func (p DependencyResolutionProcessor) Name() string {
 	return "dependency_resolution_processor"
 }
 
-func (p DependencyResolutionProcessor) Process(ctx ProcessingContext) ([]Artifact, error) {
+func (p DependencyResolutionProcessor) Process(ctx specter.ProcessingContext) ([]specter.Artifact, error) {
 	ctx.Logger.Info("\nResolving dependencies...")
 
 	var nodes []dependencyNode
@@ -72,16 +73,16 @@ func (p DependencyResolutionProcessor) Process(ctx ProcessingContext) ([]Artifac
 	}
 	ctx.Logger.Success("Dependencies resolved successfully.")
 
-	return []Artifact{deps}, nil
+	return []specter.Artifact{deps}, nil
 }
 
-func GetResolvedDependenciesFromContext(ctx ProcessingContext) ResolvedDependencies {
-	return GetContextArtifact[ResolvedDependencies](ctx, ResolvedDependenciesArtifactID)
+func GetResolvedDependenciesFromContext(ctx specter.ProcessingContext) ResolvedDependencies {
+	return specter.GetContextArtifact[ResolvedDependencies](ctx, ResolvedDependenciesArtifactID)
 }
 
-type dependencySet map[SpecificationName]struct{}
+type dependencySet map[specter.SpecificationName]struct{}
 
-func newDependencySet(dependencies ...SpecificationName) dependencySet {
+func newDependencySet(dependencies ...specter.SpecificationName) dependencySet {
 	deps := dependencySet{}
 	for _, d := range dependencies {
 		deps[d] = struct{}{}
@@ -104,11 +105,11 @@ func (s dependencySet) diff(o dependencySet) dependencySet {
 }
 
 type dependencyNode struct {
-	Specification Specification
+	Specification specter.Specification
 	Dependencies  dependencySet
 }
 
-func (d dependencyNode) SpecificationName() SpecificationName {
+func (d dependencyNode) SpecificationName() specter.SpecificationName {
 	return d.Specification.Name()
 }
 
@@ -122,10 +123,10 @@ func (g dependencyGraph) resolve() (ResolvedDependencies, error) {
 	var resolved ResolvedDependencies
 
 	// Look up of nodes to their typeName Names.
-	specByTypeNames := map[SpecificationName]Specification{}
+	specByTypeNames := map[specter.SpecificationName]specter.Specification{}
 
 	// Map nodes to dependencies
-	dependenciesByTypeNames := map[SpecificationName]dependencySet{}
+	dependenciesByTypeNames := map[specter.SpecificationName]dependencySet{}
 	for _, n := range g {
 		specByTypeNames[n.SpecificationName()] = n.Specification
 		dependenciesByTypeNames[n.SpecificationName()] = n.Dependencies
@@ -136,7 +137,7 @@ func (g dependencyGraph) resolve() (ResolvedDependencies, error) {
 	// If no unresolvable or circular dependency is found, the node is considered resolved.
 	// And processing retries with the remaining dependent nodes.
 	for len(dependenciesByTypeNames) != 0 {
-		var typeNamesWithNoDependencies []SpecificationName
+		var typeNamesWithNoDependencies []specter.SpecificationName
 		for typeName, dependencies := range dependenciesByTypeNames {
 			if len(dependencies) == 0 {
 				typeNamesWithNoDependencies = append(typeNamesWithNoDependencies, typeName)
@@ -199,18 +200,18 @@ func (g dependencyGraph) resolve() (ResolvedDependencies, error) {
 // This interface can be used in conjunction with the HasDependenciesProvider
 // to easily resolve dependencies.
 type HasDependencies interface {
-	Specification
-	Dependencies() []SpecificationName
+	specter.Specification
+	Dependencies() []specter.SpecificationName
 }
 
 type HasDependenciesProvider struct{}
 
-func (h HasDependenciesProvider) Supports(s Specification) bool {
+func (h HasDependenciesProvider) Supports(s specter.Specification) bool {
 	_, ok := s.(HasDependencies)
 	return ok
 }
 
-func (h HasDependenciesProvider) Provide(s Specification) []SpecificationName {
+func (h HasDependenciesProvider) Provide(s specter.Specification) []specter.SpecificationName {
 	d, ok := s.(HasDependencies)
 	if !ok {
 		return nil

@@ -12,9 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package specter
+package specter_test
 
 import (
+	. "github.com/morebec/specter/pkg/specter"
+	"github.com/morebec/specter/pkg/specterutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -32,13 +34,13 @@ func TestWithSourceLoaders(t *testing.T) {
 }
 
 func TestWithLoaders(t *testing.T) {
-	loader := &HCLGenericSpecLoader{}
+	loader := &specterutils.HCLGenericSpecLoader{}
 	s := NewPipeline(WithLoaders(loader))
 	require.Contains(t, s.Loaders, loader)
 }
 
 func TestWithProcessors(t *testing.T) {
-	processor := LintingProcessor{}
+	processor := specterutils.LintingProcessor{}
 	s := NewPipeline(WithProcessors(processor))
 	require.Contains(t, s.Processors, processor)
 }

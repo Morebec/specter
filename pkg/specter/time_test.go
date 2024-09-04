@@ -12,11 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package specter
+package specter_test
 
-import "time"
+import (
+	"github.com/morebec/specter/pkg/specter"
+	"time"
+)
 
-func staticTimeProvider(dt time.Time) TimeProvider {
+func staticTimeProvider(dt time.Time) specter.TimeProvider {
 	return func() time.Time {
 		return dt
 	}

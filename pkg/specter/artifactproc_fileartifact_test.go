@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package specter
+package specter_test
 
 import (
 	"context"
 	"github.com/morebec/go-errors/errors"
+	. "github.com/morebec/specter/pkg/specter"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io/fs"
@@ -74,7 +75,7 @@ func TestWriteFileArtifactProcessor_Process(t *testing.T) {
 				},
 			},
 			then: processThen{
-				expectedError: requireErrorWithCode(FileArtifactProcessorCleanUpFailedErrorCode),
+				expectedError: RequireErrorWithCode(FileArtifactProcessorCleanUpFailedErrorCode),
 			},
 		},
 		{
@@ -94,7 +95,7 @@ func TestWriteFileArtifactProcessor_Process(t *testing.T) {
 				},
 			},
 			then: processThen{
-				expectedError: requireErrorWithCode(FileArtifactProcessorCleanUpFailedErrorCode),
+				expectedError: RequireErrorWithCode(FileArtifactProcessorCleanUpFailedErrorCode),
 			},
 		},
 		{
@@ -114,7 +115,7 @@ func TestWriteFileArtifactProcessor_Process(t *testing.T) {
 				},
 			},
 			then: processThen{
-				expectedError: requireErrorWithCode(FileArtifactProcessorCleanUpFailedErrorCode),
+				expectedError: RequireErrorWithCode(FileArtifactProcessorCleanUpFailedErrorCode),
 			},
 		},
 		{
@@ -145,7 +146,7 @@ func TestWriteFileArtifactProcessor_Process(t *testing.T) {
 			},
 			then: processThen{
 				expectedFiles: []string{},
-				expectedError: requireErrorWithCode(FileArtifactProcessorCleanUpFailedErrorCode),
+				expectedError: RequireErrorWithCode(FileArtifactProcessorCleanUpFailedErrorCode),
 			},
 		},
 		{
@@ -235,7 +236,7 @@ func TestWriteFileArtifactProcessor_Process(t *testing.T) {
 			when: processWhen{
 				artifacts: []Artifact{
 					&FileArtifact{Path: "/path/to/file1", FileMode: os.ModePerm},
-					mockArtifact{}, // this should be skipped.
+					ArtifactStub{}, // this should be skipped.
 				},
 			},
 			then: processThen{
@@ -257,7 +258,7 @@ func TestWriteFileArtifactProcessor_Process(t *testing.T) {
 			},
 			then: processThen{
 				expectedFiles: []string{},
-				expectedError: requireErrorWithCode(FileArtifactProcessorProcessingFailedErrorCode),
+				expectedError: RequireErrorWithCode(FileArtifactProcessorProcessingFailedErrorCode),
 			},
 		},
 		{
@@ -291,7 +292,7 @@ func TestWriteFileArtifactProcessor_Process(t *testing.T) {
 				},
 			},
 			then: processThen{
-				expectedError: requireErrorWithCode(FileArtifactProcessorProcessingFailedErrorCode),
+				expectedError: RequireErrorWithCode(FileArtifactProcessorProcessingFailedErrorCode),
 			},
 		},
 		{
@@ -325,7 +326,7 @@ func TestWriteFileArtifactProcessor_Process(t *testing.T) {
 				},
 			},
 			then: processThen{
-				expectedError: requireErrorWithCode(FileArtifactProcessorProcessingFailedErrorCode),
+				expectedError: RequireErrorWithCode(FileArtifactProcessorProcessingFailedErrorCode),
 			},
 		},
 		{
@@ -341,7 +342,7 @@ func TestWriteFileArtifactProcessor_Process(t *testing.T) {
 				},
 			},
 			then: processThen{
-				expectedError: requireErrorWithCode(FileArtifactProcessorProcessingFailedErrorCode),
+				expectedError: RequireErrorWithCode(FileArtifactProcessorProcessingFailedErrorCode),
 			},
 		},
 		{
@@ -357,7 +358,7 @@ func TestWriteFileArtifactProcessor_Process(t *testing.T) {
 				},
 			},
 			then: processThen{
-				expectedError: requireErrorWithCode(FileArtifactProcessorProcessingFailedErrorCode),
+				expectedError: RequireErrorWithCode(FileArtifactProcessorProcessingFailedErrorCode),
 			},
 		},
 		{
@@ -373,7 +374,7 @@ func TestWriteFileArtifactProcessor_Process(t *testing.T) {
 				},
 			},
 			then: processThen{
-				expectedError: requireErrorWithCode(FileArtifactProcessorProcessingFailedErrorCode),
+				expectedError: RequireErrorWithCode(FileArtifactProcessorProcessingFailedErrorCode),
 			},
 		},
 	}
@@ -397,14 +398,10 @@ func TestWriteFileArtifactProcessor_Process(t *testing.T) {
 			}
 
 			ctx := ArtifactProcessingContext{
-				Context:   parentCtx,
-				Artifacts: tt.when.artifacts,
-				Logger:    NewDefaultLogger(DefaultLoggerConfig{}),
-				ArtifactRegistry: ProcessorArtifactRegistry{
-					processorName: processor.Name(),
-					registry:      registry,
-				},
-				processorName: processor.Name(),
+				Context:          parentCtx,
+				Artifacts:        tt.when.artifacts,
+				Logger:           NewDefaultLogger(DefaultLoggerConfig{}),
+				ArtifactRegistry: NewProcessorArtifactRegistry(processor.Name(), registry),
 			}
 			err := processor.Process(ctx)
 
@@ -454,16 +451,4 @@ func TestFileArtifact_IsDir(t *testing.T) {
 
 	f = &FileArtifact{FileMode: os.ModePerm | os.ModeDir}
 	assert.True(t, f.IsDir())
-}
-
-func requireErrorWithCode(c string) require.ErrorAssertionFunc {
-	return func(t require.TestingT, err error, i ...interface{}) {
-		require.Error(t, err)
-
-		var sysError errors.SystemError
-		if !errors.As(err, &sysError) {
-			t.Errorf("expected a system error with code %q but got %s", c, err)
-		}
-		require.Equal(t, c, sysError.Code())
-	}
 }

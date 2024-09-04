@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package specter
+package specter_test
 
 import (
 	"github.com/morebec/go-errors/errors"
+	. "github.com/morebec/specter/pkg/specter"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io/fs"
@@ -32,7 +33,7 @@ func TestLocalFileSourceLoader_Supports(t *testing.T) {
 	}{
 		{
 			name:  "GIVEN a file that exists THEN return true",
-			given: "./source_test.go",
+			given: "./srcloading_test.go",
 			then:  true,
 		},
 		{
@@ -167,7 +168,7 @@ func TestLocalFileSourceLoader_Load(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			loader := FileSystemSourceLoader{fs: tt.given}
+			loader := NewFileSystemSourceLoader(tt.given)
 			src, err := loader.Load(tt.whenLocation)
 
 			if tt.expectedErr != nil {

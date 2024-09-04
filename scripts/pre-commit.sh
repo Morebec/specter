@@ -14,5 +14,11 @@
 # limitations under the License.
 
 
+./scripts/add_license.sh
+./scripts/check_gofmt.sh
+./scripts/golangci_lint.sh
 
-task dev:pre-commit
+# Run tests on main
+if [ "$(git rev-parse --abbrev-ref HEAD)" == "main" ]; then
+  ./scripts/go_test.sh
+fi

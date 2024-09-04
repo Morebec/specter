@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package specter
+package specterutils
 
 import (
 	"github.com/morebec/go-errors/errors"
+	"github.com/morebec/specter/pkg/specter"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
@@ -25,12 +26,12 @@ import (
 func TestSpecificationsDescriptionsMustStartWithACapitalLetter(t *testing.T) {
 	tests := []struct {
 		name  string
-		given SpecificationGroup
+		given specter.SpecificationGroup
 		then  LinterResultSet
 	}{
 		{
 			name: "GIVEN specification starting with an upper case letter THEN return empty result set",
-			given: SpecificationGroup{
+			given: specter.SpecificationGroup{
 				&GenericSpecification{
 					name: "test",
 					Attributes: []GenericSpecAttribute{
@@ -44,7 +45,7 @@ func TestSpecificationsDescriptionsMustStartWithACapitalLetter(t *testing.T) {
 		},
 		{
 			name: "GIVEN specification starting with lower case letter THEN return error",
-			given: SpecificationGroup{
+			given: specter.SpecificationGroup{
 				&GenericSpecification{
 					name: "test",
 					Attributes: []GenericSpecAttribute{
@@ -75,12 +76,12 @@ func TestSpecificationsDescriptionsMustStartWithACapitalLetter(t *testing.T) {
 func TestSpecificationsDescriptionsMustEndWithPeriod(t *testing.T) {
 	tests := []struct {
 		name  string
-		given SpecificationGroup
+		given specter.SpecificationGroup
 		then  LinterResultSet
 	}{
 		{
 			name: "GIVEN specification ending with period THEN return empty result set",
-			given: SpecificationGroup{
+			given: specter.SpecificationGroup{
 				&GenericSpecification{
 					name: "test",
 					Attributes: []GenericSpecAttribute{
@@ -94,7 +95,7 @@ func TestSpecificationsDescriptionsMustEndWithPeriod(t *testing.T) {
 		},
 		{
 			name: "GIVEN specification not ending with period THEN return error",
-			given: SpecificationGroup{
+			given: specter.SpecificationGroup{
 				&GenericSpecification{
 					name: "test",
 					Attributes: []GenericSpecAttribute{
@@ -125,12 +126,12 @@ func TestSpecificationsDescriptionsMustEndWithPeriod(t *testing.T) {
 func TestSpecificationsMustHaveDescriptionAttribute(t *testing.T) {
 	tests := []struct {
 		name  string
-		given SpecificationGroup
+		given specter.SpecificationGroup
 		then  LinterResultSet
 	}{
 		{
 			name: "GIVEN specification with a description THEN return empty result set",
-			given: SpecificationGroup{
+			given: specter.SpecificationGroup{
 				&GenericSpecification{
 					name: "test",
 					Attributes: []GenericSpecAttribute{
@@ -144,7 +145,7 @@ func TestSpecificationsMustHaveDescriptionAttribute(t *testing.T) {
 		},
 		{
 			name: "GIVEN specification with no description ",
-			given: SpecificationGroup{
+			given: specter.SpecificationGroup{
 				&GenericSpecification{
 					name: "test",
 				},
@@ -158,7 +159,7 @@ func TestSpecificationsMustHaveDescriptionAttribute(t *testing.T) {
 		},
 		{
 			name: "GIVEN specification with an empty description THEN return error",
-			given: SpecificationGroup{
+			given: specter.SpecificationGroup{
 				&GenericSpecification{
 					name: "test",
 					Attributes: []GenericSpecAttribute{
@@ -189,12 +190,12 @@ func TestSpecificationsMustHaveDescriptionAttribute(t *testing.T) {
 func TestSpecificationsMustHaveUniqueNames(t *testing.T) {
 	tests := []struct {
 		name  string
-		given SpecificationGroup
+		given specter.SpecificationGroup
 		then  LinterResultSet
 	}{
 		{
 			name: "GIVEN specifications with unique names THEN return empty result set",
-			given: SpecificationGroup{
+			given: specter.SpecificationGroup{
 				&GenericSpecification{
 					name: "test",
 				},
@@ -205,7 +206,7 @@ func TestSpecificationsMustHaveUniqueNames(t *testing.T) {
 		},
 		{
 			name: "GIVEN specifications with non-unique names THEN return error",
-			given: SpecificationGroup{
+			given: specter.SpecificationGroup{
 				&GenericSpecification{
 					name: "test",
 				},
@@ -233,12 +234,12 @@ func TestSpecificationsMustHaveUniqueNames(t *testing.T) {
 func TestSpecificationMustNotHaveUndefinedNames(t *testing.T) {
 	tests := []struct {
 		name  string
-		given SpecificationGroup
+		given specter.SpecificationGroup
 		then  LinterResultSet
 	}{
 		{
 			name: "GIVEN specification with a name THEN return empty result set",
-			given: SpecificationGroup{
+			given: specter.SpecificationGroup{
 				&GenericSpecification{
 					name: "test",
 				},
@@ -246,7 +247,7 @@ func TestSpecificationMustNotHaveUndefinedNames(t *testing.T) {
 		},
 		{
 			name: "GIVEN specification with no name THEN return error ",
-			given: SpecificationGroup{
+			given: specter.SpecificationGroup{
 				&GenericSpecification{
 					name: "",
 				},
@@ -271,7 +272,7 @@ func TestSpecificationMustNotHaveUndefinedNames(t *testing.T) {
 func TestCompositeSpecificationLinter(t *testing.T) {
 	type args struct {
 		linters        []SpecificationLinter
-		specifications SpecificationGroup
+		specifications specter.SpecificationGroup
 	}
 	tests := []struct {
 		name  string
@@ -286,7 +287,7 @@ func TestCompositeSpecificationLinter(t *testing.T) {
 					SpecificationsDescriptionsMustStartWithACapitalLetter(ErrorSeverity),
 					SpecificationsDescriptionsMustEndWithPeriod(ErrorSeverity),
 				},
-				specifications: SpecificationGroup{
+				specifications: specter.SpecificationGroup{
 					&GenericSpecification{
 						name: "test",
 						Attributes: []GenericSpecAttribute{
@@ -307,7 +308,7 @@ func TestCompositeSpecificationLinter(t *testing.T) {
 					SpecificationsDescriptionsMustStartWithACapitalLetter(ErrorSeverity),
 					SpecificationsDescriptionsMustEndWithPeriod(ErrorSeverity),
 				},
-				specifications: SpecificationGroup{
+				specifications: specter.SpecificationGroup{
 					&GenericSpecification{
 						name: "",
 					},
@@ -478,23 +479,23 @@ func TestLintingProcessor_Name(t *testing.T) {
 func TestLintingProcessor_Process(t *testing.T) {
 	type args struct {
 		linters []SpecificationLinter
-		ctx     ProcessingContext
+		ctx     specter.ProcessingContext
 	}
 	tests := []struct {
 		name          string
 		given         args
-		then          []Artifact
+		then          []specter.Artifact
 		expectedError error
 	}{
 		{
 			name: "GIVEN an empty processing context",
 			given: args{
 				linters: nil,
-				ctx: ProcessingContext{
-					Logger: NewDefaultLogger(DefaultLoggerConfig{}),
+				ctx: specter.ProcessingContext{
+					Logger: specter.NewDefaultLogger(specter.DefaultLoggerConfig{}),
 				},
 			},
-			then: []Artifact{
+			then: []specter.Artifact{
 				LinterResultSet(nil),
 			},
 			expectedError: nil,
@@ -503,16 +504,16 @@ func TestLintingProcessor_Process(t *testing.T) {
 			name: "GIVEN a processing context with specifications that raise warnings THEN return a processing artifact with the result set",
 			given: args{
 				linters: []SpecificationLinter{
-					SpecificationLinterFunc(func(specifications SpecificationGroup) LinterResultSet {
+					SpecificationLinterFunc(func(specifications specter.SpecificationGroup) LinterResultSet {
 						return LinterResultSet{{Severity: WarningSeverity, Message: "a warning"}}
 					}),
 				},
-				ctx: ProcessingContext{
-					Specifications: []Specification{NewGenericSpecification("spec", "spec_type", Source{})},
-					Logger:         NewDefaultLogger(DefaultLoggerConfig{}),
+				ctx: specter.ProcessingContext{
+					Specifications: []specter.Specification{NewGenericSpecification("spec", "spec_type", specter.Source{})},
+					Logger:         specter.NewDefaultLogger(specter.DefaultLoggerConfig{}),
 				},
 			},
-			then: []Artifact{
+			then: []specter.Artifact{
 				LinterResultSet{{Severity: WarningSeverity, Message: "a warning"}},
 			},
 		},
@@ -520,16 +521,16 @@ func TestLintingProcessor_Process(t *testing.T) {
 			name: "GIVEN a processing context that will raise errors THEN return errors",
 			given: args{
 				linters: []SpecificationLinter{
-					SpecificationLinterFunc(func(specifications SpecificationGroup) LinterResultSet {
+					SpecificationLinterFunc(func(specifications specter.SpecificationGroup) LinterResultSet {
 						return LinterResultSet{{Severity: ErrorSeverity, Message: assert.AnError.Error()}}
 					}),
 				},
-				ctx: ProcessingContext{
-					Specifications: []Specification{NewGenericSpecification("spec", "spec_type", Source{})},
-					Logger:         NewDefaultLogger(DefaultLoggerConfig{}),
+				ctx: specter.ProcessingContext{
+					Specifications: []specter.Specification{NewGenericSpecification("spec", "spec_type", specter.Source{})},
+					Logger:         specter.NewDefaultLogger(specter.DefaultLoggerConfig{}),
 				},
 			},
-			then: []Artifact{
+			then: []specter.Artifact{
 				LinterResultSet{{Severity: ErrorSeverity, Message: assert.AnError.Error()}},
 			},
 			expectedError: assert.AnError,
@@ -538,7 +539,7 @@ func TestLintingProcessor_Process(t *testing.T) {
 			name: "GIVEN a processing context that will raise both errors and warnings THEN return errors and warnings",
 			given: args{
 				linters: []SpecificationLinter{
-					SpecificationLinterFunc(func(specifications SpecificationGroup) LinterResultSet {
+					SpecificationLinterFunc(func(specifications specter.SpecificationGroup) LinterResultSet {
 						return LinterResultSet{
 							{
 								Severity: ErrorSeverity, Message: assert.AnError.Error(),
@@ -549,12 +550,12 @@ func TestLintingProcessor_Process(t *testing.T) {
 						}
 					}),
 				},
-				ctx: ProcessingContext{
-					Specifications: []Specification{NewGenericSpecification("spec", "spec_type", Source{})},
-					Logger:         NewDefaultLogger(DefaultLoggerConfig{}),
+				ctx: specter.ProcessingContext{
+					Specifications: []specter.Specification{NewGenericSpecification("spec", "spec_type", specter.Source{})},
+					Logger:         specter.NewDefaultLogger(specter.DefaultLoggerConfig{}),
 				},
 			},
-			then: []Artifact{
+			then: []specter.Artifact{
 				LinterResultSet{
 					{
 						Severity: ErrorSeverity, Message: assert.AnError.Error(),
@@ -586,13 +587,13 @@ func TestLintingProcessor_Process(t *testing.T) {
 func TestGetLintingResultsFromContext(t *testing.T) {
 	tests := []struct {
 		name  string
-		given ProcessingContext
+		given specter.ProcessingContext
 		then  LinterResultSet
 	}{
 		{
 			name: "GIVEN context with linting results THEN return linting results",
-			given: ProcessingContext{
-				Artifacts: []Artifact{
+			given: specter.ProcessingContext{
+				Artifacts: []specter.Artifact{
 					LinterResultSet{{Severity: WarningSeverity, Message: "a warning"}},
 				},
 			},
@@ -600,14 +601,14 @@ func TestGetLintingResultsFromContext(t *testing.T) {
 		},
 		{
 			name:  "GIVEN context with not linting results THEN return empty linting results",
-			given: ProcessingContext{},
+			given: specter.ProcessingContext{},
 			then:  LinterResultSet(nil),
 		},
 		{
 			name: "GIVEN a context with wrong value for artifact name THEN return nil",
-			given: ProcessingContext{
-				Artifacts: []Artifact{
-					mockArtifact{LinterResultArtifactID},
+			given: specter.ProcessingContext{
+				Artifacts: []specter.Artifact{
+					NewArtifactStub(LinterResultArtifactID),
 				},
 			},
 			then: LinterResultSet(nil),
