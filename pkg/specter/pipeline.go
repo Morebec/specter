@@ -208,7 +208,7 @@ func (p Pipeline) loadUnits(ctx context.Context, sources []Source) ([]Unit, erro
 
 	if len(sourcesNotLoaded) > 0 {
 		for _, src := range sourcesNotLoaded {
-			p.Logger.Warning(fmt.Sprintf("%q could not be loaded.", src))
+			p.Logger.Warning(fmt.Sprintf("%q could not be loaded.", src.Location))
 		}
 
 		p.Logger.Warning("%d units were not loaded.")
