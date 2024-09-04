@@ -208,7 +208,7 @@ func (p Pipeline) loadSpecifications(ctx context.Context, sources []Source) ([]S
 
 	if len(sourcesNotLoaded) > 0 {
 		for _, src := range sourcesNotLoaded {
-			p.Logger.Warning(fmt.Sprintf("%q could not be loaded.", src))
+			p.Logger.Warning(fmt.Sprintf("%q could not be loaded.", src.Location))
 		}
 
 		p.Logger.Warning("%d specifications were not loaded.")
