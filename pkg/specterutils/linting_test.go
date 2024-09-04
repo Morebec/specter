@@ -12,11 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package specterutils
+package specterutils_test
 
 import (
 	"github.com/morebec/go-errors/errors"
 	"github.com/morebec/specter/pkg/specter"
+	"github.com/morebec/specter/pkg/specterutils"
+	"github.com/morebec/specter/pkg/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
@@ -27,17 +29,17 @@ func TestUnitsDescriptionsMustStartWithACapitalLetter(t *testing.T) {
 	tests := []struct {
 		name  string
 		given specter.UnitGroup
-		then  LinterResultSet
+		then  specterutils.LinterResultSet
 	}{
 		{
 			name: "GIVEN unit starting with an upper case letter THEN return empty result set",
 			given: specter.UnitGroup{
-				&GenericUnit{
-					name: "test",
-					Attributes: []GenericUnitAttribute{
+				&specterutils.GenericUnit{
+					UnitName: "test",
+					Attributes: []specterutils.GenericUnitAttribute{
 						{
 							Name:  "description",
-							Value: GenericValue{cty.StringVal("It starts with UPPERCASE")},
+							Value: specterutils.GenericValue{Value: cty.StringVal("It starts with UPPERCASE")},
 						},
 					},
 				},
@@ -46,19 +48,19 @@ func TestUnitsDescriptionsMustStartWithACapitalLetter(t *testing.T) {
 		{
 			name: "GIVEN unit starting with lower case letter THEN return error",
 			given: specter.UnitGroup{
-				&GenericUnit{
-					name: "test",
-					Attributes: []GenericUnitAttribute{
+				&specterutils.GenericUnit{
+					UnitName: "test",
+					Attributes: []specterutils.GenericUnitAttribute{
 						{
 							Name:  "description",
-							Value: GenericValue{cty.StringVal("it starts with lowercase")},
+							Value: specterutils.GenericValue{Value: cty.StringVal("it starts with lowercase")},
 						},
 					},
 				},
 			},
-			then: LinterResultSet{
+			then: specterutils.LinterResultSet{
 				{
-					Severity: ErrorSeverity,
+					Severity: specterutils.ErrorSeverity,
 					Message:  "the description of unit \"test\" at location \"\" does not start with a capital letter",
 				},
 			},
@@ -66,7 +68,7 @@ func TestUnitsDescriptionsMustStartWithACapitalLetter(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			linter := UnitsDescriptionsMustStartWithACapitalLetter(ErrorSeverity)
+			linter := specterutils.UnitsDescriptionsMustStartWithACapitalLetter(specterutils.ErrorSeverity)
 			result := linter.Lint(tt.given)
 			require.Equal(t, tt.then, result)
 		})
@@ -77,17 +79,17 @@ func TestUnitsDescriptionsMustEndWithPeriod(t *testing.T) {
 	tests := []struct {
 		name  string
 		given specter.UnitGroup
-		then  LinterResultSet
+		then  specterutils.LinterResultSet
 	}{
 		{
 			name: "GIVEN unit ending with period THEN return empty result set",
 			given: specter.UnitGroup{
-				&GenericUnit{
-					name: "test",
-					Attributes: []GenericUnitAttribute{
+				&specterutils.GenericUnit{
+					UnitName: "test",
+					Attributes: []specterutils.GenericUnitAttribute{
 						{
 							Name:  "description",
-							Value: GenericValue{cty.StringVal("it ends with period.")},
+							Value: specterutils.GenericValue{Value: cty.StringVal("it ends with period.")},
 						},
 					},
 				},
@@ -96,19 +98,19 @@ func TestUnitsDescriptionsMustEndWithPeriod(t *testing.T) {
 		{
 			name: "GIVEN unit not ending with period THEN return error",
 			given: specter.UnitGroup{
-				&GenericUnit{
-					name: "test",
-					Attributes: []GenericUnitAttribute{
+				&specterutils.GenericUnit{
+					UnitName: "test",
+					Attributes: []specterutils.GenericUnitAttribute{
 						{
 							Name:  "description",
-							Value: GenericValue{cty.StringVal("it starts with lowercase")},
+							Value: specterutils.GenericValue{Value: cty.StringVal("it starts with lowercase")},
 						},
 					},
 				},
 			},
-			then: LinterResultSet{
+			then: specterutils.LinterResultSet{
 				{
-					Severity: ErrorSeverity,
+					Severity: specterutils.ErrorSeverity,
 					Message:  "the description of unit \"test\" at location \"\" does not end with a period",
 				},
 			},
@@ -116,7 +118,7 @@ func TestUnitsDescriptionsMustEndWithPeriod(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			linter := UnitsDescriptionsMustEndWithPeriod(ErrorSeverity)
+			linter := specterutils.UnitsDescriptionsMustEndWithPeriod(specterutils.ErrorSeverity)
 			result := linter.Lint(tt.given)
 			require.Equal(t, tt.then, result)
 		})
@@ -127,17 +129,17 @@ func TestUnitsMustHaveDescriptionAttribute(t *testing.T) {
 	tests := []struct {
 		name  string
 		given specter.UnitGroup
-		then  LinterResultSet
+		then  specterutils.LinterResultSet
 	}{
 		{
 			name: "GIVEN unit with a description THEN return empty result set",
 			given: specter.UnitGroup{
-				&GenericUnit{
-					name: "test",
-					Attributes: []GenericUnitAttribute{
+				&specterutils.GenericUnit{
+					UnitName: "test",
+					Attributes: []specterutils.GenericUnitAttribute{
 						{
 							Name:  "description",
-							Value: GenericValue{cty.StringVal("I have a description")},
+							Value: specterutils.GenericValue{Value: cty.StringVal("I have a description")},
 						},
 					},
 				},
@@ -146,13 +148,13 @@ func TestUnitsMustHaveDescriptionAttribute(t *testing.T) {
 		{
 			name: "GIVEN unit with no description ",
 			given: specter.UnitGroup{
-				&GenericUnit{
-					name: "test",
+				&specterutils.GenericUnit{
+					UnitName: "test",
 				},
 			},
-			then: LinterResultSet{
+			then: specterutils.LinterResultSet{
 				{
-					Severity: ErrorSeverity,
+					Severity: specterutils.ErrorSeverity,
 					Message:  "unit \"test\" at location \"\" does not have a description",
 				},
 			},
@@ -160,19 +162,19 @@ func TestUnitsMustHaveDescriptionAttribute(t *testing.T) {
 		{
 			name: "GIVEN unit with an empty description THEN return error",
 			given: specter.UnitGroup{
-				&GenericUnit{
-					name: "test",
-					Attributes: []GenericUnitAttribute{
+				&specterutils.GenericUnit{
+					UnitName: "test",
+					Attributes: []specterutils.GenericUnitAttribute{
 						{
 							Name:  "description",
-							Value: GenericValue{cty.StringVal("")},
+							Value: specterutils.GenericValue{Value: cty.StringVal("")},
 						},
 					},
 				},
 			},
-			then: LinterResultSet{
+			then: specterutils.LinterResultSet{
 				{
-					Severity: ErrorSeverity,
+					Severity: specterutils.ErrorSeverity,
 					Message:  "unit \"test\" at location \"\" does not have a description",
 				},
 			},
@@ -180,7 +182,7 @@ func TestUnitsMustHaveDescriptionAttribute(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			linter := UnitsMustHaveDescriptionAttribute(ErrorSeverity)
+			linter := specterutils.UnitsMustHaveDescriptionAttribute(specterutils.ErrorSeverity)
 			result := linter.Lint(tt.given)
 			require.Equal(t, tt.then, result)
 		})
@@ -191,32 +193,32 @@ func TestUnitsMustHaveUniqueNames(t *testing.T) {
 	tests := []struct {
 		name  string
 		given specter.UnitGroup
-		then  LinterResultSet
+		then  specterutils.LinterResultSet
 	}{
 		{
 			name: "GIVEN units with unique names THEN return empty result set",
 			given: specter.UnitGroup{
-				&GenericUnit{
-					name: "test",
+				&specterutils.GenericUnit{
+					UnitName: "test",
 				},
-				&GenericUnit{
-					name: "test2",
+				&specterutils.GenericUnit{
+					UnitName: "test2",
 				},
 			},
 		},
 		{
 			name: "GIVEN units with non-unique names THEN return error",
 			given: specter.UnitGroup{
-				&GenericUnit{
-					name: "test",
+				&specterutils.GenericUnit{
+					UnitName: "test",
 				},
-				&GenericUnit{
-					name: "test",
+				&specterutils.GenericUnit{
+					UnitName: "test",
 				},
 			},
-			then: LinterResultSet{
+			then: specterutils.LinterResultSet{
 				{
-					Severity: ErrorSeverity,
+					Severity: specterutils.ErrorSeverity,
 					Message:  "duplicate unit name detected for \"test\" in the following file(s): ",
 				},
 			},
@@ -224,7 +226,7 @@ func TestUnitsMustHaveUniqueNames(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			linter := UnitsMustHaveUniqueNames(ErrorSeverity)
+			linter := specterutils.UnitsMustHaveUniqueNames(specterutils.ErrorSeverity)
 			result := linter.Lint(tt.given)
 			require.Equal(t, tt.then, result)
 		})
@@ -235,26 +237,26 @@ func TestUnitMustNotHaveUndefinedNames(t *testing.T) {
 	tests := []struct {
 		name  string
 		given specter.UnitGroup
-		then  LinterResultSet
+		then  specterutils.LinterResultSet
 	}{
 		{
 			name: "GIVEN unit with a name THEN return empty result set",
 			given: specter.UnitGroup{
-				&GenericUnit{
-					name: "test",
+				&specterutils.GenericUnit{
+					UnitName: "test",
 				},
 			},
 		},
 		{
 			name: "GIVEN unit with no name THEN return error ",
 			given: specter.UnitGroup{
-				&GenericUnit{
-					name: "",
+				&specterutils.GenericUnit{
+					UnitName: "",
 				},
 			},
-			then: LinterResultSet{
+			then: specterutils.LinterResultSet{
 				{
-					Severity: ErrorSeverity,
+					Severity: specterutils.ErrorSeverity,
 					Message:  "unit at \"\" has an undefined name",
 				},
 			},
@@ -262,7 +264,7 @@ func TestUnitMustNotHaveUndefinedNames(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			linter := UnitMustNotHaveUndefinedNames(ErrorSeverity)
+			linter := specterutils.UnitMustNotHaveUndefinedNames(specterutils.ErrorSeverity)
 			result := linter.Lint(tt.given)
 			require.Equal(t, tt.then, result)
 		})
@@ -271,29 +273,29 @@ func TestUnitMustNotHaveUndefinedNames(t *testing.T) {
 
 func TestCompositeUnitLinter(t *testing.T) {
 	type args struct {
-		linters []UnitLinter
+		linters []specterutils.UnitLinter
 		units   specter.UnitGroup
 	}
 	tests := []struct {
 		name  string
 		given args
-		then  LinterResultSet
+		then  specterutils.LinterResultSet
 	}{
 		{
 			name: "GIVEN valid units THEN return empty result set",
 			given: args{
-				linters: []UnitLinter{
-					UnitMustNotHaveUndefinedNames(ErrorSeverity),
-					UnitsDescriptionsMustStartWithACapitalLetter(ErrorSeverity),
-					UnitsDescriptionsMustEndWithPeriod(ErrorSeverity),
+				linters: []specterutils.UnitLinter{
+					specterutils.UnitMustNotHaveUndefinedNames(specterutils.ErrorSeverity),
+					specterutils.UnitsDescriptionsMustStartWithACapitalLetter(specterutils.ErrorSeverity),
+					specterutils.UnitsDescriptionsMustEndWithPeriod(specterutils.ErrorSeverity),
 				},
 				units: specter.UnitGroup{
-					&GenericUnit{
-						name: "test",
-						Attributes: []GenericUnitAttribute{
+					&specterutils.GenericUnit{
+						UnitName: "test",
+						Attributes: []specterutils.GenericUnitAttribute{
 							{
 								Name:  "description",
-								Value: GenericValue{cty.StringVal("This is a Description.")},
+								Value: specterutils.GenericValue{Value: cty.StringVal("This is a Description.")},
 							},
 						},
 					},
@@ -303,29 +305,29 @@ func TestCompositeUnitLinter(t *testing.T) {
 		{
 			name: "GIVEN invalid units THEN return empty result set",
 			given: args{
-				linters: []UnitLinter{
-					UnitMustNotHaveUndefinedNames(ErrorSeverity),
-					UnitsDescriptionsMustStartWithACapitalLetter(ErrorSeverity),
-					UnitsDescriptionsMustEndWithPeriod(ErrorSeverity),
+				linters: []specterutils.UnitLinter{
+					specterutils.UnitMustNotHaveUndefinedNames(specterutils.ErrorSeverity),
+					specterutils.UnitsDescriptionsMustStartWithACapitalLetter(specterutils.ErrorSeverity),
+					specterutils.UnitsDescriptionsMustEndWithPeriod(specterutils.ErrorSeverity),
 				},
 				units: specter.UnitGroup{
-					&GenericUnit{
-						name: "",
+					&specterutils.GenericUnit{
+						UnitName: "",
 					},
 				},
 			},
-			then: LinterResultSet{
+			then: specterutils.LinterResultSet{
 				{
-					Severity: ErrorSeverity,
+					Severity: specterutils.ErrorSeverity,
 					Message:  "unit at \"\" has an undefined name",
 				},
 				{
-					Severity: ErrorSeverity,
+					Severity: specterutils.ErrorSeverity,
 					Message:  "the description of unit \"\" at location \"\" does not start with a capital letter",
 				},
 
 				{
-					Severity: ErrorSeverity,
+					Severity: specterutils.ErrorSeverity,
 					Message:  "the description of unit \"\" at location \"\" does not end with a period",
 				},
 			},
@@ -333,7 +335,7 @@ func TestCompositeUnitLinter(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			linter := CompositeUnitLinter(tt.given.linters...)
+			linter := specterutils.CompositeUnitLinter(tt.given.linters...)
 			result := linter.Lint(tt.given.units)
 			require.Equal(t, tt.then, result)
 		})
@@ -343,14 +345,14 @@ func TestCompositeUnitLinter(t *testing.T) {
 func TestLinterResultSet_HasWarnings(t *testing.T) {
 	tests := []struct {
 		name  string
-		given LinterResultSet
+		given specterutils.LinterResultSet
 		then  bool
 	}{
 		{
 			name: "GIVEN result set with some warnings THEN return true",
-			given: LinterResultSet{
-				LinterResult{
-					Severity: WarningSeverity,
+			given: specterutils.LinterResultSet{
+				specterutils.LinterResult{
+					Severity: specterutils.WarningSeverity,
 					Message:  "a warning",
 				},
 			},
@@ -358,9 +360,9 @@ func TestLinterResultSet_HasWarnings(t *testing.T) {
 		},
 		{
 			name: "GIVEN result set with no warnings THEN return false",
-			given: LinterResultSet{
-				LinterResult{
-					Severity: ErrorSeverity,
+			given: specterutils.LinterResultSet{
+				specterutils.LinterResult{
+					Severity: specterutils.ErrorSeverity,
 					Message:  assert.AnError.Error(),
 				},
 			},
@@ -377,14 +379,14 @@ func TestLinterResultSet_HasWarnings(t *testing.T) {
 func TestLinterResultSet_HasErrors(t *testing.T) {
 	tests := []struct {
 		name  string
-		given LinterResultSet
+		given specterutils.LinterResultSet
 		then  bool
 	}{
 		{
 			name: "GIVEN result set with some error THEN return true",
-			given: LinterResultSet{
-				LinterResult{
-					Severity: ErrorSeverity,
+			given: specterutils.LinterResultSet{
+				specterutils.LinterResult{
+					Severity: specterutils.ErrorSeverity,
 					Message:  assert.AnError.Error(),
 				},
 			},
@@ -392,9 +394,9 @@ func TestLinterResultSet_HasErrors(t *testing.T) {
 		},
 		{
 			name: "GIVEN result set with no error THEN return false",
-			given: LinterResultSet{
-				LinterResult{
-					Severity: WarningSeverity,
+			given: specterutils.LinterResultSet{
+				specterutils.LinterResult{
+					Severity: specterutils.WarningSeverity,
 					Message:  "a warning",
 				},
 			},
@@ -411,24 +413,24 @@ func TestLinterResultSet_HasErrors(t *testing.T) {
 func TestLinterResultSet_Warnings(t *testing.T) {
 	tests := []struct {
 		name  string
-		given LinterResultSet
-		then  LinterResultSet
+		given specterutils.LinterResultSet
+		then  specterutils.LinterResultSet
 	}{
 		{
 			name: "GIVEN a result set with some warnings THEN return warnings",
-			given: LinterResultSet{
-				LinterResult{
-					Severity: WarningSeverity,
+			given: specterutils.LinterResultSet{
+				specterutils.LinterResult{
+					Severity: specterutils.WarningSeverity,
 					Message:  "a warning",
 				},
-				LinterResult{
-					Severity: ErrorSeverity,
+				specterutils.LinterResult{
+					Severity: specterutils.ErrorSeverity,
 					Message:  assert.AnError.Error(),
 				},
 			},
-			then: LinterResultSet{
-				LinterResult{
-					Severity: WarningSeverity,
+			then: specterutils.LinterResultSet{
+				specterutils.LinterResult{
+					Severity: specterutils.WarningSeverity,
 					Message:  "a warning",
 				},
 			},
@@ -444,41 +446,41 @@ func TestLinterResultSet_Warnings(t *testing.T) {
 func TestLinterResultSet_Errors(t *testing.T) {
 	tests := []struct {
 		name  string
-		given LinterResultSet
+		given specterutils.LinterResultSet
 		then  errors.Group
 	}{
 		{
 			name: "GIVEN a result set with some errors THEN return errors",
-			given: LinterResultSet{
-				LinterResult{
-					Severity: WarningSeverity,
+			given: specterutils.LinterResultSet{
+				specterutils.LinterResult{
+					Severity: specterutils.WarningSeverity,
 					Message:  "a warning",
 				},
-				LinterResult{
-					Severity: ErrorSeverity,
+				specterutils.LinterResult{
+					Severity: specterutils.ErrorSeverity,
 					Message:  assert.AnError.Error(),
 				},
 			},
-			then: errors.NewGroup(LintingErrorCode, errors.NewWithMessage(LintingErrorCode, assert.AnError.Error())),
+			then: errors.NewGroup(specterutils.LintingErrorCode, errors.NewWithMessage(specterutils.LintingErrorCode, assert.AnError.Error())),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			errs := tt.given.Errors()
-			require.Equal(t, LintingErrorCode, errs.Code())
+			require.Equal(t, specterutils.LintingErrorCode, errs.Code())
 			assert.Equalf(t, tt.then, errs, "Warnings()")
 		})
 	}
 }
 
 func TestLintingProcessor_Name(t *testing.T) {
-	lp := LintingProcessor{}
+	lp := specterutils.LintingProcessor{}
 	require.NotEqual(t, "", lp.Name())
 }
 
 func TestLintingProcessor_Process(t *testing.T) {
 	type args struct {
-		linters []UnitLinter
+		linters []specterutils.UnitLinter
 		ctx     specter.ProcessingContext
 	}
 	tests := []struct {
@@ -496,72 +498,72 @@ func TestLintingProcessor_Process(t *testing.T) {
 				},
 			},
 			then: []specter.Artifact{
-				LinterResultSet(nil),
+				specterutils.LinterResultSet(nil),
 			},
 			expectedError: nil,
 		},
 		{
 			name: "GIVEN a processing context with units that raise warnings THEN return a processing artifact with the result set",
 			given: args{
-				linters: []UnitLinter{
-					UnitLinterFunc(func(units specter.UnitGroup) LinterResultSet {
-						return LinterResultSet{{Severity: WarningSeverity, Message: "a warning"}}
+				linters: []specterutils.UnitLinter{
+					specterutils.UnitLinterFunc(func(units specter.UnitGroup) specterutils.LinterResultSet {
+						return specterutils.LinterResultSet{{Severity: specterutils.WarningSeverity, Message: "a warning"}}
 					}),
 				},
 				ctx: specter.ProcessingContext{
-					Units:  []specter.Unit{NewGenericUnit("unit", "spec_type", specter.Source{})},
+					Units:  []specter.Unit{specterutils.NewGenericUnit("unit", "spec_type", specter.Source{})},
 					Logger: specter.NewDefaultLogger(specter.DefaultLoggerConfig{}),
 				},
 			},
 			then: []specter.Artifact{
-				LinterResultSet{{Severity: WarningSeverity, Message: "a warning"}},
+				specterutils.LinterResultSet{{Severity: specterutils.WarningSeverity, Message: "a warning"}},
 			},
 		},
 		{
 			name: "GIVEN a processing context that will raise errors THEN return errors",
 			given: args{
-				linters: []UnitLinter{
-					UnitLinterFunc(func(units specter.UnitGroup) LinterResultSet {
-						return LinterResultSet{{Severity: ErrorSeverity, Message: assert.AnError.Error()}}
+				linters: []specterutils.UnitLinter{
+					specterutils.UnitLinterFunc(func(units specter.UnitGroup) specterutils.LinterResultSet {
+						return specterutils.LinterResultSet{{Severity: specterutils.ErrorSeverity, Message: assert.AnError.Error()}}
 					}),
 				},
 				ctx: specter.ProcessingContext{
-					Units:  []specter.Unit{NewGenericUnit("unit", "spec_type", specter.Source{})},
+					Units:  []specter.Unit{specterutils.NewGenericUnit("unit", "spec_type", specter.Source{})},
 					Logger: specter.NewDefaultLogger(specter.DefaultLoggerConfig{}),
 				},
 			},
 			then: []specter.Artifact{
-				LinterResultSet{{Severity: ErrorSeverity, Message: assert.AnError.Error()}},
+				specterutils.LinterResultSet{{Severity: specterutils.ErrorSeverity, Message: assert.AnError.Error()}},
 			},
 			expectedError: assert.AnError,
 		},
 		{
 			name: "GIVEN a processing context that will raise both errors and warnings THEN return errors and warnings",
 			given: args{
-				linters: []UnitLinter{
-					UnitLinterFunc(func(units specter.UnitGroup) LinterResultSet {
-						return LinterResultSet{
+				linters: []specterutils.UnitLinter{
+					specterutils.UnitLinterFunc(func(units specter.UnitGroup) specterutils.LinterResultSet {
+						return specterutils.LinterResultSet{
 							{
-								Severity: ErrorSeverity, Message: assert.AnError.Error(),
+								Severity: specterutils.ErrorSeverity, Message: assert.AnError.Error(),
 							},
 							{
-								Severity: WarningSeverity, Message: "a warning",
+								Severity: specterutils.WarningSeverity, Message: "a warning",
 							},
 						}
 					}),
 				},
 				ctx: specter.ProcessingContext{
-					Units:  []specter.Unit{NewGenericUnit("unit", "spec_type", specter.Source{})},
+					Units:  []specter.Unit{specterutils.NewGenericUnit("unit", "spec_type", specter.Source{})},
 					Logger: specter.NewDefaultLogger(specter.DefaultLoggerConfig{}),
 				},
 			},
 			then: []specter.Artifact{
-				LinterResultSet{
+				specterutils.LinterResultSet{
 					{
-						Severity: ErrorSeverity, Message: assert.AnError.Error(),
+						Severity: specterutils.ErrorSeverity, Message: assert.AnError.Error(),
 					},
 					{
-						Severity: WarningSeverity, Message: "a warning",
+						Severity: specterutils.WarningSeverity, Message: "a warning",
 					},
 				},
 			},
@@ -570,7 +572,7 @@ func TestLintingProcessor_Process(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			l := NewLintingProcessor(tt.given.linters...)
+			l := specterutils.NewLintingProcessor(tt.given.linters...)
 			got, err := l.Process(tt.given.ctx)
 
 			if tt.expectedError != nil {
@@ -588,35 +590,35 @@ func TestGetLintingResultsFromContext(t *testing.T) {
 	tests := []struct {
 		name  string
 		given specter.ProcessingContext
-		then  LinterResultSet
+		then  specterutils.LinterResultSet
 	}{
 		{
 			name: "GIVEN context with linting results THEN return linting results",
 			given: specter.ProcessingContext{
 				Artifacts: []specter.Artifact{
-					LinterResultSet{{Severity: WarningSeverity, Message: "a warning"}},
+					specterutils.LinterResultSet{{Severity: specterutils.WarningSeverity, Message: "a warning"}},
 				},
 			},
-			then: LinterResultSet{{Severity: WarningSeverity, Message: "a warning"}},
+			then: specterutils.LinterResultSet{{Severity: specterutils.WarningSeverity, Message: "a warning"}},
 		},
 		{
 			name:  "GIVEN context with not linting results THEN return empty linting results",
 			given: specter.ProcessingContext{},
-			then:  LinterResultSet(nil),
+			then:  specterutils.LinterResultSet(nil),
 		},
 		{
 			name: "GIVEN a context with wrong value for artifact name THEN return nil",
 			given: specter.ProcessingContext{
 				Artifacts: []specter.Artifact{
-					NewArtifactStub(LinterResultArtifactID),
+					testutils.NewArtifactStub(specterutils.LinterResultArtifactID),
 				},
 			},
-			then: LinterResultSet(nil),
+			then: specterutils.LinterResultSet(nil),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := GetLintingResultsFromContext(tt.given)
+			got := specterutils.GetLintingResultsFromContext(tt.given)
 			assert.Equal(t, tt.then, got)
 		})
 	}

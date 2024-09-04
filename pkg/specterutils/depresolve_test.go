@@ -17,7 +17,8 @@ package specterutils_test
 import (
 	"github.com/morebec/go-errors/errors"
 	"github.com/morebec/specter/pkg/specter"
-	. "github.com/morebec/specter/pkg/specterutils"
+	"github.com/morebec/specter/pkg/specterutils"
+	"github.com/morebec/specter/pkg/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"os"
@@ -41,14 +42,14 @@ func (m *MockDependencyProvider) Provide(u specter.Unit) []specter.UnitName {
 func TestDependencyResolutionProcessor_Process(t *testing.T) {
 	type args struct {
 		units     []specter.Unit
-		providers []DependencyProvider
+		providers []specterutils.DependencyProvider
 	}
-	unit1 := NewGenericUnit("unit1", "type", specter.Source{})
-	unit2 := NewGenericUnit("unit2", "type", specter.Source{})
+	unit1 := specterutils.NewGenericUnit("unit1", "type", specter.Source{})
+	unit2 := specterutils.NewGenericUnit("unit2", "type", specter.Source{})
 	tests := []struct {
 		name          string
 		given         args
-		then          ResolvedDependencies
+		then          specterutils.ResolvedDependencies
 		expectedError error
 	}{
 		{
@@ -63,7 +64,7 @@ func TestDependencyResolutionProcessor_Process(t *testing.T) {
 		{
 			name: "GIVEN a simple acyclic graph and multiple providers WHEN resolved THEN returns resolved dependencies",
 			given: args{
-				providers: []DependencyProvider{
+				providers: []specterutils.DependencyProvider{
 					&MockDependencyProvider{
 						supportFunc: func(_ specter.Unit) bool {
 							return false
@@ -89,7 +90,7 @@ func TestDependencyResolutionProcessor_Process(t *testing.T) {
 					unit2,
 				},
 			},
-			then: ResolvedDependencies{
+			then: specterutils.ResolvedDependencies{
 				unit2, // topological sort
 				unit1,
 			},
@@ -98,7 +99,7 @@ func TestDependencyResolutionProcessor_Process(t *testing.T) {
 		{
 			name: "GIVEN circular dependencies WHEN resolved THEN returns an error",
 			given: args{
-				providers: []DependencyProvider{
+				providers: []specterutils.DependencyProvider{
 					&MockDependencyProvider{
 						supportFunc: func(u specter.Unit) bool {
 							return u.Type() == "type"
@@ -124,7 +125,7 @@ func TestDependencyResolutionProcessor_Process(t *testing.T) {
 		{
 			name: "GIVEN unresolvable dependencies THEN returns an error",
 			given: args{
-				providers: []DependencyProvider{
+				providers: []specterutils.DependencyProvider{
 					&MockDependencyProvider{
 						supportFunc: func(u specter.Unit) bool {
 							return u.Type() == "type"
@@ -145,7 +146,7 @@ func TestDependencyResolutionProcessor_Process(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			processor := NewDependencyResolutionProcessor(tt.given.providers...)
+			processor := specterutils.NewDependencyResolutionProcessor(tt.given.providers...)
 
 			ctx := specter.ProcessingContext{
 				Units: tt.given.units,
@@ -163,8 +164,8 @@ func TestDependencyResolutionProcessor_Process(t *testing.T) {
 				return
 			}
 
-			artifact := ctx.Artifact(ResolvedDependenciesArtifactID)
-			graph := artifact.(ResolvedDependencies)
+			artifact := ctx.Artifact(specterutils.ResolvedDependenciesArtifactID)
+			graph := artifact.(specterutils.ResolvedDependencies)
 
 			require.NoError(t, err)
 			require.Equal(t, tt.then, graph)
@@ -176,26 +177,26 @@ func TestGetResolvedDependenciesFromContext(t *testing.T) {
 	tests := []struct {
 		name  string
 		given specter.ProcessingContext
-		want  ResolvedDependencies
+		want  specterutils.ResolvedDependencies
 	}{
 		{
 			name: "GIVEN a context with resolved dependencies THEN return resolved dependencies",
 			given: specter.ProcessingContext{
 				Artifacts: []specter.Artifact{
-					ResolvedDependencies{
-						NewGenericUnit("name", "type", specter.Source{}),
+					specterutils.ResolvedDependencies{
+						specterutils.NewGenericUnit("name", "type", specter.Source{}),
 					},
 				},
 			},
-			want: ResolvedDependencies{
-				NewGenericUnit("name", "type", specter.Source{}),
+			want: specterutils.ResolvedDependencies{
+				specterutils.NewGenericUnit("name", "type", specter.Source{}),
 			},
 		},
 		{
 			name: "GIVEN a context with resolved dependencies with wrong type THEN return nil",
 			given: specter.ProcessingContext{
 				Artifacts: []specter.Artifact{
-					NewArtifactStub(ResolvedDependenciesArtifactID),
+					testutils.NewArtifactStub(specterutils.ResolvedDependenciesArtifactID),
 				},
 			},
 			want: nil,
@@ -208,14 +209,14 @@ func TestGetResolvedDependenciesFromContext(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			deps := GetResolvedDependenciesFromContext(tt.given)
+			deps := specterutils.GetResolvedDependenciesFromContext(tt.given)
 			assert.Equal(t, tt.want, deps)
 		})
 	}
 }
 
 func TestDependencyResolutionProcessor_Name(t *testing.T) {
-	p := DependencyResolutionProcessor{}
+	p := specterutils.DependencyResolutionProcessor{}
 	assert.NotEqual(t, "", p.Name())
 }
 
@@ -256,7 +257,7 @@ func TestHasDependenciesProvider_Supports(t *testing.T) {
 	}{
 		{
 			name:  "GIVEN unit not implementing HasDependencies THEN return false",
-			given: &GenericUnit{},
+			given: &specterutils.GenericUnit{},
 			then:  false,
 		},
 		{
@@ -267,7 +268,7 @@ func TestHasDependenciesProvider_Supports(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h := HasDependenciesProvider{}
+			h := specterutils.HasDependenciesProvider{}
 			assert.Equal(t, tt.then, h.Supports(tt.given))
 		})
 	}
@@ -281,7 +282,7 @@ func TestHasDependenciesProvider_Provide(t *testing.T) {
 	}{
 		{
 			name:  "GIVEN unit not implementing HasDependencies THEN return nil",
-			given: &GenericUnit{},
+			given: &specterutils.GenericUnit{},
 			then:  nil,
 		},
 		{
@@ -292,7 +293,7 @@ func TestHasDependenciesProvider_Provide(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h := HasDependenciesProvider{}
+			h := specterutils.HasDependenciesProvider{}
 			assert.Equal(t, tt.then, h.Provide(tt.given))
 		})
 	}

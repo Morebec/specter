@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package specter_test
+package testutils
 
 import (
 	"github.com/morebec/go-errors/errors"
@@ -25,6 +25,7 @@ import (
 	"sync"
 )
 
+// / ===================================================================================================================///
 func RequireErrorWithCode(c string) require.ErrorAssertionFunc {
 	return func(t require.TestingT, err error, i ...interface{}) {
 		require.Error(t, err)
@@ -40,18 +41,18 @@ func RequireErrorWithCode(c string) require.ErrorAssertionFunc {
 var _ specter.Unit = (*UnitStub)(nil)
 
 type UnitStub struct {
-	name     specter.UnitName
-	typeName specter.UnitType
-	source   specter.Source
+	Name_    specter.UnitName
+	TypeName specter.UnitType
+	Src      specter.Source
 	desc     string
 }
 
 func (us *UnitStub) Name() specter.UnitName {
-	return us.name
+	return us.Name_
 }
 
 func (us *UnitStub) Type() specter.UnitType {
-	return us.typeName
+	return us.TypeName
 }
 
 func (us *UnitStub) Description() string {
@@ -59,15 +60,15 @@ func (us *UnitStub) Description() string {
 }
 
 func (us *UnitStub) Source() specter.Source {
-	return us.source
+	return us.Src
 }
 
 func (us *UnitStub) SetSource(src specter.Source) {
-	us.source = src
+	us.Src = src
 }
 
 // FILE SYSTEM
-var _ specter.FileSystem = (*mockFileSystem)(nil)
+var _ specter.FileSystem = (*MockFileSystem)(nil)
 
 // Mock implementations to use in tests.
 type mockFileInfo struct {
@@ -96,87 +97,87 @@ func (m mockFileInfo) Mode() os.FileMode { return m.mode }
 func (m mockFileInfo) IsDir() bool       { return m.isDir }
 func (m mockFileInfo) Sys() interface{}  { return nil }
 
-type mockFileSystem struct {
+type MockFileSystem struct {
 	mu    sync.RWMutex
-	files map[string][]byte
-	dirs  map[string]bool
+	Files map[string][]byte
+	Dirs  map[string]bool
 
-	absErr       error
-	statErr      error
+	AbsErr       error
+	StatErr      error
 	walkDirErr   error
-	readFileErr  error
-	writeFileErr error
-	mkdirErr     error
-	rmErr        error
+	ReadFileErr  error
+	WriteFileErr error
+	MkdirErr     error
+	RmErr        error
 }
 
-func (m *mockFileSystem) Rel(basePath, targetPath string) (string, error) {
+func (m *MockFileSystem) Rel(basePath, targetPath string) (string, error) {
 	return strings.ReplaceAll(targetPath, basePath, "./"), nil
 }
 
-func (m *mockFileSystem) WriteFile(filePath string, data []byte, _ fs.FileMode) error {
+func (m *MockFileSystem) WriteFile(filePath string, data []byte, _ fs.FileMode) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if m.writeFileErr != nil {
-		return m.writeFileErr
+	if m.WriteFileErr != nil {
+		return m.WriteFileErr
 	}
 
-	if m.files == nil {
-		m.files = map[string][]byte{}
+	if m.Files == nil {
+		m.Files = map[string][]byte{}
 	}
 
-	m.files[filePath] = data
+	m.Files[filePath] = data
 
 	return nil
 }
 
-func (m *mockFileSystem) Mkdir(dirPath string, _ fs.FileMode) error {
+func (m *MockFileSystem) Mkdir(dirPath string, _ fs.FileMode) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	if m.mkdirErr != nil {
-		return m.mkdirErr
+	if m.MkdirErr != nil {
+		return m.MkdirErr
 	}
 
-	if m.dirs == nil {
-		m.dirs = map[string]bool{}
+	if m.Dirs == nil {
+		m.Dirs = map[string]bool{}
 	}
 
-	m.dirs[dirPath] = true
+	m.Dirs[dirPath] = true
 
 	return nil
 }
 
-func (m *mockFileSystem) Remove(path string) error {
+func (m *MockFileSystem) Remove(path string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	if m.rmErr != nil {
-		return m.rmErr
+	if m.RmErr != nil {
+		return m.RmErr
 	}
 
-	if _, ok := m.dirs[path]; ok {
-		m.dirs[path] = false
+	if _, ok := m.Dirs[path]; ok {
+		m.Dirs[path] = false
 	}
-	delete(m.files, path)
+	delete(m.Files, path)
 
 	return nil
 }
 
-func (m *mockFileSystem) Abs(location string) (string, error) {
+func (m *MockFileSystem) Abs(location string) (string, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	if m.absErr != nil {
-		return "", m.absErr
+	if m.AbsErr != nil {
+		return "", m.AbsErr
 	}
 
-	absPaths := make(map[string]bool, len(m.files)+len(m.dirs))
+	absPaths := make(map[string]bool, len(m.Files)+len(m.Dirs))
 
-	for k := range m.files {
+	for k := range m.Files {
 		absPaths[k] = true
 	}
-	for k := range m.dirs {
+	for k := range m.Dirs {
 		absPaths[k] = true
 	}
 
@@ -186,26 +187,26 @@ func (m *mockFileSystem) Abs(location string) (string, error) {
 	return location, nil
 }
 
-func (m *mockFileSystem) StatPath(location string) (os.FileInfo, error) {
+func (m *MockFileSystem) StatPath(location string) (os.FileInfo, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	if m.statErr != nil {
-		return nil, m.statErr
+	if m.StatErr != nil {
+		return nil, m.StatErr
 	}
 
-	if isDir, exists := m.dirs[location]; exists {
+	if isDir, exists := m.Dirs[location]; exists {
 		return mockFileInfo{name: location, isDir: isDir}, nil
 	}
 
-	if data, exists := m.files[location]; exists {
+	if data, exists := m.Files[location]; exists {
 		return mockFileInfo{name: location, size: int64(len(data))}, nil
 	}
 
 	return nil, os.ErrNotExist
 }
 
-func (m *mockFileSystem) WalkDir(dirPath string, f func(path string, d fs.DirEntry, err error) error) error {
+func (m *MockFileSystem) WalkDir(dirPath string, f func(path string, d fs.DirEntry, err error) error) error {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -213,7 +214,7 @@ func (m *mockFileSystem) WalkDir(dirPath string, f func(path string, d fs.DirEnt
 		return m.walkDirErr
 	}
 
-	for path, isDir := range m.dirs {
+	for path, isDir := range m.Dirs {
 		if strings.HasPrefix(path, dirPath) {
 			err := f(path, mockFileInfo{name: path, isDir: isDir}, nil)
 			if err != nil {
@@ -222,7 +223,7 @@ func (m *mockFileSystem) WalkDir(dirPath string, f func(path string, d fs.DirEnt
 		}
 	}
 
-	for path := range m.files {
+	for path := range m.Files {
 		if strings.HasPrefix(path, dirPath) {
 			err := f(path, mockFileInfo{name: path, isDir: false}, nil)
 			if err != nil {
@@ -234,15 +235,15 @@ func (m *mockFileSystem) WalkDir(dirPath string, f func(path string, d fs.DirEnt
 	return nil
 }
 
-func (m *mockFileSystem) ReadFile(filePath string) ([]byte, error) {
+func (m *MockFileSystem) ReadFile(filePath string) ([]byte, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	if m.readFileErr != nil {
-		return nil, m.readFileErr
+	if m.ReadFileErr != nil {
+		return nil, m.ReadFileErr
 	}
 
-	if data, exists := m.files[filePath]; exists {
+	if data, exists := m.Files[filePath]; exists {
 		return data, nil
 	}
 
@@ -255,6 +256,10 @@ var _ specter.Artifact = ArtifactStub{}
 
 type ArtifactStub struct {
 	id specter.ArtifactID
+}
+
+func NewArtifactStub(id specter.ArtifactID) *ArtifactStub {
+	return &ArtifactStub{id: id}
 }
 
 func (m ArtifactStub) ID() specter.ArtifactID {

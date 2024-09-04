@@ -23,14 +23,14 @@ import (
 // GenericUnit is a generic implementation of a Unit that saves its attributes in a list of attributes for introspection.
 // these can be useful for loaders that are looser in what they allow.
 type GenericUnit struct {
-	name       specter.UnitName
+	UnitName   specter.UnitName
 	typ        specter.UnitType
 	source     specter.Source
 	Attributes []GenericUnitAttribute
 }
 
 func NewGenericUnit(name specter.UnitName, typ specter.UnitType, source specter.Source) *GenericUnit {
-	return &GenericUnit{name: name, typ: typ, source: source}
+	return &GenericUnit{UnitName: name, typ: typ, source: source}
 }
 
 func (u *GenericUnit) SetSource(src specter.Source) {
@@ -47,7 +47,7 @@ func (u *GenericUnit) Description() string {
 }
 
 func (u *GenericUnit) Name() specter.UnitName {
-	return u.name
+	return u.UnitName
 }
 
 func (u *GenericUnit) Type() specter.UnitType {

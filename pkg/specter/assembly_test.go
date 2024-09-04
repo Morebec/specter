@@ -15,61 +15,62 @@
 package specter_test
 
 import (
-	. "github.com/morebec/specter/pkg/specter"
+	"github.com/morebec/specter/pkg/specter"
 	"github.com/morebec/specter/pkg/specterutils"
+	"github.com/morebec/specter/pkg/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
 
 func TestWithDefaultLogger(t *testing.T) {
-	p := NewPipeline(WithDefaultLogger())
-	assert.IsType(t, &DefaultLogger{}, p.Logger)
+	p := specter.NewPipeline(specter.WithDefaultLogger())
+	assert.IsType(t, &specter.DefaultLogger{}, p.Logger)
 }
 
 func TestWithSourceLoaders(t *testing.T) {
-	loader := &FileSystemSourceLoader{}
-	p := NewPipeline(WithSourceLoaders(loader))
+	loader := &specter.FileSystemSourceLoader{}
+	p := specter.NewPipeline(specter.WithSourceLoaders(loader))
 	require.Contains(t, p.SourceLoaders, loader)
 }
 
 func TestWithLoaders(t *testing.T) {
 	loader := &specterutils.HCLGenericUnitLoader{}
-	p := NewPipeline(WithLoaders(loader))
+	p := specter.NewPipeline(specter.WithLoaders(loader))
 	require.Contains(t, p.Loaders, loader)
 }
 
 func TestWithProcessors(t *testing.T) {
 	processor := specterutils.LintingProcessor{}
-	p := NewPipeline(WithProcessors(processor))
+	p := specter.NewPipeline(specter.WithProcessors(processor))
 	require.Contains(t, p.Processors, processor)
 }
 
 func TestWithArtifactProcessors(t *testing.T) {
-	processor := FileArtifactProcessor{}
-	p := NewPipeline(WithArtifactProcessors(processor))
+	processor := specter.FileArtifactProcessor{}
+	p := specter.NewPipeline(specter.WithArtifactProcessors(processor))
 	require.Contains(t, p.ArtifactProcessors, processor)
 }
 
 func TestWithTimeProvider(t *testing.T) {
-	tp := CurrentTimeProvider()
-	p := NewPipeline(WithTimeProvider(tp))
+	tp := specter.CurrentTimeProvider()
+	p := specter.NewPipeline(specter.WithTimeProvider(tp))
 	require.NotNil(t, p.TimeProvider)
 }
 
 func TestWithArtifactRegistry(t *testing.T) {
-	registry := &InMemoryArtifactRegistry{}
-	p := NewPipeline(WithArtifactRegistry(registry))
+	registry := &specter.InMemoryArtifactRegistry{}
+	p := specter.NewPipeline(specter.WithArtifactRegistry(registry))
 	require.Equal(t, p.ArtifactRegistry, registry)
 }
 
 func TestWithJSONArtifactRegistry(t *testing.T) {
-	fs := &mockFileSystem{}
-	filePath := DefaultJSONArtifactRegistryFileName
+	fs := &testutils.MockFileSystem{}
+	filePath := specter.DefaultJSONArtifactRegistryFileName
 
-	p := NewPipeline(WithJSONArtifactRegistry(filePath, fs))
-	require.IsType(t, &JSONArtifactRegistry{}, p.ArtifactRegistry)
-	registry := p.ArtifactRegistry.(*JSONArtifactRegistry)
+	p := specter.NewPipeline(specter.WithJSONArtifactRegistry(filePath, fs))
+	require.IsType(t, &specter.JSONArtifactRegistry{}, p.ArtifactRegistry)
+	registry := p.ArtifactRegistry.(*specter.JSONArtifactRegistry)
 
 	assert.Equal(t, registry.FileSystem, fs)
 	assert.Equal(t, registry.FilePath, filePath)

@@ -15,7 +15,8 @@
 package specter_test
 
 import (
-	. "github.com/morebec/specter/pkg/specter"
+	"github.com/morebec/specter/pkg/specter"
+	"github.com/morebec/specter/pkg/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -23,17 +24,17 @@ import (
 
 func TestImplementations(t *testing.T) {
 	// InMemoryArtifactRegistry
-	assertArtifactRegistryCompliance(t, "InMemoryArtifactRegistry", func() *InMemoryArtifactRegistry {
-		return &InMemoryArtifactRegistry{}
+	assertArtifactRegistryCompliance(t, "InMemoryArtifactRegistry", func() *specter.InMemoryArtifactRegistry {
+		return &specter.InMemoryArtifactRegistry{}
 	})
 
 	// JSON Artifact Registry
-	assertArtifactRegistryCompliance(t, "JSONArtifactRegistry", func() *JSONArtifactRegistry {
-		return NewJSONArtifactRegistry(DefaultJSONArtifactRegistryFileName, &mockFileSystem{})
+	assertArtifactRegistryCompliance(t, "JSONArtifactRegistry", func() *specter.JSONArtifactRegistry {
+		return specter.NewJSONArtifactRegistry(specter.DefaultJSONArtifactRegistryFileName, &testutils.MockFileSystem{})
 	})
 }
 
-func assertArtifactRegistryCompliance[T ArtifactRegistry](t *testing.T, name string, new func() T) {
+func assertArtifactRegistryCompliance[T specter.ArtifactRegistry](t *testing.T, name string, new func() T) {
 
 	it := func(methodName, testName string, testFunc func(t *testing.T)) {
 		t.Run(name+"__"+methodName+"_"+testName, testFunc)
@@ -42,14 +43,14 @@ func assertArtifactRegistryCompliance[T ArtifactRegistry](t *testing.T, name str
 	// Add
 	it("Add", "should allow adding an entry", func(t *testing.T) {
 		r := new()
-		err := r.Add("unit_tester", ArtifactRegistryEntry{
+		err := r.Add("unit_tester", specter.ArtifactRegistryEntry{
 			ArtifactID: "an_artifact",
 		})
 		require.NoError(t, err)
 
 		all, err := r.FindAll("unit_tester")
 		require.NoError(t, err)
-		assert.Equal(t, []ArtifactRegistryEntry{
+		assert.Equal(t, []specter.ArtifactRegistryEntry{
 			{
 				ArtifactID: "an_artifact",
 			},
@@ -58,7 +59,7 @@ func assertArtifactRegistryCompliance[T ArtifactRegistry](t *testing.T, name str
 
 	it("Add", "should not allow adding an entry without an ID", func(t *testing.T) {
 		r := new()
-		err := r.Add("unit_tester", ArtifactRegistryEntry{
+		err := r.Add("unit_tester", specter.ArtifactRegistryEntry{
 			ArtifactID: "",
 		})
 		require.Error(t, err)
@@ -66,7 +67,7 @@ func assertArtifactRegistryCompliance[T ArtifactRegistry](t *testing.T, name str
 
 	it("Add", "should not allow adding an entry without a processor name", func(t *testing.T) {
 		r := new()
-		err := r.Add("", ArtifactRegistryEntry{
+		err := r.Add("", specter.ArtifactRegistryEntry{
 			ArtifactID: "an_artifact",
 		})
 		require.Error(t, err)
@@ -74,19 +75,19 @@ func assertArtifactRegistryCompliance[T ArtifactRegistry](t *testing.T, name str
 
 	it("Add", "should allow adding multiple entries with the same processor", func(t *testing.T) {
 		r := new()
-		err := r.Add("unit_tester", ArtifactRegistryEntry{
+		err := r.Add("unit_tester", specter.ArtifactRegistryEntry{
 			ArtifactID: "artifact_one",
 		})
 		require.NoError(t, err)
 
-		err = r.Add("unit_tester", ArtifactRegistryEntry{
+		err = r.Add("unit_tester", specter.ArtifactRegistryEntry{
 			ArtifactID: "artifact_two",
 		})
 		require.NoError(t, err)
 
 		all, err := r.FindAll("unit_tester")
 		require.NoError(t, err)
-		assert.ElementsMatch(t, []ArtifactRegistryEntry{
+		assert.ElementsMatch(t, []specter.ArtifactRegistryEntry{
 			{ArtifactID: "artifact_one"},
 			{ArtifactID: "artifact_two"},
 		}, all)
@@ -94,44 +95,44 @@ func assertArtifactRegistryCompliance[T ArtifactRegistry](t *testing.T, name str
 
 	it("Add", "should allow adding entries with different processors", func(t *testing.T) {
 		r := new()
-		err := r.Add("processor_one", ArtifactRegistryEntry{
+		err := r.Add("processor_one", specter.ArtifactRegistryEntry{
 			ArtifactID: "artifact_one",
 		})
 		require.NoError(t, err)
 
-		err = r.Add("processor_two", ArtifactRegistryEntry{
+		err = r.Add("processor_two", specter.ArtifactRegistryEntry{
 			ArtifactID: "artifact_two",
 		})
 		require.NoError(t, err)
 
 		allOne, err := r.FindAll("processor_one")
 		require.NoError(t, err)
-		assert.Equal(t, []ArtifactRegistryEntry{
+		assert.Equal(t, []specter.ArtifactRegistryEntry{
 			{ArtifactID: "artifact_one"},
 		}, allOne)
 
 		allTwo, err := r.FindAll("processor_two")
 		require.NoError(t, err)
-		assert.Equal(t, []ArtifactRegistryEntry{
+		assert.Equal(t, []specter.ArtifactRegistryEntry{
 			{ArtifactID: "artifact_two"},
 		}, allTwo)
 	})
 
 	it("Add", "should allow adding duplicate entries with idempotency", func(t *testing.T) {
 		r := new()
-		err := r.Add("unit_tester", ArtifactRegistryEntry{
+		err := r.Add("unit_tester", specter.ArtifactRegistryEntry{
 			ArtifactID: "duplicate_artifact",
 		})
 		require.NoError(t, err)
 
-		err = r.Add("unit_tester", ArtifactRegistryEntry{
+		err = r.Add("unit_tester", specter.ArtifactRegistryEntry{
 			ArtifactID: "duplicate_artifact",
 		})
 		require.NoError(t, err)
 
 		allTwo, err := r.FindAll("unit_tester")
 		require.NoError(t, err)
-		assert.Equal(t, []ArtifactRegistryEntry{
+		assert.Equal(t, []specter.ArtifactRegistryEntry{
 			{ArtifactID: "duplicate_artifact"},
 		}, allTwo)
 	})
@@ -139,22 +140,22 @@ func assertArtifactRegistryCompliance[T ArtifactRegistry](t *testing.T, name str
 	it("Add", "should allow adding an entry with special characters in the ID", func(t *testing.T) {
 		r := new()
 		specialID := "artifact-!@#$%^&*()_+=-{}[]|\\:;\"'<>,.?/"
-		err := r.Add("unit-tester", ArtifactRegistryEntry{
-			ArtifactID: ArtifactID(specialID),
+		err := r.Add("unit-tester", specter.ArtifactRegistryEntry{
+			ArtifactID: specter.ArtifactID(specialID),
 		})
 		require.NoError(t, err)
 
 		all, err := r.FindAll("unit-tester")
 		require.NoError(t, err)
-		assert.Equal(t, []ArtifactRegistryEntry{
-			{ArtifactID: ArtifactID(specialID)},
+		assert.Equal(t, []specter.ArtifactRegistryEntry{
+			{ArtifactID: specter.ArtifactID(specialID)},
 		}, all)
 	})
 
 	// Remove
 	it("Remove", "should allow removing an entry", func(t *testing.T) {
 		r := new()
-		err := r.Add("unit_tester", ArtifactRegistryEntry{
+		err := r.Add("unit_tester", specter.ArtifactRegistryEntry{
 			ArtifactID: "an_artifact",
 		})
 		require.NoError(t, err)
@@ -175,7 +176,7 @@ func assertArtifactRegistryCompliance[T ArtifactRegistry](t *testing.T, name str
 
 	it("Remove", "should not allow removing an entry when the processor name is different", func(t *testing.T) {
 		r := new()
-		err := r.Add("unit_tester", ArtifactRegistryEntry{
+		err := r.Add("unit_tester", specter.ArtifactRegistryEntry{
 			ArtifactID: "artifact_to_remove",
 		})
 		require.NoError(t, err)
@@ -185,14 +186,14 @@ func assertArtifactRegistryCompliance[T ArtifactRegistry](t *testing.T, name str
 
 		all, err := r.FindAll("unit_tester")
 		require.NoError(t, err)
-		assert.Equal(t, []ArtifactRegistryEntry{
+		assert.Equal(t, []specter.ArtifactRegistryEntry{
 			{ArtifactID: "artifact_to_remove"},
 		}, all)
 	})
 
 	it("Remove", "should allow removing multiple times without side effects", func(t *testing.T) {
 		r := new()
-		err := r.Add("unit_tester", ArtifactRegistryEntry{
+		err := r.Add("unit_tester", specter.ArtifactRegistryEntry{
 			ArtifactID: "an_artifact",
 		})
 		require.NoError(t, err)
@@ -228,7 +229,7 @@ func assertArtifactRegistryCompliance[T ArtifactRegistry](t *testing.T, name str
 
 	it("Remove", "should return an empty list after removing the last entry", func(t *testing.T) {
 		r := new()
-		err := r.Add("unit-tester", ArtifactRegistryEntry{
+		err := r.Add("unit-tester", specter.ArtifactRegistryEntry{
 			ArtifactID: "last_artifact",
 		})
 		require.NoError(t, err)
@@ -244,18 +245,18 @@ func assertArtifactRegistryCompliance[T ArtifactRegistry](t *testing.T, name str
 	// Find all
 	it("FindAll", "should allow retrieving all entries for a processor", func(t *testing.T) {
 		r := new()
-		err := r.Add("unit-tester", ArtifactRegistryEntry{
+		err := r.Add("unit-tester", specter.ArtifactRegistryEntry{
 			ArtifactID: "artifact_one",
 		})
 		require.NoError(t, err)
-		err = r.Add("unit-tester", ArtifactRegistryEntry{
+		err = r.Add("unit-tester", specter.ArtifactRegistryEntry{
 			ArtifactID: "artifact_two",
 		})
 		require.NoError(t, err)
 
 		all, err := r.FindAll("unit-tester")
 		require.NoError(t, err)
-		assert.ElementsMatch(t, []ArtifactRegistryEntry{
+		assert.ElementsMatch(t, []specter.ArtifactRegistryEntry{
 			{ArtifactID: "artifact_one"},
 			{ArtifactID: "artifact_two"},
 		}, all)
@@ -271,11 +272,11 @@ func assertArtifactRegistryCompliance[T ArtifactRegistry](t *testing.T, name str
 
 	it("FindAll", "should return correct entries after adding and removing some", func(t *testing.T) {
 		r := new()
-		err := r.Add("unit-tester", ArtifactRegistryEntry{
+		err := r.Add("unit-tester", specter.ArtifactRegistryEntry{
 			ArtifactID: "artifact_one",
 		})
 		require.NoError(t, err)
-		err = r.Add("unit-tester", ArtifactRegistryEntry{
+		err = r.Add("unit-tester", specter.ArtifactRegistryEntry{
 			ArtifactID: "artifact_two",
 		})
 		require.NoError(t, err)
@@ -285,7 +286,7 @@ func assertArtifactRegistryCompliance[T ArtifactRegistry](t *testing.T, name str
 
 		all, err := r.FindAll("unit-tester")
 		require.NoError(t, err)
-		assert.Equal(t, []ArtifactRegistryEntry{
+		assert.Equal(t, []specter.ArtifactRegistryEntry{
 			{ArtifactID: "artifact_two"},
 		}, all)
 	})
@@ -293,7 +294,7 @@ func assertArtifactRegistryCompliance[T ArtifactRegistry](t *testing.T, name str
 	// FindByID
 	it("FindByID", "should find an entry by its ID", func(t *testing.T) {
 		r := new()
-		err := r.Add("unit-tester", ArtifactRegistryEntry{
+		err := r.Add("unit-tester", specter.ArtifactRegistryEntry{
 			ArtifactID: "artifact_to_find",
 		})
 		require.NoError(t, err)
@@ -301,7 +302,7 @@ func assertArtifactRegistryCompliance[T ArtifactRegistry](t *testing.T, name str
 		entry, found, err := r.FindByID("unit-tester", "artifact_to_find")
 		require.NoError(t, err)
 		require.True(t, found)
-		assert.Equal(t, ArtifactRegistryEntry{
+		assert.Equal(t, specter.ArtifactRegistryEntry{
 			ArtifactID: "artifact_to_find",
 		}, entry)
 	})
@@ -312,7 +313,7 @@ func assertArtifactRegistryCompliance[T ArtifactRegistry](t *testing.T, name str
 		entry, found, err := r.FindByID("unit-tester", "nonexistent_artifact")
 		require.NoError(t, err)
 		assert.False(t, found)
-		assert.Equal(t, ArtifactRegistryEntry{}, entry)
+		assert.Equal(t, specter.ArtifactRegistryEntry{}, entry)
 	})
 
 	// Save
@@ -325,7 +326,7 @@ func assertArtifactRegistryCompliance[T ArtifactRegistry](t *testing.T, name str
 
 	it("Save", "should save a populated registry without errors", func(t *testing.T) {
 		r := new()
-		err := r.Add("unit-tester", ArtifactRegistryEntry{
+		err := r.Add("unit-tester", specter.ArtifactRegistryEntry{
 			ArtifactID: "artifact_to_save",
 		})
 		require.NoError(t, err)
