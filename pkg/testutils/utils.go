@@ -25,7 +25,6 @@ import (
 	"sync"
 )
 
-// / ===================================================================================================================///
 func RequireErrorWithCode(c string) require.ErrorAssertionFunc {
 	return func(t require.TestingT, err error, i ...interface{}) {
 		require.Error(t, err)
