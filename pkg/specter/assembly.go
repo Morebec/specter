@@ -14,82 +14,60 @@
 
 package specter
 
-import (
-	"os"
-)
+type PipelineBuilder struct {
+	*DefaultPipeline
+}
 
 // NewPipeline creates a new instance of a *Pipeline using the provided options.
-func NewPipeline(opts ...PipelineOption) *Pipeline {
-	s := &Pipeline{
-		Logger:       NewDefaultLogger(DefaultLoggerConfig{DisableColors: false, Writer: os.Stdout}),
-		TimeProvider: CurrentTimeProvider(),
+func NewPipeline(opts ...PipelineOption) PipelineBuilder {
+	return PipelineBuilder{
+		DefaultPipeline: &DefaultPipeline{
+			TimeProvider:            CurrentTimeProvider,
+			sourceLoadingStage:      sourceLoadingStage{},
+			unitLoadingStage:        unitLoadingStage{},
+			unitProcessingStage:     unitProcessingStage{},
+			artifactProcessingStage: artifactProcessingStage{},
+		},
 	}
-	for _, o := range opts {
-		o(s)
-	}
-	return s
 }
 
 // PipelineOption represents an option to configure a Pipeline instance.
-type PipelineOption func(s *Pipeline)
-
-// WithLogger configures the Logger of a Pipeline instance.
-func WithLogger(l Logger) PipelineOption {
-	return func(p *Pipeline) {
-		p.Logger = l
-	}
-}
+type PipelineOption func(s *DefaultPipeline)
 
 // WithSourceLoaders configures the SourceLoader of a Pipeline instance.
-func WithSourceLoaders(loaders ...SourceLoader) PipelineOption {
-	return func(p *Pipeline) {
-		p.SourceLoaders = append(p.SourceLoaders, loaders...)
-	}
+func (b PipelineBuilder) WithSourceLoaders(loaders ...SourceLoader) PipelineBuilder {
+	b.sourceLoadingStage.SourceLoaders = loaders
+	return b
 }
 
-// WithLoaders configures the UnitLoader of a Pipeline instance.
-func WithLoaders(loaders ...UnitLoader) PipelineOption {
-	return func(p *Pipeline) {
-		p.Loaders = append(p.Loaders, loaders...)
-	}
+// WithUnitLoaders configures the UnitLoader of a Pipeline instance.
+func (b PipelineBuilder) WithUnitLoaders(loaders ...UnitLoader) PipelineBuilder {
+	b.unitLoadingStage.Loaders = loaders
+	return b
 }
 
 // WithProcessors configures the UnitProcess of a Pipeline instance.
-func WithProcessors(processors ...UnitProcessor) PipelineOption {
-	return func(p *Pipeline) {
-		p.Processors = append(p.Processors, processors...)
-	}
+func (b PipelineBuilder) WithProcessors(processors ...UnitProcessor) PipelineBuilder {
+	b.unitProcessingStage.Processors = processors
+	return b
 }
 
 // WithArtifactProcessors configures the ArtifactProcessor of a Pipeline instance.
-func WithArtifactProcessors(processors ...ArtifactProcessor) PipelineOption {
-	return func(p *Pipeline) {
-		p.ArtifactProcessors = append(p.ArtifactProcessors, processors...)
-	}
-}
-
-// WithTimeProvider configures the TimeProvider of a Pipeline instance.
-func WithTimeProvider(tp TimeProvider) PipelineOption {
-	return func(p *Pipeline) {
-		p.TimeProvider = tp
-	}
+func (b PipelineBuilder) WithArtifactProcessors(processors ...ArtifactProcessor) PipelineBuilder {
+	b.artifactProcessingStage.ArtifactProcessors = processors
+	return b
 }
 
 // WithArtifactRegistry configures the ArtifactRegistry of a Pipeline instance.
-func WithArtifactRegistry(r ArtifactRegistry) PipelineOption {
-	return func(p *Pipeline) {
-		p.ArtifactRegistry = r
-	}
+func (b PipelineBuilder) WithArtifactRegistry(r ArtifactRegistry) PipelineBuilder {
+	b.artifactProcessingStage.ArtifactRegistry = r
+	return b
 }
 
 // DEFAULTS PIPELINE OPTIONS
 
-func WithDefaultLogger() PipelineOption {
-	return WithLogger(NewDefaultLogger(DefaultLoggerConfig{DisableColors: false, Writer: os.Stdout}))
-}
-
-func WithJSONArtifactRegistry(fileName string, fs FileSystem) PipelineOption {
-	return WithArtifactRegistry(NewJSONArtifactRegistry(fileName, fs))
+func (b PipelineBuilder) WithJSONArtifactRegistry(fileName string, fs FileSystem) PipelineBuilder {
+	return b.WithArtifactRegistry(NewJSONArtifactRegistry(fileName, fs))
 }
 
 // Loaders
@@ -111,7 +89,7 @@ func NewJSONArtifactRegistry(fileName string, fs FileSystem) *JSONArtifactRegist
 	return &JSONArtifactRegistry{
 		InMemoryArtifactRegistry: &InMemoryArtifactRegistry{},
 		FilePath:                 fileName,
-		TimeProvider:             CurrentTimeProvider(),
+		TimeProvider:             CurrentTimeProvider,
 		FileSystem:               fs,
 	}
 }

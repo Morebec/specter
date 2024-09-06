@@ -21,7 +21,6 @@ import (
 	"github.com/morebec/specter/pkg/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"os"
 	"testing"
 )
 
@@ -150,10 +149,6 @@ func TestDependencyResolutionProcessor_Process(t *testing.T) {
 
 			ctx := specter.ProcessingContext{
 				Units: tt.given.units,
-				Logger: specter.NewDefaultLogger(specter.DefaultLoggerConfig{
-					DisableColors: true,
-					Writer:        os.Stdout,
-				}),
 			}
 
 			var err error

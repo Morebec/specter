@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"github.com/morebec/go-errors/errors"
 	"github.com/morebec/specter/pkg/specter"
+	"io"
 	"strings"
 	"unicode"
 )
@@ -38,6 +39,7 @@ const (
 
 type LintingProcessor struct {
 	linters []UnitLinter
+	Logger  specter.Logger
 }
 
 func NewLintingProcessor(linters ...UnitLinter) *LintingProcessor {
@@ -49,8 +51,11 @@ func (l LintingProcessor) Name() string {
 }
 
 func (l LintingProcessor) Process(ctx specter.ProcessingContext) (artifacts []specter.Artifact, err error) {
+	if l.Logger == nil {
+		l.Logger = specter.NewDefaultLogger(specter.DefaultLoggerConfig{Writer: io.Discard})
+	}
+
 	linter := CompositeUnitLinter(l.linters...)
-	ctx.Logger.Info("\nLinting units ...")
 
 	lr := linter.Lint(ctx.Units)
 
@@ -58,19 +63,19 @@ func (l LintingProcessor) Process(ctx specter.ProcessingContext) (artifacts []sp
 
 	if lr.HasWarnings() {
 		for _, w := range lr.Warnings() {
-			ctx.Logger.Warning(fmt.Sprintf("Warning: %s\n", w.Message))
+			l.Logger.Warning(fmt.Sprintf("Warning: %s\n", w.Message))
 		}
 	}
 
 	if lr.HasErrors() {
 		for _, e := range lr.Errors().Errors {
-			ctx.Logger.Error(fmt.Sprintf("Error: %s\n", e.Error()))
+			l.Logger.Error(fmt.Sprintf("Error: %s\n", e.Error()))
 		}
 		err = lr.Errors()
 	}
 
 	if !lr.HasWarnings() && !lr.HasErrors() {
-		ctx.Logger.Success("Units linted successfully.")
+		l.Logger.Success("Units linted successfully.")
 	}
 
 	return artifacts, err

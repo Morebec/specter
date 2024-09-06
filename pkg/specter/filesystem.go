@@ -68,8 +68,6 @@ type FileSystem interface {
 	Remove(path string) error
 }
 
-var _ FileSystem = LocalFileSystem{}
-
 // LocalFileSystem is an implementation of a FileSystem that works on the local file system where this program is running.
 type LocalFileSystem struct{}
 

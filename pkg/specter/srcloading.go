@@ -51,8 +51,6 @@ type SourceLoader interface {
 	Load(location string) ([]Source, error)
 }
 
-var _ SourceLoader = FileSystemSourceLoader{}
-
 // FileSystemSourceLoader is an implementation of a SourceLoader that loads files from a FileSystem.
 type FileSystemSourceLoader struct {
 	fs FileSystem

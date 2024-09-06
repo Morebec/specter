@@ -21,6 +21,8 @@ import (
 	"strings"
 )
 
+const DependencyResolutionFailed = "specter.dependency_resolution_failed"
+
 const ResolvedDependenciesArtifactID = "_resolved_dependencies"
 
 // ResolvedDependencies represents an ordered list of Unit that should be processed in that specific order to avoid
@@ -51,8 +53,6 @@ func (p DependencyResolutionProcessor) Name() string {
 }
 
 func (p DependencyResolutionProcessor) Process(ctx specter.ProcessingContext) ([]specter.Artifact, error) {
-	ctx.Logger.Info("\nResolving dependencies...")
-
 	var nodes []dependencyNode
 	for _, s := range ctx.Units {
 		node := dependencyNode{Unit: s, Dependencies: nil}
@@ -69,9 +69,8 @@ func (p DependencyResolutionProcessor) Process(ctx specter.ProcessingContext) ([
 
 	deps, err := newDependencyGraph(nodes...).resolve()
 	if err != nil {
-		return nil, errors.WrapWithMessage(err, errors.InternalErrorCode, "failed resolving dependencies")
+		return nil, errors.WrapWithMessage(err, DependencyResolutionFailed, "failed resolving dependencies")
 	}
-	ctx.Logger.Success("Dependencies resolved successfully.")
 
 	return []specter.Artifact{deps}, nil
 }

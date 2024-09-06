@@ -493,9 +493,7 @@ func TestLintingProcessor_Process(t *testing.T) {
 			name: "GIVEN an empty processing context",
 			given: args{
 				linters: nil,
-				ctx: specter.ProcessingContext{
-					Logger: specter.NewDefaultLogger(specter.DefaultLoggerConfig{}),
-				},
+				ctx:     specter.ProcessingContext{},
 			},
 			then: []specter.Artifact{
 				specterutils.LinterResultSet(nil),
@@ -511,8 +509,7 @@ func TestLintingProcessor_Process(t *testing.T) {
 					}),
 				},
 				ctx: specter.ProcessingContext{
-					Units:  []specter.Unit{specterutils.NewGenericUnit("unit", "spec_type", specter.Source{})},
-					Logger: specter.NewDefaultLogger(specter.DefaultLoggerConfig{}),
+					Units: []specter.Unit{specterutils.NewGenericUnit("unit", "spec_type", specter.Source{})},
 				},
 			},
 			then: []specter.Artifact{
@@ -528,8 +525,7 @@ func TestLintingProcessor_Process(t *testing.T) {
 					}),
 				},
 				ctx: specter.ProcessingContext{
-					Units:  []specter.Unit{specterutils.NewGenericUnit("unit", "spec_type", specter.Source{})},
-					Logger: specter.NewDefaultLogger(specter.DefaultLoggerConfig{}),
+					Units: []specter.Unit{specterutils.NewGenericUnit("unit", "spec_type", specter.Source{})},
 				},
 			},
 			then: []specter.Artifact{
@@ -553,8 +549,7 @@ func TestLintingProcessor_Process(t *testing.T) {
 					}),
 				},
 				ctx: specter.ProcessingContext{
-					Units:  []specter.Unit{specterutils.NewGenericUnit("unit", "spec_type", specter.Source{})},
-					Logger: specter.NewDefaultLogger(specter.DefaultLoggerConfig{}),
+					Units: []specter.Unit{specterutils.NewGenericUnit("unit", "spec_type", specter.Source{})},
 				},
 			},
 			then: []specter.Artifact{
