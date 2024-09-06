@@ -20,13 +20,12 @@ import (
 	"github.com/morebec/specter/pkg/specter"
 	"io"
 	"strings"
-	"unicode"
 )
 
 const LinterResultArtifactID = "_linting_processor_results"
 
-// UndefinedUnitName constant used to test against undefined UnitName.
-const UndefinedUnitName specter.UnitName = ""
+// UndefinedUnitID constant used to test against undefined specter.UnitID.
+const UndefinedUnitID specter.UnitID = ""
 
 const LintingErrorCode = "specter.spec_processing.linting_error"
 
@@ -50,7 +49,7 @@ func (l LintingProcessor) Name() string {
 	return "linting_processor"
 }
 
-func (l LintingProcessor) Process(ctx specter.ProcessingContext) (artifacts []specter.Artifact, err error) {
+func (l LintingProcessor) Process(ctx specter.UnitProcessingContext) (artifacts []specter.Artifact, err error) {
 	if l.Logger == nil {
 		l.Logger = specter.NewDefaultLogger(specter.DefaultLoggerConfig{Writer: io.Discard})
 	}
@@ -82,7 +81,7 @@ func (l LintingProcessor) Process(ctx specter.ProcessingContext) (artifacts []sp
 
 }
 
-func GetLintingResultsFromContext(ctx specter.ProcessingContext) LinterResultSet {
+func GetLintingResultsFromContext(ctx specter.UnitProcessingContext) LinterResultSet {
 	return specter.GetContextArtifact[LinterResultSet](ctx, LinterResultArtifactID)
 }
 
@@ -160,16 +159,16 @@ func CompositeUnitLinter(linters ...UnitLinter) UnitLinterFunc {
 	}
 }
 
-// UnitMustNotHaveUndefinedNames ensures that no unit has an undefined name
-func UnitMustNotHaveUndefinedNames(severity LinterResultSeverity) UnitLinterFunc {
+// UnitsMustHaveIDs ensures that no unit has an undefined ID.
+func UnitsMustHaveIDs(severity LinterResultSeverity) UnitLinterFunc {
 	return func(units specter.UnitGroup) LinterResultSet {
 		var result LinterResultSet
 
 		for _, u := range units {
-			if u.Name() == UndefinedUnitName {
+			if u.ID() == UndefinedUnitID {
 				result = append(result, LinterResult{
 					Severity: severity,
-					Message:  fmt.Sprintf("unit at %q has an undefined name", u.Source().Location),
+					Message:  fmt.Sprintf("a unit of kind %q has no ID at %q", u.Kind(), u.Source().Location),
 				})
 			}
 		}
@@ -178,24 +177,25 @@ func UnitMustNotHaveUndefinedNames(severity LinterResultSeverity) UnitLinterFunc
 	}
 }
 
-// UnitsMustHaveUniqueNames ensures that names are unique amongst units.
-func UnitsMustHaveUniqueNames(severity LinterResultSeverity) UnitLinterFunc {
+// UnitsIDsMustBeUnique ensures that units all have unique IDs.
+func UnitsIDsMustBeUnique(severity LinterResultSeverity) UnitLinterFunc {
 	return func(units specter.UnitGroup) LinterResultSet {
 
 		var result LinterResultSet
 
-		// Where key is the type FilePath and the array contains all the unit file locations where it was encountered.
-		encounteredNames := map[specter.UnitName][]string{}
+		// Where key is the type ID and the array contains all the unit file locations where it was encountered.
+		// TODO simplify
+		encounteredIDs := map[specter.UnitID][]string{}
 
 		for _, u := range units {
-			if _, found := encounteredNames[u.Name()]; found {
-				encounteredNames[u.Name()] = append(encounteredNames[u.Name()], u.Source().Location)
+			if _, found := encounteredIDs[u.ID()]; found {
+				encounteredIDs[u.ID()] = append(encounteredIDs[u.ID()], u.Source().Location)
 			} else {
-				encounteredNames[u.Name()] = []string{u.Source().Location}
+				encounteredIDs[u.ID()] = []string{u.Source().Location}
 			}
 		}
 
-		for name, files := range encounteredNames {
+		for id, files := range encounteredIDs {
 			if len(files) > 1 {
 				// Deduplicate
 				fnMap := map[string]struct{}{}
@@ -210,66 +210,14 @@ func UnitsMustHaveUniqueNames(severity LinterResultSeverity) UnitLinterFunc {
 				result = append(result, LinterResult{
 					Severity: severity,
 					Message: fmt.Sprintf(
-						"duplicate unit name detected for %q in the following file(s): %s",
-						name,
+						"duplicate unit ID detected %q in the following file(s): %s",
+						id,
 						strings.Join(fileNames, ", "),
 					),
 				})
 			}
 		}
 
-		return result
-	}
-}
-
-// UnitsMustHaveDescriptionAttribute ensures that all units have a description.
-func UnitsMustHaveDescriptionAttribute(severity LinterResultSeverity) UnitLinterFunc {
-	return func(units specter.UnitGroup) LinterResultSet {
-		var result LinterResultSet
-		for _, u := range units {
-			if u.Description() == "" {
-				result = append(result, LinterResult{
-					Severity: severity,
-					Message:  fmt.Sprintf("unit %q at location %q does not have a description", u.Name(), u.Source().Location),
-				})
-			}
-		}
-		return result
-	}
-}
-
-// UnitsDescriptionsMustStartWithACapitalLetter ensures that unit descriptions start with a capital letter.
-func UnitsDescriptionsMustStartWithACapitalLetter(severity LinterResultSeverity) UnitLinterFunc {
-	return func(units specter.UnitGroup) LinterResultSet {
-		var result LinterResultSet
-		for _, u := range units {
-			if u.Description() != "" {
-				firstLetter := rune(u.Description()[0])
-				if unicode.IsUpper(firstLetter) {
-					continue
-				}
-			}
-			result = append(result, LinterResult{
-				Severity: severity,
-				Message:  fmt.Sprintf("the description of unit %q at location %q does not start with a capital letter", u.Name(), u.Source().Location),
-			})
-		}
-		return result
-	}
-}
-
-// UnitsDescriptionsMustEndWithPeriod ensures that unit descriptions end with a period.
-func UnitsDescriptionsMustEndWithPeriod(severity LinterResultSeverity) UnitLinterFunc {
-	return func(units specter.UnitGroup) LinterResultSet {
-		var result LinterResultSet
-		for _, u := range units {
-			if !strings.HasSuffix(u.Description(), ".") {
-				result = append(result, LinterResult{
-					Severity: severity,
-					Message:  fmt.Sprintf("the description of unit %q at location %q does not end with a period", u.Name(), u.Source().Location),
-				})
-			}
-		}
 		return result
 	}
 }

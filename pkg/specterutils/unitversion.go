@@ -45,7 +45,7 @@ func HasVersionMustHaveAVersionLinter(severity LinterResultSeverity) UnitLinter 
 
 			r = append(r, LinterResult{
 				Severity: severity,
-				Message:  fmt.Sprintf("unit %q at %q should have a version", unit.Name(), unit.Source().Location),
+				Message:  fmt.Sprintf("unit %q at %q should have a version", unit.ID(), unit.Source().Location),
 			})
 		}
 		return r

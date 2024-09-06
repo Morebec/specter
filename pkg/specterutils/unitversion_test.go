@@ -26,27 +26,23 @@ import (
 var _ specter.Unit = (*mockUnit)(nil)
 
 type mockUnit struct {
-	name        specter.UnitName
+	name        specter.UnitID
 	description string
 	source      specter.Source
 	version     specterutils.UnitVersion
-	typeName    specter.UnitType
+	kind        specter.UnitKind
 }
 
-func (m *mockUnit) Name() specter.UnitName {
+func (m *mockUnit) ID() specter.UnitID {
 	return m.name
 }
 
-func (m *mockUnit) Type() specter.UnitType {
-	return m.typeName
+func (m *mockUnit) Kind() specter.UnitKind {
+	return m.kind
 }
 
 func (m *mockUnit) Description() string {
 	return m.description
-}
-
-func (m *mockUnit) SetSource(s specter.Source) {
-	m.source = s
 }
 
 func (m *mockUnit) Source() specter.Source {

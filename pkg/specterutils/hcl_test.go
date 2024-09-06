@@ -68,7 +68,7 @@ func TestHCLGenericUnitLoader_Load(t *testing.T) {
 		expectedError require.ErrorAssertionFunc
 	}
 
-	mockFile := HclConfigMock{}
+	hclFileStub := HclConfigMock{}
 
 	tests := []struct {
 		name string
@@ -89,13 +89,13 @@ func TestHCLGenericUnitLoader_Load(t *testing.T) {
 			},
 		},
 		{
-			name: "WHEN a valid hcl file THEN the specs should be returned an no error",
+			name: "WHEN a valid hcl source THEN the units should be returned without any error",
 			when: when{
-				source: mockFile.source(),
+				source: hclFileStub.source(),
 			},
 			then: then{
 				expectedUnits: []specter.Unit{
-					mockFile.genericUnit(),
+					hclFileStub.expectedUnit(hclFileStub.source()),
 				},
 				expectedError: require.NoError,
 			},
@@ -192,7 +192,10 @@ specType "specName" {
 				require.NoError(t, err)
 			}
 
-			assert.Equal(t, tt.then.expectedUnits, actualUnits)
+			require.Len(t, actualUnits, len(tt.then.expectedUnits))
+			for i := range tt.then.expectedUnits {
+				assert.Equal(t, tt.then.expectedUnits[i], actualUnits[i])
+			}
 		})
 	}
 }
@@ -216,7 +219,7 @@ func TestHCLUnitLoader_Load(t *testing.T) {
 		then then
 	}{
 		{
-			name: "WHEN an empty file THEN return nil",
+			name: "WHEN an empty source THEN return nil",
 			when: when{
 				source: specter.Source{
 					Format: specterutils.HCLSourceFormat,
@@ -229,7 +232,7 @@ func TestHCLUnitLoader_Load(t *testing.T) {
 			},
 		},
 		{
-			name: "WHEN an unsupported file format THEN an error should be returned",
+			name: "WHEN an unsupported source format THEN an error should be returned",
 			when: when{
 				source: specter.Source{
 					Format: "txt",
@@ -241,11 +244,11 @@ func TestHCLUnitLoader_Load(t *testing.T) {
 			},
 		},
 		{
-			name: "WHEN an unparsable hcl file THEN an error should be returned",
+			name: "WHEN an unparsable hcl source THEN an error should be returned",
 			when: when{
 				source: specter.Source{
 					Data: []byte(`
-con st = var o
+con st = var o # this cannot be parsed.
 `),
 					Format: specterutils.HCLSourceFormat,
 				},
@@ -256,13 +259,13 @@ con st = var o
 			},
 		},
 		{
-			name: "WHEN valid hcl file THEN return units",
+			name: "WHEN valid hcl source THEN return units",
 			when: when{
 				source: mockFile.source(),
 			},
 			then: then{
 				expectedUnits: []specter.Unit{
-					mockFile.genericUnit(),
+					mockFile.expectedUnit(mockFile.source()),
 				},
 			},
 		},
@@ -298,7 +301,13 @@ type HclConfigMock struct {
 	} `hcl:"service,block"`
 }
 
-func (m *HclConfigMock) data() []byte {
+func (m *HclConfigMock) Units(s specter.Source) []specter.Unit {
+	return []specter.Unit{
+		m.expectedUnit(s),
+	}
+}
+
+func (m *HclConfigMock) ContentBytes() []byte {
 	return []byte(`
 service "specter" {
 	image = "specter:1.0.0"
@@ -309,14 +318,8 @@ service "specter" {
 `)
 }
 
-func (m *HclConfigMock) Units() []specter.Unit {
-	return []specter.Unit{
-		m.genericUnit(),
-	}
-}
-
-func (m *HclConfigMock) genericUnit() *specterutils.GenericUnit {
-	unit := specterutils.NewGenericUnit("specter", "service", m.source())
+func (m *HclConfigMock) expectedUnit(s specter.Source) *specterutils.GenericUnit {
+	unit := specterutils.NewGenericUnit("specter", "service", s)
 
 	unit.Attributes = append(unit.Attributes, specterutils.GenericUnitAttribute{
 		Name: "image",
@@ -343,8 +346,8 @@ func (m *HclConfigMock) genericUnit() *specterutils.GenericUnit {
 
 func (m *HclConfigMock) source() specter.Source {
 	return specter.Source{
-		Location: "specter.hcl",
-		Data:     m.data(),
 		Format:   specterutils.HCLSourceFormat,
+		Location: "/path/to/file.hcl",
+		Data:     m.ContentBytes(),
 	}
 }

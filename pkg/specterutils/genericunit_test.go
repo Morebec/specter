@@ -15,7 +15,6 @@
 package specterutils_test
 
 import (
-	"github.com/morebec/specter/pkg/specter"
 	"github.com/morebec/specter/pkg/specterutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/zclconf/go-cty/cty"
@@ -148,32 +147,9 @@ func TestGenericUnit_HasAttribute(t *testing.T) {
 	}
 }
 
-func TestGenericUnit_SetSource(t *testing.T) {
-	tests := []struct {
-		name  string
-		given *specterutils.GenericUnit
-		when  specter.Source
-		then  specter.Source
-	}{
-		{
-			name:  "GIVEN a unit WHEN SetSource is called THEN updates the source",
-			given: specterutils.NewGenericUnit("name", "type", specter.Source{Location: "initial/path"}),
-			when:  specter.Source{Location: "new/path"},
-			then:  specter.Source{Location: "new/path"},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.given.SetSource(tt.when)
-			assert.Equal(t, tt.then, tt.given.Source())
-		})
-	}
-}
-
 func TestObjectValue_String(t *testing.T) {
 	o := specterutils.ObjectValue{Type: "hello", Attributes: []specterutils.GenericUnitAttribute{
 		{Name: "hello", Value: specterutils.GenericValue{Value: cty.StringVal("world")}},
 	}}
-	assert.Equal(t, "ObjectValue{Type: hello, Attributes: [{hello world}]}", o.String())
+	assert.Equal(t, "ObjectValue{Kind: hello, Attributes: [{hello world}]}", o.String())
 }

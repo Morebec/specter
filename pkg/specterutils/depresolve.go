@@ -25,8 +25,8 @@ const DependencyResolutionFailed = "specter.dependency_resolution_failed"
 
 const ResolvedDependenciesArtifactID = "_resolved_dependencies"
 
-// ResolvedDependencies represents an ordered list of Unit that should be processed in that specific order to avoid
-// unresolved types.
+// ResolvedDependencies represents an ordered list of Unit that should be
+// processed in that specific order based on their dependencies.
 type ResolvedDependencies specter.UnitGroup
 
 func (r ResolvedDependencies) ID() specter.ArtifactID {
@@ -35,7 +35,7 @@ func (r ResolvedDependencies) ID() specter.ArtifactID {
 
 type DependencyProvider interface {
 	Supports(s specter.Unit) bool
-	Provide(s specter.Unit) []specter.UnitName
+	Provide(s specter.Unit) []specter.UnitID
 }
 
 var _ specter.UnitProcessor = DependencyResolutionProcessor{}
@@ -52,7 +52,7 @@ func (p DependencyResolutionProcessor) Name() string {
 	return "dependency_resolution_processor"
 }
 
-func (p DependencyResolutionProcessor) Process(ctx specter.ProcessingContext) ([]specter.Artifact, error) {
+func (p DependencyResolutionProcessor) Process(ctx specter.UnitProcessingContext) ([]specter.Artifact, error) {
 	var nodes []dependencyNode
 	for _, s := range ctx.Units {
 		node := dependencyNode{Unit: s, Dependencies: nil}
@@ -75,13 +75,13 @@ func (p DependencyResolutionProcessor) Process(ctx specter.ProcessingContext) ([
 	return []specter.Artifact{deps}, nil
 }
 
-func GetResolvedDependenciesFromContext(ctx specter.ProcessingContext) ResolvedDependencies {
+func GetResolvedDependenciesFromContext(ctx specter.UnitProcessingContext) ResolvedDependencies {
 	return specter.GetContextArtifact[ResolvedDependencies](ctx, ResolvedDependenciesArtifactID)
 }
 
-type dependencySet map[specter.UnitName]struct{}
+type dependencySet map[specter.UnitID]struct{}
 
-func newDependencySet(dependencies ...specter.UnitName) dependencySet {
+func newDependencySet(dependencies ...specter.UnitID) dependencySet {
 	deps := dependencySet{}
 	for _, d := range dependencies {
 		deps[d] = struct{}{}
@@ -108,8 +108,8 @@ type dependencyNode struct {
 	Dependencies dependencySet
 }
 
-func (d dependencyNode) UnitName() specter.UnitName {
-	return d.Unit.Name()
+func (d dependencyNode) UnitName() specter.UnitID {
+	return d.Unit.ID()
 }
 
 type dependencyGraph []dependencyNode
@@ -121,41 +121,42 @@ func newDependencyGraph(units ...dependencyNode) dependencyGraph {
 func (g dependencyGraph) resolve() (ResolvedDependencies, error) {
 	var resolved ResolvedDependencies
 
-	// Look up of nodes to their typeName Names.
-	specByTypeNames := map[specter.UnitName]specter.Unit{}
+	// Look up of nodes to their IDs.
+	unitByID := map[specter.UnitID]specter.Unit{}
 
 	// Map nodes to dependencies
-	dependenciesByTypeNames := map[specter.UnitName]dependencySet{}
+	dependenciesByID := map[specter.UnitID]dependencySet{}
 	for _, n := range g {
-		specByTypeNames[n.UnitName()] = n.Unit
-		dependenciesByTypeNames[n.UnitName()] = n.Dependencies
+		unitByID[n.UnitName()] = n.Unit
+		dependenciesByID[n.UnitName()] = n.Dependencies
 	}
 
-	// The algorithm simply processes all nodes and tries to find the ones that have no dependencies.
-	// When a node has dependencies, these dependencies are checked for being either circular or unresolvable.
-	// If no unresolvable or circular dependency is found, the node is considered resolved.
-	// And processing retries with the remaining dependent nodes.
-	for len(dependenciesByTypeNames) != 0 {
-		var typeNamesWithNoDependencies []specter.UnitName
-		for typeName, dependencies := range dependenciesByTypeNames {
+	// The algorithm simply processes all nodes and tries to find the ones that have
+	// no dependencies. When a node has dependencies, these dependencies are checked
+	// for being either circular or unresolvable. If no unresolvable or circular
+	// dependency is found, the node is considered resolved. And processing retries
+	// with the remaining dependent nodes.
+	for len(dependenciesByID) != 0 {
+		var idsWithNoDependencies []specter.UnitID
+		for id, dependencies := range dependenciesByID {
 			if len(dependencies) == 0 {
-				typeNamesWithNoDependencies = append(typeNamesWithNoDependencies, typeName)
+				idsWithNoDependencies = append(idsWithNoDependencies, id)
 			}
 		}
 
 		// If no nodes have no dependencies, in other words if all nodes have dependencies,
 		// This means that we have a problem of circular dependencies.
 		// We need at least one node in the graph to be independent for it to be potentially resolvable.
-		if len(typeNamesWithNoDependencies) == 0 {
+		if len(idsWithNoDependencies) == 0 {
 			// We either have circular dependencies or an unresolved dependency
 			// Check if all dependencies exist.
-			for typeName, dependencies := range dependenciesByTypeNames {
+			for id, dependencies := range dependenciesByID {
 				for dependency := range dependencies {
-					if _, found := specByTypeNames[dependency]; !found {
+					if _, found := unitByID[dependency]; !found {
 						return nil, errors.NewWithMessage(
-							errors.InternalErrorCode,
-							fmt.Sprintf("unit with type %q depends on an unresolved type %q",
-								typeName,
+							DependencyResolutionFailed,
+							fmt.Sprintf("unit %q depends on an unresolved kind %q",
+								id,
 								dependency,
 							),
 						)
@@ -165,12 +166,12 @@ func (g dependencyGraph) resolve() (ResolvedDependencies, error) {
 
 			// They all exist, therefore, we have a circular dependencies.
 			var circularDependencies []string
-			for k := range dependenciesByTypeNames {
+			for k := range dependenciesByID {
 				circularDependencies = append(circularDependencies, string(k))
 			}
 
 			return nil, errors.NewWithMessage(
-				errors.InternalErrorCode,
+				DependencyResolutionFailed,
 				fmt.Sprintf(
 					"circular dependencies found between nodes %q",
 					strings.Join(circularDependencies, "\", \""),
@@ -179,15 +180,15 @@ func (g dependencyGraph) resolve() (ResolvedDependencies, error) {
 		}
 
 		// All good, we can move the nodes that no longer have unresolved dependencies
-		for _, nodeTypeName := range typeNamesWithNoDependencies {
-			delete(dependenciesByTypeNames, nodeTypeName)
-			resolved = append(resolved, specByTypeNames[nodeTypeName])
+		for _, nodeID := range idsWithNoDependencies {
+			delete(dependenciesByID, nodeID)
+			resolved = append(resolved, unitByID[nodeID])
 		}
 
-		// Remove the resolved nodes from the remaining dependenciesByTypeNames.
-		for typeName, dependencies := range dependenciesByTypeNames {
-			diff := dependencies.diff(newDependencySet(typeNamesWithNoDependencies...))
-			dependenciesByTypeNames[typeName] = diff
+		// Remove the resolved nodes from the remaining dependenciesByID.
+		for ID, dependencies := range dependenciesByID {
+			diff := dependencies.diff(newDependencySet(idsWithNoDependencies...))
+			dependenciesByID[ID] = diff
 		}
 	}
 
@@ -200,7 +201,7 @@ func (g dependencyGraph) resolve() (ResolvedDependencies, error) {
 // to easily resolve dependencies.
 type HasDependencies interface {
 	specter.Unit
-	Dependencies() []specter.UnitName
+	Dependencies() []specter.UnitID
 }
 
 type HasDependenciesProvider struct{}
@@ -210,7 +211,7 @@ func (h HasDependenciesProvider) Supports(u specter.Unit) bool {
 	return ok
 }
 
-func (h HasDependenciesProvider) Provide(u specter.Unit) []specter.UnitName {
+func (h HasDependenciesProvider) Provide(u specter.Unit) []specter.UnitID {
 	d, ok := u.(HasDependencies)
 	if !ok {
 		return nil

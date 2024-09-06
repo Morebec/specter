@@ -17,6 +17,72 @@ package specter
 // UnsupportedSourceErrorCode ErrorSeverity code returned by a UnitLoader when a given loader does not support a certain source.
 const UnsupportedSourceErrorCode = "specter.spec_loading.unsupported_source"
 
+type UnitKind string
+
+type UnitID string
+
+// Unit is a general purpose data structure to represent a unit as loaded from a file regardless of the loader
+// used.
+// It is the responsibility of the application using specter to convert a unit to an appropriate data structure representing the intent of a
+// given Unit.
+type Unit interface {
+	// ID returns the unique Name of this unit.
+	ID() UnitID
+
+	// Kind returns the type of this unit.
+	Kind() UnitKind
+
+	// Source returns the source of this unit.
+	Source() Source
+}
+
+// WrappingUnit is a generic implementation of a Unit that wraps an underlying value.
+// This allows users to pass any value, even those that do not implement the Unit interface,
+// through the Spectre pipeline. The wrapped value can be later unwrapped and used as needed.
+//
+// WrappingUnit provides a flexible solution for users who want to avoid directly
+// implementing the Unit interface in their own types or who are dealing with
+// primitive types or external structs.
+//
+// T represents the type of the value being wrapped.
+//
+// Example usage:
+//
+//	wrapped := Spectre.UnitOf(myValue)
+//	unwrapped := wrapped.Unwrap()
+type WrappingUnit[T any] struct {
+	id      UnitID
+	kind    UnitKind
+	source  Source
+	wrapped T
+}
+
+func UnitOf[T any](v T, id UnitID, kind UnitKind, source Source) *WrappingUnit[T] {
+	return &WrappingUnit[T]{
+		id:      id,
+		kind:    kind,
+		source:  source,
+		wrapped: v,
+	}
+}
+
+func (w *WrappingUnit[T]) ID() UnitID {
+	return w.id
+}
+
+func (w *WrappingUnit[T]) Kind() UnitKind {
+	return w.kind
+}
+
+func (w *WrappingUnit[T]) Source() Source {
+	return w.source
+}
+
+// Unwrap returns the wrapped value.
+func (w *WrappingUnit[T]) Unwrap() T {
+	return w.wrapped
+}
+
 // UnitLoader is a service responsible for loading Units from Sources.
 type UnitLoader interface {
 	// Load loads a slice of Unit from a Source, or returns an error if it encountered a failure.
@@ -24,32 +90,6 @@ type UnitLoader interface {
 
 	// SupportsSource indicates if this loader supports a certain source or not.
 	SupportsSource(s Source) bool
-}
-
-type UnitType string
-
-type UnitName string
-
-// Unit is a general purpose data structure to represent a unit as loaded from a file regardless of the loader
-// used.
-// It is the responsibility of the application using specter to convert a unit to an appropriate data structure representing the intent of a
-// given Unit.
-type Unit interface {
-	// Name returns the unique Name of this unit.
-	Name() UnitName
-
-	// Type returns the type of this unit.
-	Type() UnitType
-
-	// Description of this unit.
-	Description() string
-
-	// Source returns the source of this unit.
-	Source() Source
-
-	// SetSource sets the source of the unit.
-	// This method should only be used by loaders.
-	SetSource(s Source)
 }
 
 // UnitGroup Represents a list of Unit.
@@ -63,25 +103,33 @@ func NewUnitGroup(u ...Unit) UnitGroup {
 // Merge Allows merging a group with another one.
 func (g UnitGroup) Merge(group UnitGroup) UnitGroup {
 	merged := g
-	typeNameIndex := map[UnitName]any{}
+	idIndex := map[UnitID]any{}
 	for _, u := range g {
-		typeNameIndex[u.Name()] = nil
+		idIndex[u.ID()] = nil
 	}
 	for _, u := range group {
-		if _, found := typeNameIndex[u.Name()]; found {
+		if _, found := idIndex[u.ID()]; found {
 			continue
 		}
-		typeNameIndex[u.Name()] = nil
+		idIndex[u.ID()] = nil
 		merged = append(merged, u)
 	}
 	return merged
 }
 
-// Select allows filtering the group for certain units.
-func (g UnitGroup) Select(p func(u Unit) bool) UnitGroup {
+type UnitMatcher func(u Unit) bool
+
+func UnitWithKindMatcher(kind UnitKind) UnitMatcher {
+	return func(u Unit) bool {
+		return u.Kind() == kind
+	}
+}
+
+// Select allows filtering the group for certain units that match a certain UnitMatcher.
+func (g UnitGroup) Select(m UnitMatcher) UnitGroup {
 	r := UnitGroup{}
 	for _, u := range g {
-		if p(u) {
+		if m(u) {
 			r = append(r, u)
 		}
 	}
@@ -89,15 +137,25 @@ func (g UnitGroup) Select(p func(u Unit) bool) UnitGroup {
 	return r
 }
 
-func (g UnitGroup) SelectType(t UnitType) UnitGroup {
+// Find search for a unit matching the given UnitMatcher.
+func (g UnitGroup) Find(m UnitMatcher) (Unit, bool) {
+	for _, u := range g {
+		if m(u) {
+			return u, true
+		}
+	}
+	return nil, false
+}
+
+func (g UnitGroup) SelectType(t UnitKind) UnitGroup {
 	return g.Select(func(u Unit) bool {
-		return u.Type() == t
+		return u.Kind() == t
 	})
 }
 
-func (g UnitGroup) SelectName(t UnitName) Unit {
+func (g UnitGroup) SelectName(t UnitID) Unit {
 	for _, u := range g {
-		if u.Name() == t {
+		if u.ID() == t {
 			return u
 		}
 	}
@@ -105,10 +163,10 @@ func (g UnitGroup) SelectName(t UnitName) Unit {
 	return nil
 }
 
-func (g UnitGroup) SelectNames(names ...UnitName) UnitGroup {
+func (g UnitGroup) SelectNames(names ...UnitID) UnitGroup {
 	return g.Select(func(u Unit) bool {
 		for _, name := range names {
-			if u.Name() == name {
+			if u.ID() == name {
 				return true
 			}
 		}
@@ -127,16 +185,16 @@ func (g UnitGroup) Exclude(p func(u Unit) bool) UnitGroup {
 	return r
 }
 
-func (g UnitGroup) ExcludeType(t UnitType) UnitGroup {
+func (g UnitGroup) ExcludeType(t UnitKind) UnitGroup {
 	return g.Exclude(func(u Unit) bool {
-		return u.Type() == t
+		return u.Kind() == t
 	})
 }
 
-func (g UnitGroup) ExcludeNames(names ...UnitName) UnitGroup {
+func (g UnitGroup) ExcludeNames(names ...UnitID) UnitGroup {
 	return g.Exclude(func(u Unit) bool {
 		for _, name := range names {
-			if u.Name() == name {
+			if u.ID() == name {
 				return true
 			}
 		}

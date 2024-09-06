@@ -35,7 +35,7 @@ const (
 	WriteOnceMode WriteMode = "WRITE_ONCE"
 )
 
-const DefaultWriteMode WriteMode = WriteOnceMode
+const DefaultWriteMode = WriteOnceMode
 
 // FileArtifact is a data structure that can be used by a UnitProcessor to generate file artifacts
 // that can be written by the FileArtifactProcessor.

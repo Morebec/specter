@@ -103,3 +103,14 @@ type ArtifactProcessingContext struct {
 	ArtifactRegistry ProcessorArtifactRegistry
 	processorName    string
 }
+
+type ArtifactProcessorFunc struct {
+	name        string
+	processFunc func(ctx ArtifactProcessingContext) error
+}
+
+func (a ArtifactProcessorFunc) Process(ctx ArtifactProcessingContext) error {
+	return a.processFunc(ctx)
+}
+
+func (a ArtifactProcessorFunc) Name() string { return a.name }

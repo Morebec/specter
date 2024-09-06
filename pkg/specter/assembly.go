@@ -15,56 +15,105 @@
 package specter
 
 type PipelineBuilder struct {
-	*DefaultPipeline
+	pipeline *DefaultPipeline
+
+	SourceLoaders      []SourceLoader
+	UnitLoaders        []UnitLoader
+	UnitProcessors     []UnitProcessor
+	ArtifactProcessors []ArtifactProcessor
+	ArtifactRegistry   ArtifactRegistry
+
+	SourceLoadingStageHooks      SourceLoadingStageHooks
+	UnitLoadingStageHooks        UnitLoadingStageHooks
+	UnitProcessingStageHooks     UnitProcessingStageHooks
+	ArtifactProcessingStageHooks ArtifactProcessingStageHooks
 }
 
 // NewPipeline creates a new instance of a *Pipeline using the provided options.
-func NewPipeline(opts ...PipelineOption) PipelineBuilder {
+func NewPipeline() PipelineBuilder {
 	return PipelineBuilder{
-		DefaultPipeline: &DefaultPipeline{
+		pipeline: &DefaultPipeline{
 			TimeProvider:            CurrentTimeProvider,
-			sourceLoadingStage:      sourceLoadingStage{},
-			unitLoadingStage:        unitLoadingStage{},
-			unitProcessingStage:     unitProcessingStage{},
-			artifactProcessingStage: artifactProcessingStage{},
+			SourceLoadingStage:      sourceLoadingStage{},
+			UnitLoadingStage:        unitLoadingStage{},
+			UnitProcessingStage:     unitProcessingStage{},
+			ArtifactProcessingStage: artifactProcessingStage{},
 		},
 	}
 }
 
-// PipelineOption represents an option to configure a Pipeline instance.
-type PipelineOption func(s *DefaultPipeline)
-
 // WithSourceLoaders configures the SourceLoader of a Pipeline instance.
 func (b PipelineBuilder) WithSourceLoaders(loaders ...SourceLoader) PipelineBuilder {
-	b.sourceLoadingStage.SourceLoaders = loaders
+	b.SourceLoaders = loaders
 	return b
 }
 
 // WithUnitLoaders configures the UnitLoader of a Pipeline instance.
 func (b PipelineBuilder) WithUnitLoaders(loaders ...UnitLoader) PipelineBuilder {
-	b.unitLoadingStage.Loaders = loaders
+	b.UnitLoaders = loaders
 	return b
 }
 
-// WithProcessors configures the UnitProcess of a Pipeline instance.
-func (b PipelineBuilder) WithProcessors(processors ...UnitProcessor) PipelineBuilder {
-	b.unitProcessingStage.Processors = processors
+// WithUnitProcessors configures the UnitProcess of a Pipeline instance.
+func (b PipelineBuilder) WithUnitProcessors(processors ...UnitProcessor) PipelineBuilder {
+	b.UnitProcessors = processors
 	return b
 }
 
 // WithArtifactProcessors configures the ArtifactProcessor of a Pipeline instance.
 func (b PipelineBuilder) WithArtifactProcessors(processors ...ArtifactProcessor) PipelineBuilder {
-	b.artifactProcessingStage.ArtifactProcessors = processors
+	b.ArtifactProcessors = processors
 	return b
 }
 
 // WithArtifactRegistry configures the ArtifactRegistry of a Pipeline instance.
 func (b PipelineBuilder) WithArtifactRegistry(r ArtifactRegistry) PipelineBuilder {
-	b.artifactProcessingStage.ArtifactRegistry = r
+	b.ArtifactRegistry = r
 	return b
 }
 
-// DEFAULTS PIPELINE OPTIONS
+func (b PipelineBuilder) WithSourceLoadingStageHooks(h SourceLoadingStageHooks) PipelineBuilder {
+	b.SourceLoadingStageHooks = h
+	return b
+}
+
+func (b PipelineBuilder) WithUnitLoadingStageHooks(h UnitLoadingStageHooks) PipelineBuilder {
+	b.UnitLoadingStageHooks = h
+	return b
+}
+
+func (b PipelineBuilder) WithUnitProcessingStageHooks(h UnitProcessingStageHooks) PipelineBuilder {
+	b.UnitProcessingStageHooks = h
+	return b
+}
+
+func (b PipelineBuilder) WithArtifactProcessingStageHooks(h ArtifactProcessingStageHooks) PipelineBuilder {
+	b.ArtifactProcessingStageHooks = h
+	return b
+}
+
+func (b PipelineBuilder) Build() Pipeline {
+	return DefaultPipeline{
+		TimeProvider: CurrentTimeProvider,
+		SourceLoadingStage: sourceLoadingStage{
+			SourceLoaders: b.SourceLoaders,
+			Hooks:         b.SourceLoadingStageHooks,
+		},
+		UnitLoadingStage: unitLoadingStage{
+			Loaders: b.UnitLoaders,
+			Hooks:   b.UnitLoadingStageHooks,
+		},
+		UnitProcessingStage: unitProcessingStage{
+			Processors: b.UnitProcessors,
+			Hooks:      b.UnitProcessingStageHooks,
+		},
+		ArtifactProcessingStage: artifactProcessingStage{
+			Registry:   b.ArtifactRegistry,
+			Processors: b.ArtifactProcessors,
+			Hooks:      b.ArtifactProcessingStageHooks,
+		},
+	}
+}
 
 func (b PipelineBuilder) WithJSONArtifactRegistry(fileName string, fs FileSystem) PipelineBuilder {
 	return b.WithArtifactRegistry(NewJSONArtifactRegistry(fileName, fs))
@@ -82,7 +131,17 @@ func NewLocalFileSourceLoader() *FileSystemSourceLoader {
 	return NewFileSystemSourceLoader(LocalFileSystem{})
 }
 
-// ARTIFACT REGISTRIES
+// UNIT PROCESSING
+
+func NewUnitProcessorFunc(name string, processFunc func(ctx UnitProcessingContext) ([]Artifact, error)) UnitProcessor {
+	return &UnitProcessorFunc{name: name, processFunc: processFunc}
+}
+
+// ARTIFACT PROCESSING
+
+func NewArtifactProcessorFunc(name string, processFunc func(ctx ArtifactProcessingContext) error) ArtifactProcessor {
+	return &ArtifactProcessorFunc{name: name, processFunc: processFunc}
+}
 
 // NewJSONArtifactRegistry returns a new artifact file registry.
 func NewJSONArtifactRegistry(fileName string, fs FileSystem) *JSONArtifactRegistry {

@@ -151,3 +151,16 @@ func (l FileSystemSourceLoader) loadFile(filePath string) ([]Source, error) {
 		},
 	}, nil
 }
+
+type FunctionalSourceLoader struct {
+	SupportsFunc func(location string) bool
+	LoadFunc     func(location string) ([]Source, error)
+}
+
+func (f FunctionalSourceLoader) Supports(location string) bool {
+	return f.SupportsFunc(location)
+}
+
+func (f FunctionalSourceLoader) Load(location string) ([]Source, error) {
+	return f.LoadFunc(location)
+}

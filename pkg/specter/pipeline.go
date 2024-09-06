@@ -21,17 +21,12 @@ import (
 
 type RunMode string
 
-// PreviewMode will cause a Pipeline instance to run until the processing step only, no artifact will be processed.
-const PreviewMode RunMode = "preview"
-
-// RunThrough will cause a Pipeline instance to be run fully.
-const RunThrough RunMode = "run-through"
-
-const StopAfterSourceLoadingStage = "stop-after-source-loading-stage"
-const StopAfterUnitLoadingStage = "stop-after-unit-loading-stage"
-const StopAfterUnitProcessingStage = "stop-after-unit-processing-stage"
-
-const defaultRunMode = PreviewMode
+const (
+	RunThrough                   RunMode = "run-through"
+	StopAfterSourceLoadingStage  RunMode = "stop-after-source-loading-stage"
+	StopAfterUnitLoadingStage    RunMode = "stop-after-unit-loading-stage"
+	StopAfterUnitProcessingStage RunMode = "stop-after-unit-processing-stage"
+)
 
 const SourceLoadingFailedErrorCode = "specter.source_loading_failed"
 const UnitLoadingFailedErrorCode = "specter.unit_loading_failed"
@@ -39,7 +34,7 @@ const UnitProcessingFailedErrorCode = "specter.unit_processing_failed"
 const ArtifactProcessingFailedErrorCode = "specter.artifact_processing_failed"
 
 type PipelineResult struct {
-	pipelineContext
+	PipelineContextData
 	EndedAt time.Time
 }
 
@@ -49,10 +44,10 @@ func (r PipelineResult) ExecutionTime() time.Duration {
 
 type PipelineContext struct {
 	context.Context
-	pipelineContext
+	PipelineContextData
 }
 
-type pipelineContext struct {
+type PipelineContextData struct {
 	StartedAt       time.Time
 	SourceLocations []string
 	Sources         []Source
