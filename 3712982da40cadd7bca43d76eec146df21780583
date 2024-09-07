@@ -1,0 +1,1 @@
+{"go-coverage-action-fmt":1,"coverage_pct":89.97584541062803,"pkg_stats":{"github.com/morebec/specter/pkg/specter":[88.40304182509506],"github.com/morebec/specter/pkg/specterutils":[99.51923076923077],"github.com/morebec/specter/pkg/testutils":[77.6595744680851]},"skipped_count":0}
