@@ -119,9 +119,25 @@ func (g UnitGroup) Merge(group UnitGroup) UnitGroup {
 
 type UnitMatcher func(u Unit) bool
 
-func UnitWithKindMatcher(kind UnitKind) UnitMatcher {
+func UnitWithKindsMatcher(kinds ...UnitKind) UnitMatcher {
 	return func(u Unit) bool {
-		return u.Kind() == kind
+		for _, kind := range kinds {
+			if u.Kind() == kind {
+				return true
+			}
+		}
+		return false
+	}
+}
+
+func UnitWithIDsMatcher(id ...UnitID) UnitMatcher {
+	return func(u Unit) bool {
+		for _, id := range id {
+			if u.ID() == id {
+				return true
+			}
+		}
+		return false
 	}
 }
 
@@ -144,62 +160,19 @@ func (g UnitGroup) Find(m UnitMatcher) (Unit, bool) {
 			return u, true
 		}
 	}
+
 	return nil, false
 }
 
-func (g UnitGroup) SelectType(t UnitKind) UnitGroup {
-	return g.Select(func(u Unit) bool {
-		return u.Kind() == t
-	})
-}
-
-func (g UnitGroup) SelectName(t UnitID) Unit {
-	for _, u := range g {
-		if u.ID() == t {
-			return u
-		}
-	}
-
-	return nil
-}
-
-func (g UnitGroup) SelectNames(names ...UnitID) UnitGroup {
-	return g.Select(func(u Unit) bool {
-		for _, name := range names {
-			if u.ID() == name {
-				return true
-			}
-		}
-		return false
-	})
-}
-
-func (g UnitGroup) Exclude(p func(u Unit) bool) UnitGroup {
+func (g UnitGroup) Exclude(m UnitMatcher) UnitGroup {
 	r := UnitGroup{}
 	for _, u := range g {
-		if !p(u) {
+		if !m(u) {
 			r = append(r, u)
 		}
 	}
 
 	return r
-}
-
-func (g UnitGroup) ExcludeType(t UnitKind) UnitGroup {
-	return g.Exclude(func(u Unit) bool {
-		return u.Kind() == t
-	})
-}
-
-func (g UnitGroup) ExcludeNames(names ...UnitID) UnitGroup {
-	return g.Exclude(func(u Unit) bool {
-		for _, name := range names {
-			if u.ID() == name {
-				return true
-			}
-		}
-		return false
-	})
 }
 
 // MapUnitGroup performs a map operation on a UnitGroup
