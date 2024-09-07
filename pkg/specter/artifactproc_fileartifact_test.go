@@ -401,7 +401,6 @@ func TestWriteFileArtifactProcessor_Process(t *testing.T) {
 			ctx := specter.ArtifactProcessingContext{
 				Context:          parentCtx,
 				Artifacts:        tt.when.artifacts,
-				Logger:           specter.NewDefaultLogger(specter.DefaultLoggerConfig{}),
 				ArtifactRegistry: specter.NewProcessorArtifactRegistry(processor.Name(), registry),
 			}
 			err := processor.Process(ctx)

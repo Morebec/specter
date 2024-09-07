@@ -12,19 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package specter_test
+package testutils
 
 import (
 	"github.com/morebec/specter/pkg/specter"
-	"github.com/stretchr/testify/require"
-	"testing"
-	"time"
 )
 
-func TestRunResult_ExecutionTime(t *testing.T) {
-	r := specter.PipelineResult{}
-	r.StartedAt = time.Date(2024, 01, 01, 0, 0, 0, 0, time.UTC)
-	r.EndedAt = time.Date(2024, 01, 01, 1, 0, 0, 0, time.UTC)
-
-	require.Equal(t, r.ExecutionTime(), time.Hour*1)
+func NewUnitStub(id specter.UnitID, kind specter.UnitKind, source specter.Source) specter.Unit {
+	return specter.UnitOf[any](nil, id, kind, source)
 }

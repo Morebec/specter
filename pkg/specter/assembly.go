@@ -14,82 +14,109 @@
 
 package specter
 
-import (
-	"os"
-)
+type PipelineBuilder struct {
+	pipeline *DefaultPipeline
 
-// NewPipeline creates a new instance of a *Pipeline using the provided options.
-func NewPipeline(opts ...PipelineOption) *Pipeline {
-	s := &Pipeline{
-		Logger:       NewDefaultLogger(DefaultLoggerConfig{DisableColors: false, Writer: os.Stdout}),
-		TimeProvider: CurrentTimeProvider(),
-	}
-	for _, o := range opts {
-		o(s)
-	}
-	return s
+	SourceLoaders      []SourceLoader
+	UnitLoaders        []UnitLoader
+	UnitProcessors     []UnitProcessor
+	ArtifactProcessors []ArtifactProcessor
+	ArtifactRegistry   ArtifactRegistry
+
+	SourceLoadingStageHooks      SourceLoadingStageHooks
+	UnitLoadingStageHooks        UnitLoadingStageHooks
+	UnitProcessingStageHooks     UnitProcessingStageHooks
+	ArtifactProcessingStageHooks ArtifactProcessingStageHooks
 }
 
-// PipelineOption represents an option to configure a Pipeline instance.
-type PipelineOption func(s *Pipeline)
-
-// WithLogger configures the Logger of a Pipeline instance.
-func WithLogger(l Logger) PipelineOption {
-	return func(p *Pipeline) {
-		p.Logger = l
+// NewPipeline creates a new instance of a *Pipeline using the provided options.
+func NewPipeline() PipelineBuilder {
+	return PipelineBuilder{
+		pipeline: &DefaultPipeline{
+			TimeProvider:            CurrentTimeProvider,
+			SourceLoadingStage:      sourceLoadingStage{},
+			UnitLoadingStage:        unitLoadingStage{},
+			UnitProcessingStage:     unitProcessingStage{},
+			ArtifactProcessingStage: artifactProcessingStage{},
+		},
 	}
 }
 
 // WithSourceLoaders configures the SourceLoader of a Pipeline instance.
-func WithSourceLoaders(loaders ...SourceLoader) PipelineOption {
-	return func(p *Pipeline) {
-		p.SourceLoaders = append(p.SourceLoaders, loaders...)
-	}
+func (b PipelineBuilder) WithSourceLoaders(loaders ...SourceLoader) PipelineBuilder {
+	b.SourceLoaders = loaders
+	return b
 }
 
-// WithLoaders configures the UnitLoader of a Pipeline instance.
-func WithLoaders(loaders ...UnitLoader) PipelineOption {
-	return func(p *Pipeline) {
-		p.Loaders = append(p.Loaders, loaders...)
-	}
+// WithUnitLoaders configures the UnitLoader of a Pipeline instance.
+func (b PipelineBuilder) WithUnitLoaders(loaders ...UnitLoader) PipelineBuilder {
+	b.UnitLoaders = loaders
+	return b
 }
 
-// WithProcessors configures the UnitProcess of a Pipeline instance.
-func WithProcessors(processors ...UnitProcessor) PipelineOption {
-	return func(p *Pipeline) {
-		p.Processors = append(p.Processors, processors...)
-	}
+// WithUnitProcessors configures the UnitProcess of a Pipeline instance.
+func (b PipelineBuilder) WithUnitProcessors(processors ...UnitProcessor) PipelineBuilder {
+	b.UnitProcessors = processors
+	return b
 }
 
 // WithArtifactProcessors configures the ArtifactProcessor of a Pipeline instance.
-func WithArtifactProcessors(processors ...ArtifactProcessor) PipelineOption {
-	return func(p *Pipeline) {
-		p.ArtifactProcessors = append(p.ArtifactProcessors, processors...)
-	}
-}
-
-// WithTimeProvider configures the TimeProvider of a Pipeline instance.
-func WithTimeProvider(tp TimeProvider) PipelineOption {
-	return func(p *Pipeline) {
-		p.TimeProvider = tp
-	}
+func (b PipelineBuilder) WithArtifactProcessors(processors ...ArtifactProcessor) PipelineBuilder {
+	b.ArtifactProcessors = processors
+	return b
 }
 
 // WithArtifactRegistry configures the ArtifactRegistry of a Pipeline instance.
-func WithArtifactRegistry(r ArtifactRegistry) PipelineOption {
-	return func(p *Pipeline) {
-		p.ArtifactRegistry = r
+func (b PipelineBuilder) WithArtifactRegistry(r ArtifactRegistry) PipelineBuilder {
+	b.ArtifactRegistry = r
+	return b
+}
+
+func (b PipelineBuilder) WithSourceLoadingStageHooks(h SourceLoadingStageHooks) PipelineBuilder {
+	b.SourceLoadingStageHooks = h
+	return b
+}
+
+func (b PipelineBuilder) WithUnitLoadingStageHooks(h UnitLoadingStageHooks) PipelineBuilder {
+	b.UnitLoadingStageHooks = h
+	return b
+}
+
+func (b PipelineBuilder) WithUnitProcessingStageHooks(h UnitProcessingStageHooks) PipelineBuilder {
+	b.UnitProcessingStageHooks = h
+	return b
+}
+
+func (b PipelineBuilder) WithArtifactProcessingStageHooks(h ArtifactProcessingStageHooks) PipelineBuilder {
+	b.ArtifactProcessingStageHooks = h
+	return b
+}
+
+func (b PipelineBuilder) Build() Pipeline {
+	return DefaultPipeline{
+		TimeProvider: CurrentTimeProvider,
+		SourceLoadingStage: sourceLoadingStage{
+			SourceLoaders: b.SourceLoaders,
+			Hooks:         b.SourceLoadingStageHooks,
+		},
+		UnitLoadingStage: unitLoadingStage{
+			Loaders: b.UnitLoaders,
+			Hooks:   b.UnitLoadingStageHooks,
+		},
+		UnitProcessingStage: unitProcessingStage{
+			Processors: b.UnitProcessors,
+			Hooks:      b.UnitProcessingStageHooks,
+		},
+		ArtifactProcessingStage: artifactProcessingStage{
+			Registry:   b.ArtifactRegistry,
+			Processors: b.ArtifactProcessors,
+			Hooks:      b.ArtifactProcessingStageHooks,
+		},
 	}
 }
 
-// DEFAULTS PIPELINE OPTIONS
-
-func WithDefaultLogger() PipelineOption {
-	return WithLogger(NewDefaultLogger(DefaultLoggerConfig{DisableColors: false, Writer: os.Stdout}))
-}
-
-func WithJSONArtifactRegistry(fileName string, fs FileSystem) PipelineOption {
-	return WithArtifactRegistry(NewJSONArtifactRegistry(fileName, fs))
+func (b PipelineBuilder) WithJSONArtifactRegistry(fileName string, fs FileSystem) PipelineBuilder {
+	return b.WithArtifactRegistry(NewJSONArtifactRegistry(fileName, fs))
 }
 
 // Loaders
@@ -104,14 +131,24 @@ func NewLocalFileSourceLoader() *FileSystemSourceLoader {
 	return NewFileSystemSourceLoader(LocalFileSystem{})
 }
 
-// ARTIFACT REGISTRIES
+// UNIT PROCESSING
+
+func NewUnitProcessorFunc(name string, processFunc func(ctx UnitProcessingContext) ([]Artifact, error)) UnitProcessor {
+	return &UnitProcessorFunc{name: name, processFunc: processFunc}
+}
+
+// ARTIFACT PROCESSING
+
+func NewArtifactProcessorFunc(name string, processFunc func(ctx ArtifactProcessingContext) error) ArtifactProcessor {
+	return &ArtifactProcessorFunc{name: name, processFunc: processFunc}
+}
 
 // NewJSONArtifactRegistry returns a new artifact file registry.
 func NewJSONArtifactRegistry(fileName string, fs FileSystem) *JSONArtifactRegistry {
 	return &JSONArtifactRegistry{
 		InMemoryArtifactRegistry: &InMemoryArtifactRegistry{},
 		FilePath:                 fileName,
-		TimeProvider:             CurrentTimeProvider(),
+		TimeProvider:             CurrentTimeProvider,
 		FileSystem:               fs,
 	}
 }

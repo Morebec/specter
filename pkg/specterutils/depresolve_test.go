@@ -21,21 +21,20 @@ import (
 	"github.com/morebec/specter/pkg/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"os"
 	"testing"
 )
 
 // MockDependencyProvider is a mock implementation of DependencyProvider for testing.
 type MockDependencyProvider struct {
 	supportFunc func(specter.Unit) bool
-	provideFunc func(specter.Unit) []specter.UnitName
+	provideFunc func(specter.Unit) []specter.UnitID
 }
 
 func (m *MockDependencyProvider) Supports(u specter.Unit) bool {
 	return m.supportFunc(u)
 }
 
-func (m *MockDependencyProvider) Provide(u specter.Unit) []specter.UnitName {
+func (m *MockDependencyProvider) Provide(u specter.Unit) []specter.UnitID {
 	return m.provideFunc(u)
 }
 
@@ -69,17 +68,17 @@ func TestDependencyResolutionProcessor_Process(t *testing.T) {
 						supportFunc: func(_ specter.Unit) bool {
 							return false
 						},
-						provideFunc: func(_ specter.Unit) []specter.UnitName {
+						provideFunc: func(_ specter.Unit) []specter.UnitID {
 							return nil
 						},
 					},
 					&MockDependencyProvider{
 						supportFunc: func(u specter.Unit) bool {
-							return u.Type() == "type"
+							return u.Kind() == "type"
 						},
-						provideFunc: func(u specter.Unit) []specter.UnitName {
-							if u.Name() == "unit1" {
-								return []specter.UnitName{"unit2"}
+						provideFunc: func(u specter.Unit) []specter.UnitID {
+							if u.ID() == "unit1" {
+								return []specter.UnitID{"unit2"}
 							}
 							return nil
 						},
@@ -102,13 +101,13 @@ func TestDependencyResolutionProcessor_Process(t *testing.T) {
 				providers: []specterutils.DependencyProvider{
 					&MockDependencyProvider{
 						supportFunc: func(u specter.Unit) bool {
-							return u.Type() == "type"
+							return u.Kind() == "type"
 						},
-						provideFunc: func(u specter.Unit) []specter.UnitName {
-							if u.Name() == "unit1" {
-								return []specter.UnitName{"unit2"}
-							} else if u.Name() == "unit2" {
-								return []specter.UnitName{"unit1"}
+						provideFunc: func(u specter.Unit) []specter.UnitID {
+							if u.ID() == "unit1" {
+								return []specter.UnitID{"unit2"}
+							} else if u.ID() == "unit2" {
+								return []specter.UnitID{"unit1"}
 							}
 							return nil
 						},
@@ -128,10 +127,10 @@ func TestDependencyResolutionProcessor_Process(t *testing.T) {
 				providers: []specterutils.DependencyProvider{
 					&MockDependencyProvider{
 						supportFunc: func(u specter.Unit) bool {
-							return u.Type() == "type"
+							return u.Kind() == "type"
 						},
-						provideFunc: func(u specter.Unit) []specter.UnitName {
-							return []specter.UnitName{"spec3"}
+						provideFunc: func(u specter.Unit) []specter.UnitID {
+							return []specter.UnitID{"spec3"}
 						},
 					},
 				},
@@ -141,19 +140,15 @@ func TestDependencyResolutionProcessor_Process(t *testing.T) {
 				},
 			},
 			then:          nil,
-			expectedError: errors.NewWithMessage(errors.InternalErrorCode, "depends on an unresolved type \"spec3\""),
+			expectedError: errors.NewWithMessage(specterutils.DependencyResolutionFailed, "depends on an unresolved kind \"spec3\""),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			processor := specterutils.NewDependencyResolutionProcessor(tt.given.providers...)
 
-			ctx := specter.ProcessingContext{
+			ctx := specter.UnitProcessingContext{
 				Units: tt.given.units,
-				Logger: specter.NewDefaultLogger(specter.DefaultLoggerConfig{
-					DisableColors: true,
-					Writer:        os.Stdout,
-				}),
 			}
 
 			var err error
@@ -176,12 +171,12 @@ func TestDependencyResolutionProcessor_Process(t *testing.T) {
 func TestGetResolvedDependenciesFromContext(t *testing.T) {
 	tests := []struct {
 		name  string
-		given specter.ProcessingContext
+		given specter.UnitProcessingContext
 		want  specterutils.ResolvedDependencies
 	}{
 		{
 			name: "GIVEN a context with resolved dependencies THEN return resolved dependencies",
-			given: specter.ProcessingContext{
+			given: specter.UnitProcessingContext{
 				Artifacts: []specter.Artifact{
 					specterutils.ResolvedDependencies{
 						specterutils.NewGenericUnit("name", "type", specter.Source{}),
@@ -194,7 +189,7 @@ func TestGetResolvedDependenciesFromContext(t *testing.T) {
 		},
 		{
 			name: "GIVEN a context with resolved dependencies with wrong type THEN return nil",
-			given: specter.ProcessingContext{
+			given: specter.UnitProcessingContext{
 				Artifacts: []specter.Artifact{
 					testutils.NewArtifactStub(specterutils.ResolvedDependenciesArtifactID),
 				},
@@ -203,7 +198,7 @@ func TestGetResolvedDependenciesFromContext(t *testing.T) {
 		},
 		{
 			name:  "GIVEN a context without resolved dependencies THEN return nil",
-			given: specter.ProcessingContext{},
+			given: specter.UnitProcessingContext{},
 			want:  nil,
 		},
 	}
@@ -222,14 +217,14 @@ func TestDependencyResolutionProcessor_Name(t *testing.T) {
 
 type hasDependencyUnit struct {
 	source       specter.Source
-	dependencies []specter.UnitName
+	dependencies []specter.UnitID
 }
 
-func (h *hasDependencyUnit) Name() specter.UnitName {
+func (h *hasDependencyUnit) ID() specter.UnitID {
 	return "unit"
 }
 
-func (h *hasDependencyUnit) Type() specter.UnitType {
+func (h *hasDependencyUnit) Kind() specter.UnitKind {
 	return "unit"
 }
 
@@ -241,11 +236,7 @@ func (h *hasDependencyUnit) Source() specter.Source {
 	return h.source
 }
 
-func (h *hasDependencyUnit) SetSource(s specter.Source) {
-	h.source = s
-}
-
-func (h *hasDependencyUnit) Dependencies() []specter.UnitName {
+func (h *hasDependencyUnit) Dependencies() []specter.UnitID {
 	return h.dependencies
 }
 
@@ -278,7 +269,7 @@ func TestHasDependenciesProvider_Provide(t *testing.T) {
 	tests := []struct {
 		name  string
 		given specter.Unit
-		then  []specter.UnitName
+		then  []specter.UnitID
 	}{
 		{
 			name:  "GIVEN unit not implementing HasDependencies THEN return nil",
@@ -287,8 +278,8 @@ func TestHasDependenciesProvider_Provide(t *testing.T) {
 		},
 		{
 			name:  "GIVEN unit implementing HasDependencies THEN return dependencies",
-			given: &hasDependencyUnit{dependencies: []specter.UnitName{"unit1"}},
-			then:  []specter.UnitName{"unit1"},
+			given: &hasDependencyUnit{dependencies: []specter.UnitID{"unit1"}},
+			then:  []specter.UnitID{"unit1"},
 		},
 	}
 	for _, tt := range tests {

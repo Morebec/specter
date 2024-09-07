@@ -23,18 +23,14 @@ import (
 // GenericUnit is a generic implementation of a Unit that saves its attributes in a list of attributes for introspection.
 // these can be useful for loaders that are looser in what they allow.
 type GenericUnit struct {
-	UnitName   specter.UnitName
-	typ        specter.UnitType
+	UnitID     specter.UnitID
+	typ        specter.UnitKind
 	source     specter.Source
 	Attributes []GenericUnitAttribute
 }
 
-func NewGenericUnit(name specter.UnitName, typ specter.UnitType, source specter.Source) *GenericUnit {
-	return &GenericUnit{UnitName: name, typ: typ, source: source}
-}
-
-func (u *GenericUnit) SetSource(src specter.Source) {
-	u.source = src
+func NewGenericUnit(name specter.UnitID, typ specter.UnitKind, source specter.Source) *GenericUnit {
+	return &GenericUnit{UnitID: name, typ: typ, source: source}
 }
 
 func (u *GenericUnit) Description() string {
@@ -46,11 +42,11 @@ func (u *GenericUnit) Description() string {
 	return attr.Value.String()
 }
 
-func (u *GenericUnit) Name() specter.UnitName {
-	return u.UnitName
+func (u *GenericUnit) ID() specter.UnitID {
+	return u.UnitID
 }
 
-func (u *GenericUnit) Type() specter.UnitType {
+func (u *GenericUnit) Kind() specter.UnitKind {
 	return u.typ
 }
 
@@ -58,7 +54,7 @@ func (u *GenericUnit) Source() specter.Source {
 	return u.source
 }
 
-// Attribute returns an attribute by its FilePath or nil if it was not found.
+// Attribute returns an attribute by its name or nil if it was not found.
 func (u *GenericUnit) Attribute(name string) *GenericUnitAttribute {
 	for _, a := range u.Attributes {
 		if a.Name == name {
@@ -81,11 +77,6 @@ func (u *GenericUnit) HasAttribute(name string) bool {
 
 // AttributeType represents the type of attribute
 type AttributeType string
-
-const (
-	// Unknown is used for attributes where the actual type is unknown.
-	Unknown = "any"
-)
 
 // GenericUnitAttribute represents an attribute of a unit.
 // It relies on cty.Value to represent the loaded value.
@@ -123,5 +114,5 @@ type ObjectValue struct {
 }
 
 func (o ObjectValue) String() string {
-	return fmt.Sprintf("ObjectValue{Type: %s, Attributes: %v}", o.Type, o.Attributes)
+	return fmt.Sprintf("ObjectValue{Kind: %s, Attributes: %v}", o.Type, o.Attributes)
 }

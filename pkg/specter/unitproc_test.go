@@ -16,6 +16,7 @@ package specter_test
 
 import (
 	"github.com/morebec/specter/pkg/specter"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
@@ -67,7 +68,7 @@ func TestProcessorArtifactRegistry_FindByID(t *testing.T) {
 
 func TestGetContextArtifact(t *testing.T) {
 	type when struct {
-		ctx specter.ProcessingContext
+		ctx specter.UnitProcessingContext
 		id  specter.ArtifactID
 	}
 	type then[T specter.Artifact] struct {
@@ -82,7 +83,7 @@ func TestGetContextArtifact(t *testing.T) {
 		{
 			name: "GIVEN no artifact matches THEN return nil",
 			when: when{
-				ctx: specter.ProcessingContext{},
+				ctx: specter.UnitProcessingContext{},
 				id:  "not_found",
 			},
 			then: then[*specter.FileArtifact]{
@@ -92,7 +93,7 @@ func TestGetContextArtifact(t *testing.T) {
 		{
 			name: "GIVEN artifact matches THEN return artifact",
 			when: when{
-				ctx: specter.ProcessingContext{
+				ctx: specter.UnitProcessingContext{
 					Artifacts: []specter.Artifact{
 						&specter.FileArtifact{Path: "/path/to/file"},
 					},
@@ -110,4 +111,25 @@ func TestGetContextArtifact(t *testing.T) {
 			require.Equal(t, tt.then.artifact, actualArtifact)
 		})
 	}
+}
+
+func TestUnitProcessorFunc(t *testing.T) {
+	t.Run("Name should be set", func(t *testing.T) {
+		a := specter.NewUnitProcessorFunc("name", func(ctx specter.UnitProcessingContext) ([]specter.Artifact, error) {
+			return nil, nil
+		})
+		require.Equal(t, "name", a.Name())
+	})
+
+	t.Run("Process should be called", func(t *testing.T) {
+		called := false
+		a := specter.NewUnitProcessorFunc("name", func(ctx specter.UnitProcessingContext) ([]specter.Artifact, error) {
+			called = true
+			return nil, assert.AnError
+		})
+
+		_, err := a.Process(specter.UnitProcessingContext{})
+		require.Error(t, err)
+		require.True(t, called)
+	})
 }

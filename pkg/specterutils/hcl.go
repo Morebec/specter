@@ -100,15 +100,15 @@ func (l HCLGenericUnitLoader) Load(s specter.Source) ([]specter.Unit, error) {
 			//		u.Location,
 			//		block.Range().Start.Line,
 			//		block.Range().Start.Column,
-			//		block.Type,
+			//		block.Kind,
 			//	),
 			//)
 		}
 
 		// Create unit and add to list
 		units = append(units, &GenericUnit{
-			UnitName:   specter.UnitName(block.Labels[0]),
-			typ:        specter.UnitType(block.Type),
+			UnitID:     specter.UnitID(block.Labels[0]),
+			typ:        specter.UnitKind(block.Type),
 			source:     s,
 			Attributes: specAttributes,
 		})
@@ -172,7 +172,7 @@ type HCLUnitLoaderFileConfigurationProvider func() HCLFileConfig
 
 // HCLFileConfig interface that is to be implemented to define the structure of HCL unit files.
 type HCLFileConfig interface {
-	Units() []specter.Unit
+	Units(specter.Source) []specter.Unit
 }
 
 // HCLVariableConfig represents a block configuration that allows defining variables.
@@ -221,7 +221,7 @@ func (l HCLUnitLoader) Load(s specter.Source) ([]specter.Unit, error) {
 	//
 	//body := parsedFile.Body.(*hclsyntax.Body)
 	//for _, b := range body.Blocks {
-	//	if b.Type == "const" {
+	//	if b.Kind == "const" {
 	//		v, d := b.Body.Attributes["value"].Expr.Value(ctx)
 	//		if d != nil && d.HasErrors() {
 	//			diags = append(diags, d...)
@@ -243,12 +243,7 @@ func (l HCLUnitLoader) Load(s specter.Source) ([]specter.Unit, error) {
 		return nil, errors.Wrap(err, InvalidHCLErrorCode)
 	}
 
-	// Set source for all units
-	units := fileConf.Units()
-	for _, sp := range units {
-		sp.SetSource(s)
-	}
-	return units, nil
+	return fileConf.Units(s), nil
 }
 
 func (l HCLUnitLoader) SupportsSource(s specter.Source) bool {

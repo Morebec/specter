@@ -183,3 +183,33 @@ func TestLocalFileSourceLoader_Load(t *testing.T) {
 		})
 	}
 }
+
+func TestFunctionalSourceLoader_Supports(t *testing.T) {
+	t.Run("Supports is called", func(t *testing.T) {
+		called := false
+		l := specter.FunctionalSourceLoader{
+			SupportsFunc: func(location string) bool {
+				called = true
+				return true
+			},
+		}
+		got := l.Supports("")
+		require.True(t, called)
+		require.True(t, got)
+	})
+
+	t.Run("Supports is called", func(t *testing.T) {
+		called := false
+		l := specter.FunctionalSourceLoader{
+			LoadFunc: func(location string) ([]specter.Source, error) {
+				called = true
+				return nil, nil
+			},
+		}
+		load, err := l.Load("")
+
+		require.True(t, called)
+		require.NoError(t, err)
+		require.Nil(t, load)
+	})
+}

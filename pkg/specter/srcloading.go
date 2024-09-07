@@ -51,8 +51,6 @@ type SourceLoader interface {
 	Load(location string) ([]Source, error)
 }
 
-var _ SourceLoader = FileSystemSourceLoader{}
-
 // FileSystemSourceLoader is an implementation of a SourceLoader that loads files from a FileSystem.
 type FileSystemSourceLoader struct {
 	fs FileSystem
@@ -152,4 +150,17 @@ func (l FileSystemSourceLoader) loadFile(filePath string) ([]Source, error) {
 			Format:   format,
 		},
 	}, nil
+}
+
+type FunctionalSourceLoader struct {
+	SupportsFunc func(location string) bool
+	LoadFunc     func(location string) ([]Source, error)
+}
+
+func (f FunctionalSourceLoader) Supports(location string) bool {
+	return f.SupportsFunc(location)
+}
+
+func (f FunctionalSourceLoader) Load(location string) ([]Source, error) {
+	return f.LoadFunc(location)
 }
