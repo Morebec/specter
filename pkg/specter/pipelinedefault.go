@@ -262,43 +262,56 @@ func (s unitLoadingStage) Run(ctx PipelineContext, sources []Source) ([]Unit, er
 		return nil, err
 	}
 
-	errs := errors.NewGroup(errors.InternalErrorCode)
-	for _, src := range sources {
-		if err := ctx.Err(); err != nil {
-			return nil, s.handleError(ctx, err)
-		}
-
-		if err := s.Hooks.BeforeSource(ctx, src); err != nil {
-			return nil, err
-		}
-
-		for _, l := range s.Loaders {
-			if !l.SupportsSource(src) {
-				continue
-			}
-
-			loadedUnits, err := l.Load(src)
-			if err != nil {
-				errs = errs.Append(err)
-				continue
-			}
-			ctx.Units = append(ctx.Units, loadedUnits...)
-		}
-
-		if err := s.Hooks.AfterSource(ctx, src); err != nil {
-			return nil, err
-		}
+	units, err := s.run(ctx, sources)
+	if err != nil {
+		return units, s.Hooks.OnError(ctx, errors.WrapWithMessage(err, UnitLoadingFailedErrorCode, "failed to load units"))
 	}
 
 	if err := s.Hooks.After(ctx); err != nil {
 		return nil, err
 	}
 
-	return ctx.Units, s.handleError(ctx, errors.GroupOrNil(errs))
+	return units, nil
 }
 
-func (s unitLoadingStage) handleError(ctx PipelineContext, err error) error {
-	return s.Hooks.OnError(ctx, err)
+func (s unitLoadingStage) run(ctx PipelineContext, sources []Source) ([]Unit, error) {
+	var units []Unit
+	for _, src := range sources {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+
+		if err := s.Hooks.BeforeSource(ctx, src); err != nil {
+			return nil, err
+		}
+
+		uns, err := s.runLoader(src)
+		if err != nil {
+			return nil, err
+		}
+		units = append(units, uns...)
+
+		if err := s.Hooks.AfterSource(ctx, src); err != nil {
+			return nil, err
+		}
+	}
+	return units, nil
+}
+
+func (s unitLoadingStage) runLoader(src Source) ([]Unit, error) {
+	var units []Unit
+	for _, l := range s.Loaders {
+		if !l.SupportsSource(src) {
+			continue
+		}
+
+		loadedUnits, err := l.Load(src)
+		if err != nil {
+			return nil, err
+		}
+		units = append(units, loadedUnits...)
+	}
+	return units, nil
 }
 
 type unitProcessingStage struct {

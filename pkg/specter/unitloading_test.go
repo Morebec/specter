@@ -375,3 +375,30 @@ func TestUnitWithIDsMatcher(t *testing.T) {
 		})
 	}
 }
+
+func TestFunctionalUnitLoader(t *testing.T) {
+	t.Run("functions should be called", func(t *testing.T) {
+		expectedSource := specter.Source{
+			Location: "/path/to/file",
+		}
+		expectedUnits := []specter.Unit{
+			specter.UnitOf(0, "", "", expectedSource),
+		}
+
+		f := specter.FunctionalUnitLoader{
+			LoadFunc: func(s specter.Source) ([]specter.Unit, error) {
+				assert.Equal(t, expectedSource, s)
+				return expectedUnits, nil
+			},
+			SupportsSourceFunc: func(s specter.Source) bool {
+				assert.Equal(t, expectedSource, s)
+				return true
+			},
+		}
+		assert.True(t, f.SupportsSource(expectedSource))
+
+		units, err := f.Load(expectedSource)
+		require.NoError(t, err)
+		assert.Equal(t, expectedUnits, units)
+	})
+}

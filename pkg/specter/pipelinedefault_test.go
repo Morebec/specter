@@ -443,6 +443,132 @@ func Test_sourceLoadingStage_Run(t *testing.T) {
 		assert.False(t, recorder.afterSourceLocationCalled)
 		assert.False(t, recorder.afterCalled)
 	})
+
+	t.Run("should return the loaded sources", func(t *testing.T) {
+		locations := []string{"/path/to/file"}
+		expectedSources := []specter.Source{
+			{
+				Location: "/path/to/file/0",
+			},
+			{
+				Location: "/path/to/file/1",
+			},
+		}
+		stage := specter.DefaultSourceLoadingStage{
+			SourceLoaders: []specter.SourceLoader{
+				specter.FunctionalSourceLoader{
+					SupportsFunc: func(location string) bool { return true },
+					LoadFunc: func(location string) ([]specter.Source, error) {
+						return []specter.Source{expectedSources[0]}, nil
+					},
+				},
+				specter.FunctionalSourceLoader{
+					SupportsFunc: func(location string) bool { return true },
+					LoadFunc: func(location string) ([]specter.Source, error) {
+						return []specter.Source{expectedSources[1]}, nil
+					},
+				},
+			},
+		}
+
+		sources, err := stage.Run(specter.PipelineContext{Context: context.Background()}, locations)
+
+		require.NoError(t, err)
+		require.Equal(t, expectedSources, sources)
+	})
+}
+
+func Test_unitLoadingStage_Run(t *testing.T) {
+	t.Run("should call all hooks under normal processing", func(t *testing.T) {
+		recorder := unitLoadingStageHooksCallRecorder{}
+
+		stage := specter.DefaultUnitLoadingStage{
+			Loaders: []specter.UnitLoader{
+				specter.FunctionalUnitLoader{
+					LoadFunc: func(s specter.Source) ([]specter.Unit, error) {
+						return nil, nil
+					},
+					SupportsSourceFunc: func(s specter.Source) bool {
+						return true
+					}},
+			},
+			Hooks: &recorder,
+		}
+
+		units, err := stage.Run(
+			specter.PipelineContext{Context: context.Background()},
+			[]specter.Source{
+				{Location: "/path/to/file"},
+			},
+		)
+		require.NoError(t, err)
+		require.Nil(t, units)
+
+		assert.True(t, recorder.beforeCalled)
+		assert.True(t, recorder.beforeSourceCalled)
+		assert.True(t, recorder.afterSourceCalled)
+		assert.True(t, recorder.afterCalled)
+	})
+
+	t.Run("should call hooks until error", func(t *testing.T) {
+		recorder := unitLoadingStageHooksCallRecorder{}
+
+		stage := specter.DefaultUnitLoadingStage{
+			Loaders: []specter.UnitLoader{
+				specter.FunctionalUnitLoader{
+					LoadFunc: func(s specter.Source) ([]specter.Unit, error) {
+						return nil, assert.AnError
+					},
+					SupportsSourceFunc: func(s specter.Source) bool {
+						return true
+					}},
+			},
+			Hooks: &recorder,
+		}
+		units, err := stage.Run(
+			specter.PipelineContext{Context: context.Background()},
+			[]specter.Source{
+				{Location: "/path/to/file"},
+			},
+		)
+		require.Error(t, err)
+		require.Nil(t, units)
+
+		assert.True(t, recorder.beforeCalled)
+		assert.True(t, recorder.beforeSourceCalled)
+		assert.True(t, recorder.onErrorCalled)
+		assert.False(t, recorder.afterSourceCalled)
+		assert.False(t, recorder.afterCalled)
+	})
+
+	t.Run("should return the loaded units", func(t *testing.T) {
+
+		expectedUnits := []specter.Unit{
+			testutils.NewUnitStub("", "", specter.Source{}),
+			testutils.NewUnitStub("", "", specter.Source{}),
+		}
+		stage := specter.DefaultUnitLoadingStage{
+			Loaders: []specter.UnitLoader{
+				specter.FunctionalUnitLoader{
+					LoadFunc: func(s specter.Source) ([]specter.Unit, error) {
+						return expectedUnits, nil
+					},
+					SupportsSourceFunc: func(s specter.Source) bool {
+						return true
+					}},
+			},
+		}
+
+		units, err := stage.Run(
+			specter.PipelineContext{Context: context.Background()},
+			[]specter.Source{
+				{Location: "/path/to/file"},
+			},
+		)
+
+		require.NoError(t, err)
+		require.Equal(t, expectedUnits, units)
+	})
 }
 
 func Test_unitProcessingStage_Run(t *testing.T) {
@@ -490,6 +616,33 @@ func Test_unitProcessingStage_Run(t *testing.T) {
 		assert.False(t, recorder.afterProcessorCalled)
 		assert.False(t, recorder.afterCalled)
 	})
+
+	t.Run("should return artifacts of processors", func(t *testing.T) {
+		expectedArtifacts := []specter.Artifact{
+			&specter.FileArtifact{
+				Path: "/path/to/file/0",
+			},
+			&specter.FileArtifact{
+				Path: "/path/to/file/1",
+			},
+		}
+		stage := specter.DefaultUnitProcessingStage{
+			Processors: []specter.UnitProcessor{
+				specter.NewUnitProcessorFunc("", func(specter.UnitProcessingContext) ([]specter.Artifact, error) {
+					return []specter.Artifact{expectedArtifacts[0]}, nil
+				}),
+				specter.NewUnitProcessorFunc("", func(specter.UnitProcessingContext) ([]specter.Artifact, error) {
+					return []specter.Artifact{expectedArtifacts[1]}, nil
+				}),
+			},
+		}
+		artifacts, err := stage.Run(specter.PipelineContext{Context: context.Background()}, []specter.Unit{
+			testutils.NewUnitStub("", "", specter.Source{}),
+		})
+		require.NoError(t, err)
+
+		require.Equal(t, expectedArtifacts, artifacts)
+	})
 }
 
 func Test_artifactProcessingStage_Run(t *testing.T) {
@@ -535,6 +688,27 @@ func Test_artifactProcessingStage_Run(t *testing.T) {
 		assert.False(t, recorder.afterProcessorCalled)
 		assert.False(t, recorder.afterCalled)
 	})
+
+	t.Run("should process artifacts", func(t *testing.T) {
+		expectedArtifacts := []specter.Artifact{
+			&specter.FileArtifact{
+				Path: "/path/to/file/0",
+			},
+			&specter.FileArtifact{
+				Path: "/path/to/file/1",
+			},
+		}
+		stage := specter.DefaultArtifactProcessingStage{
+			Processors: []specter.ArtifactProcessor{
+				specter.NewArtifactProcessorFunc("", func(ctx specter.ArtifactProcessingContext) error {
+					assert.Equal(t, expectedArtifacts, ctx.Artifacts)
+					return nil
+				}),
+			},
+		}
+		err := stage.Run(specter.PipelineContext{Context: context.Background()}, expectedArtifacts)
+		require.NoError(t, err)
+	})
 }
 
 type FailingSourceLoadingStage struct{}
@@ -559,6 +733,39 @@ type FailingArtifactProcessingStage struct{}
 
 func (f FailingArtifactProcessingStage) Run(specter.PipelineContext, []specter.Artifact) error {
 	return assert.AnError
+}
+
+type unitLoadingStageHooksCallRecorder struct {
+	beforeCalled       bool
+	afterCalled        bool
+	beforeSourceCalled bool
+	afterSourceCalled  bool
+	onErrorCalled      bool
+}
+
+func (u *unitLoadingStageHooksCallRecorder) Before(specter.PipelineContext) error {
+	u.beforeCalled = true
+	return nil
+}
+
+func (u *unitLoadingStageHooksCallRecorder) After(specter.PipelineContext) error {
+	u.afterCalled = true
+	return nil
+}
+
+func (u *unitLoadingStageHooksCallRecorder) BeforeSource(specter.PipelineContext, specter.Source) error {
+	u.beforeSourceCalled = true
+	return nil
+}
+
+func (u *unitLoadingStageHooksCallRecorder) AfterSource(specter.PipelineContext, specter.Source) error {
+	u.afterSourceCalled = true
+	return nil
+}
+
+func (u *unitLoadingStageHooksCallRecorder) OnError(_ specter.PipelineContext, err error) error {
+	u.onErrorCalled = true
+	return err
 }
 
 type sourceLoadingStageHooksCallRecorder struct {
