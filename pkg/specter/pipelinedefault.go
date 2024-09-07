@@ -222,7 +222,7 @@ func (s sourceLoadingStage) processSourceLocation(ctx PipelineContext, sl string
 		if err != nil {
 			return nil, err
 		}
-		ctx.Sources = append(ctx.Sources, loadedSources...)
+		sources = append(sources, loadedSources...)
 	}
 	return sources, nil
 }
