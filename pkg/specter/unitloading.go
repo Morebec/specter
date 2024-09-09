@@ -185,15 +185,21 @@ func MapUnitGroup[T any](g UnitGroup, p func(u Unit) T) []T {
 	return mapped
 }
 
-type FunctionalUnitLoader struct {
+type UnitLoaderAdapter struct {
 	LoadFunc           func(s Source) ([]Unit, error)
 	SupportsSourceFunc func(s Source) bool
 }
 
-func (u FunctionalUnitLoader) Load(s Source) ([]Unit, error) {
-	return u.LoadFunc(s)
+func (u UnitLoaderAdapter) Load(s Source) ([]Unit, error) {
+	if u.LoadFunc != nil {
+		return u.LoadFunc(s)
+	}
+	return nil, nil
 }
 
-func (u FunctionalUnitLoader) SupportsSource(s Source) bool {
-	return u.SupportsSourceFunc(s)
+func (u UnitLoaderAdapter) SupportsSource(s Source) bool {
+	if u.SupportsSourceFunc != nil {
+		return u.SupportsSourceFunc(s)
+	}
+	return false
 }

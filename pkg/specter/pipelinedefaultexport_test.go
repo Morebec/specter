@@ -16,5 +16,6 @@ package specter
 
 type DefaultSourceLoadingStage = sourceLoadingStage
 type DefaultUnitLoadingStage = unitLoadingStage
+type DefaultUnitPreprocessingStage = unitPreprocessingStage
 type DefaultUnitProcessingStage = unitProcessingStage
 type DefaultArtifactProcessingStage = artifactProcessingStage
