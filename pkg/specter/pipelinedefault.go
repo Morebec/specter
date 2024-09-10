@@ -56,36 +56,36 @@ func (p DefaultPipeline) Run(ctx context.Context, runMode RunMode, sourceLocatio
 	return result, err
 }
 
-func (p DefaultPipeline) run(pctx *PipelineContext, sourceLocations []string, runMode RunMode) error {
-	if err := p.runSourceLoadingStage(pctx, sourceLocations); err != nil {
+func (p DefaultPipeline) run(ctx *PipelineContext, sourceLocations []string, runMode RunMode) error {
+	if err := p.runSourceLoadingStage(ctx, sourceLocations); err != nil {
 		return err
 	}
 	if runMode == StopAfterSourceLoadingStage {
 		return nil
 	}
 
-	if err := p.runUnitLoadingStage(pctx); err != nil {
+	if err := p.runUnitLoadingStage(ctx); err != nil {
 		return err
 	}
 	if runMode == StopAfterUnitLoadingStage {
 		return nil
 	}
 
-	if err := p.runUnitPreprocessingStage(pctx); err != nil {
+	if err := p.runUnitPreprocessingStage(ctx); err != nil {
 		return err
 	}
 	if runMode == StopAfterPreprocessingStage {
 		return nil
 	}
 
-	if err := p.runUnitProcessingStage(pctx); err != nil {
+	if err := p.runUnitProcessingStage(ctx); err != nil {
 		return err
 	}
 	if runMode == StopAfterUnitProcessingStage {
 		return nil
 	}
 
-	if err := p.runArtifactProcessingStage(pctx); err != nil {
+	if err := p.runArtifactProcessingStage(ctx); err != nil {
 		return err
 	}
 	return nil
@@ -365,8 +365,6 @@ func (s unitPreprocessingStage) run(ctx PipelineContext, units []Unit) ([]Unit, 
 		if err != nil {
 			return nil, fmt.Errorf("preprocessor %q returned an error: %w", p.Name(), err)
 		}
-
-		units = append(ctx.Units, units...)
 		ctx.Units = units
 
 		if err := s.Hooks.AfterPreprocessor(ctx, p.Name()); err != nil {
