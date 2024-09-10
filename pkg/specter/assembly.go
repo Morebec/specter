@@ -33,15 +33,7 @@ type PipelineBuilder struct {
 
 // NewPipeline creates a new instance of a *Pipeline using the provided options.
 func NewPipeline() PipelineBuilder {
-	return PipelineBuilder{
-		pipeline: &DefaultPipeline{
-			TimeProvider:            CurrentTimeProvider,
-			SourceLoadingStage:      sourceLoadingStage{},
-			UnitLoadingStage:        unitLoadingStage{},
-			UnitProcessingStage:     unitProcessingStage{},
-			ArtifactProcessingStage: artifactProcessingStage{},
-		},
-	}
+	return PipelineBuilder{}
 }
 
 // WithSourceLoaders configures the SourceLoader of a Pipeline instance.
