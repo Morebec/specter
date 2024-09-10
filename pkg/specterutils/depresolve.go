@@ -25,6 +25,10 @@ const DependencyResolutionFailed = "specter.dependency_resolution_failed"
 
 const ResolvedDependenciesArtifactID = "_resolved_dependencies"
 
+func GetResolvedDependenciesFromContext(ctx specter.UnitProcessingContext) ResolvedDependencies {
+	return specter.GetContextArtifact[ResolvedDependencies](ctx, ResolvedDependenciesArtifactID)
+}
+
 // ResolvedDependencies represents an ordered list of Unit that should be
 // processed in that specific order based on their dependencies.
 type ResolvedDependencies specter.UnitGroup
@@ -40,6 +44,11 @@ type DependencyProvider interface {
 
 var _ specter.UnitProcessor = DependencyResolutionProcessor{}
 
+// DependencyResolutionProcessor is both a specter.UnitPreprocessor and a specter.UnitProcessor that resolves the dependencies
+// of units based on specific DependencyProvider.
+// When used as a specter.UnitPreprocessor units will be topologically sorted as a result in the pipeline.
+// When used as a specter.UnitProcessor the ResolvedDependencies will be available as a specter.Artifact under the key ResolvedDependenciesArtifactID.
+// A helper function GetResolvedDependenciesFromContext can be used in other processors to get access to the artifacts.
 type DependencyResolutionProcessor struct {
 	providers []DependencyProvider
 }
@@ -52,15 +61,31 @@ func (p DependencyResolutionProcessor) Name() string {
 	return "dependency_resolution_processor"
 }
 
+func (p DependencyResolutionProcessor) Preprocess(context specter.PipelineContext, units []specter.Unit) ([]specter.Unit, error) {
+	deps, err := p.resolveDependencies(units)
+	if err != nil {
+		return nil, err
+	}
+	return deps, nil
+}
+
 func (p DependencyResolutionProcessor) Process(ctx specter.UnitProcessingContext) ([]specter.Artifact, error) {
+	deps, err := p.resolveDependencies(ctx.Units)
+	if err != nil {
+		return nil, err
+	}
+	return []specter.Artifact{deps}, nil
+}
+
+func (p DependencyResolutionProcessor) resolveDependencies(units []specter.Unit) (ResolvedDependencies, error) {
 	var nodes []dependencyNode
-	for _, s := range ctx.Units {
-		node := dependencyNode{Unit: s, Dependencies: nil}
+	for _, u := range units {
+		node := dependencyNode{Unit: u, Dependencies: nil}
 		for _, provider := range p.providers {
-			if !provider.Supports(s) {
+			if !provider.Supports(u) {
 				continue
 			}
-			deps := provider.Provide(s)
+			deps := provider.Provide(u)
 			node.Dependencies = newDependencySet(deps...)
 			break
 		}
@@ -71,12 +96,7 @@ func (p DependencyResolutionProcessor) Process(ctx specter.UnitProcessingContext
 	if err != nil {
 		return nil, errors.WrapWithMessage(err, DependencyResolutionFailed, "failed resolving dependencies")
 	}
-
-	return []specter.Artifact{deps}, nil
-}
-
-func GetResolvedDependenciesFromContext(ctx specter.UnitProcessingContext) ResolvedDependencies {
-	return specter.GetContextArtifact[ResolvedDependencies](ctx, ResolvedDependenciesArtifactID)
+	return deps, nil
 }
 
 type dependencySet map[specter.UnitID]struct{}
