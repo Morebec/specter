@@ -410,3 +410,40 @@ func TestUnitLoaderAdapter(t *testing.T) {
 		assert.Nil(t, units)
 	})
 }
+
+func TestUnwrapUnit(t *testing.T) {
+	type then[T any] struct {
+		value T
+		ok    bool
+	}
+	type testCase[T any] struct {
+		name string
+		when specter.Unit
+		then then[T]
+	}
+	tests := []testCase[string]{
+		{
+			name: "Unwrap of non wrapped unit should return zero value and false",
+			when: testutils.NewUnitStub("id", "kind", specter.Source{}),
+			then: then[string]{
+				value: "",
+				ok:    false,
+			},
+		},
+		{
+			name: "Unwrap of a wrapped unit should return the value and true",
+			when: specter.UnitOf("hello", "id", "kind", specter.Source{}),
+			then: then[string]{
+				value: "hello",
+				ok:    true,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotValue, gotOk := specter.UnwrapUnit[string](tt.when)
+			assert.Equal(t, tt.then.value, gotValue)
+			assert.Equal(t, tt.then.ok, gotOk)
+		})
+	}
+}

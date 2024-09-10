@@ -66,6 +66,15 @@ func UnitOf[T any](v T, id UnitID, kind UnitKind, source Source) *WrappingUnit[T
 	}
 }
 
+func UnwrapUnit[T any](unit Unit) (value T, ok bool) {
+	w, ok := unit.(*WrappingUnit[T])
+	if !ok {
+		return value, false
+	}
+
+	return w.wrapped, true
+}
+
 func (w *WrappingUnit[T]) ID() UnitID {
 	return w.id
 }
