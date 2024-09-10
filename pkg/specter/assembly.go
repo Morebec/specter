@@ -15,8 +15,6 @@
 package specter
 
 type PipelineBuilder struct {
-	pipeline *DefaultPipeline
-
 	SourceLoaders      []SourceLoader
 	UnitLoaders        []UnitLoader
 	UnitPreprocessors  []UnitPreprocessor
