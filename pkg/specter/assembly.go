@@ -19,12 +19,14 @@ type PipelineBuilder struct {
 
 	SourceLoaders      []SourceLoader
 	UnitLoaders        []UnitLoader
+	UnitPreprocessors  []UnitPreprocessor
 	UnitProcessors     []UnitProcessor
 	ArtifactProcessors []ArtifactProcessor
 	ArtifactRegistry   ArtifactRegistry
 
 	SourceLoadingStageHooks      SourceLoadingStageHooks
 	UnitLoadingStageHooks        UnitLoadingStageHooks
+	UnitPreprocessingStageHooks  UnitPreprocessingStageHooks
 	UnitProcessingStageHooks     UnitProcessingStageHooks
 	ArtifactProcessingStageHooks ArtifactProcessingStageHooks
 }
@@ -51,6 +53,12 @@ func (b PipelineBuilder) WithSourceLoaders(loaders ...SourceLoader) PipelineBuil
 // WithUnitLoaders configures the UnitLoader of a Pipeline instance.
 func (b PipelineBuilder) WithUnitLoaders(loaders ...UnitLoader) PipelineBuilder {
 	b.UnitLoaders = loaders
+	return b
+}
+
+// WithUnitPreprocessors configures the UnitPreprocessors of a Pipeline instance.
+func (b PipelineBuilder) WithUnitPreprocessors(preprocessors ...UnitPreprocessor) PipelineBuilder {
+	b.UnitPreprocessors = preprocessors
 	return b
 }
 
@@ -82,6 +90,11 @@ func (b PipelineBuilder) WithUnitLoadingStageHooks(h UnitLoadingStageHooks) Pipe
 	return b
 }
 
+func (b PipelineBuilder) WithUnitPreprocessingStageHooks(hooks UnitPreprocessingStageHooks) PipelineBuilder {
+	b.UnitPreprocessingStageHooks = hooks
+	return b
+}
+
 func (b PipelineBuilder) WithUnitProcessingStageHooks(h UnitProcessingStageHooks) PipelineBuilder {
 	b.UnitProcessingStageHooks = h
 	return b
@@ -98,6 +111,10 @@ func (b PipelineBuilder) Build() Pipeline {
 		SourceLoadingStage: sourceLoadingStage{
 			SourceLoaders: b.SourceLoaders,
 			Hooks:         b.SourceLoadingStageHooks,
+		},
+		UnitPreprocessingStage: unitPreprocessingStage{
+			Preprocessors: b.UnitPreprocessors,
+			Hooks:         b.UnitPreprocessingStageHooks,
 		},
 		UnitLoadingStage: unitLoadingStage{
 			Loaders: b.UnitLoaders,
