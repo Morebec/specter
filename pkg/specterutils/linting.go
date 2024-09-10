@@ -36,6 +36,7 @@ const (
 	WarningSeverity LinterResultSeverity = "warning"
 )
 
+// LintingProcessor is both a specter.UnitProcessor and specter.UnitPreprocessor that allows to lint a the loaded specter.Unit.
 type LintingProcessor struct {
 	linters []UnitLinter
 	Logger  specter.Logger
@@ -49,17 +50,37 @@ func (l LintingProcessor) Name() string {
 	return "linting_processor"
 }
 
+func (l LintingProcessor) Preprocess(ctx specter.PipelineContext, units []specter.Unit) ([]specter.Unit, error) {
+	if l.Logger == nil {
+		l.Logger = specter.NewDefaultLogger(specter.DefaultLoggerConfig{Writer: io.Discard})
+	}
+
+	lr := l.lintUnits(ctx.Units)
+	if err := l.handleLinterResultSet(lr); err != nil {
+		return nil, err
+	}
+
+	return units, nil
+}
+
 func (l LintingProcessor) Process(ctx specter.UnitProcessingContext) (artifacts []specter.Artifact, err error) {
 	if l.Logger == nil {
 		l.Logger = specter.NewDefaultLogger(specter.DefaultLoggerConfig{Writer: io.Discard})
 	}
 
-	linter := CompositeUnitLinter(l.linters...)
-
-	lr := linter.Lint(ctx.Units)
+	lr := l.lintUnits(ctx.Units)
 
 	artifacts = append(artifacts, lr)
 
+	if err = l.handleLinterResultSet(lr); err != nil {
+		return artifacts, err
+	}
+
+	return artifacts, err
+}
+
+func (l LintingProcessor) handleLinterResultSet(lr LinterResultSet) error {
+	var err error
 	if lr.HasWarnings() {
 		for _, w := range lr.Warnings() {
 			l.Logger.Warning(fmt.Sprintf("Warning: %s\n", w.Message))
@@ -72,13 +93,14 @@ func (l LintingProcessor) Process(ctx specter.UnitProcessingContext) (artifacts 
 		}
 		err = lr.Errors()
 	}
+	return err
+}
 
-	if !lr.HasWarnings() && !lr.HasErrors() {
-		l.Logger.Success("Units linted successfully.")
-	}
+func (l LintingProcessor) lintUnits(units []specter.Unit) LinterResultSet {
+	linter := CompositeUnitLinter(l.linters...)
 
-	return artifacts, err
-
+	lr := linter.Lint(units)
+	return lr
 }
 
 func GetLintingResultsFromContext(ctx specter.UnitProcessingContext) LinterResultSet {

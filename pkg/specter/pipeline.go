@@ -26,10 +26,12 @@ const (
 	StopAfterSourceLoadingStage  RunMode = "stop-after-source-loading-stage"
 	StopAfterUnitLoadingStage    RunMode = "stop-after-unit-loading-stage"
 	StopAfterUnitProcessingStage RunMode = "stop-after-unit-processing-stage"
+	StopAfterPreprocessingStage  RunMode = "stop-after-preprocessing-stage"
 )
 
 const SourceLoadingFailedErrorCode = "specter.source_loading_failed"
 const UnitLoadingFailedErrorCode = "specter.unit_loading_failed"
+const UnitPreprocessingFailedErrorCode = "specter.unit_preprocessing_failed"
 const UnitProcessingFailedErrorCode = "specter.unit_processing_failed"
 const ArtifactProcessingFailedErrorCode = "specter.artifact_processing_failed"
 
@@ -57,7 +59,7 @@ type PipelineContextData struct {
 }
 
 type Pipeline interface {
-	Run(ctx context.Context, sourceLocations []string, runMode RunMode) (result PipelineResult, err error)
+	Run(ctx context.Context, runMode RunMode, sourceLocations []string) (PipelineResult, error)
 }
 
 type SourceLoadingStage interface {
@@ -65,45 +67,57 @@ type SourceLoadingStage interface {
 }
 
 type UnitLoadingStage interface {
-	Run(ctx PipelineContext, sources []Source) ([]Unit, error)
+	Run(PipelineContext, []Source) ([]Unit, error)
+}
+
+type UnitPreprocessingStage interface {
+	Run(PipelineContext, []Unit) ([]Unit, error)
 }
 
 type UnitProcessingStage interface {
-	Run(ctx PipelineContext, units []Unit) ([]Artifact, error)
+	Run(PipelineContext, []Unit) ([]Artifact, error)
 }
 
 type ArtifactProcessingStage interface {
-	Run(ctx PipelineContext, artifacts []Artifact) error
+	Run(PipelineContext, []Artifact) error
 }
 
 type SourceLoadingStageHooks interface {
-	Before(ctx PipelineContext) error
-	After(ctx PipelineContext) error
+	Before(PipelineContext) error
+	After(PipelineContext) error
 	BeforeSourceLocation(ctx PipelineContext, sourceLocation string) error
 	AfterSourceLocation(ctx PipelineContext, sourceLocation string) error
-	OnError(ctx PipelineContext, err error) error
+	OnError(PipelineContext, error) error
 }
 
 type UnitLoadingStageHooks interface {
-	Before(ctx PipelineContext) error
-	After(ctx PipelineContext) error
-	BeforeSource(ctx PipelineContext, source Source) error
-	AfterSource(ctx PipelineContext, source Source) error
-	OnError(ctx PipelineContext, err error) error
+	Before(PipelineContext) error
+	After(PipelineContext) error
+	BeforeSource(PipelineContext, Source) error
+	AfterSource(PipelineContext, Source) error
+	OnError(PipelineContext, error) error
+}
+
+type UnitPreprocessingStageHooks interface {
+	Before(PipelineContext) error
+	After(PipelineContext) error
+	BeforePreprocessor(ctx PipelineContext, preprocessorName string) error
+	AfterPreprocessor(ctx PipelineContext, preprocessorName string) error
+	OnError(PipelineContext, error) error
 }
 
 type UnitProcessingStageHooks interface {
-	Before(ctx PipelineContext) error
-	After(ctx PipelineContext) error
+	Before(PipelineContext) error
+	After(PipelineContext) error
 	BeforeProcessor(ctx PipelineContext, processorName string) error
 	AfterProcessor(ctx PipelineContext, processorName string) error
-	OnError(ctx PipelineContext, err error) error
+	OnError(PipelineContext, error) error
 }
 
 type ArtifactProcessingStageHooks interface {
-	Before(ctx PipelineContext) error
-	After(ctx PipelineContext) error
+	Before(PipelineContext) error
+	After(PipelineContext) error
 	BeforeProcessor(ctx PipelineContext, processorName string) error
 	AfterProcessor(ctx PipelineContext, processorName string) error
-	OnError(ctx PipelineContext, err error) error
+	OnError(PipelineContext, error) error
 }

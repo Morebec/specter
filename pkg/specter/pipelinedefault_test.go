@@ -377,7 +377,7 @@ func TestDefaultPipeline_Run(t *testing.T) {
 				UnitProcessingStage:     tt.given.UnitProcessingStage,
 				ArtifactProcessingStage: tt.given.ArtifactProcessingStage,
 			}
-			got, err := p.Run(tt.when.ctx, tt.when.sourceLocations, tt.when.runMode)
+			got, err := p.Run(tt.when.ctx, tt.when.runMode, tt.when.sourceLocations)
 			tt.then.expectedError(t, err)
 			assert.Equal(t, tt.then.expectedResult, got)
 		})
@@ -484,7 +484,7 @@ func Test_unitLoadingStage_Run(t *testing.T) {
 
 		stage := specter.DefaultUnitLoadingStage{
 			Loaders: []specter.UnitLoader{
-				specter.FunctionalUnitLoader{
+				specter.UnitLoaderAdapter{
 					LoadFunc: func(s specter.Source) ([]specter.Unit, error) {
 						return nil, nil
 					},
@@ -515,7 +515,7 @@ func Test_unitLoadingStage_Run(t *testing.T) {
 
 		stage := specter.DefaultUnitLoadingStage{
 			Loaders: []specter.UnitLoader{
-				specter.FunctionalUnitLoader{
+				specter.UnitLoaderAdapter{
 					LoadFunc: func(s specter.Source) ([]specter.Unit, error) {
 						return nil, assert.AnError
 					},
@@ -549,7 +549,7 @@ func Test_unitLoadingStage_Run(t *testing.T) {
 		}
 		stage := specter.DefaultUnitLoadingStage{
 			Loaders: []specter.UnitLoader{
-				specter.FunctionalUnitLoader{
+				specter.UnitLoaderAdapter{
 					LoadFunc: func(s specter.Source) ([]specter.Unit, error) {
 						return expectedUnits, nil
 					},
@@ -566,6 +566,83 @@ func Test_unitLoadingStage_Run(t *testing.T) {
 			},
 		)
 
+		require.NoError(t, err)
+		require.Equal(t, expectedUnits, units)
+	})
+}
+
+func Test_unitPreprocessingStage_Run(t *testing.T) {
+	t.Run("should call all hooks under normal processing", func(t *testing.T) {
+		recorder := unitPreprocessingStageHooksCallRecorder{}
+
+		expectedUnits := []specter.Unit{
+			testutils.NewUnitStub("id", "kind", specter.Source{}),
+		}
+		stage := specter.DefaultUnitPreprocessingStage{
+			Preprocessors: []specter.UnitPreprocessor{
+				specter.UnitPreprocessorFunc("unit-tester", func(pipelineContext specter.PipelineContext, units []specter.Unit) ([]specter.Unit, error) {
+					return units, nil
+				}),
+			},
+			Hooks: &recorder,
+		}
+
+		units, err := stage.Run(specter.PipelineContext{Context: context.Background()}, expectedUnits)
+		require.NoError(t, err)
+		require.Equal(t, expectedUnits, units)
+
+		assert.True(t, recorder.beforeCalled)
+		assert.True(t, recorder.beforePreprocessorCalled)
+		assert.Equal(t, "unit-tester", recorder.beforePreprocessorName)
+		assert.True(t, recorder.afterPreprocessorCalled)
+		assert.Equal(t, "unit-tester", recorder.afterPreprocessorName)
+		assert.True(t, recorder.afterCalled)
+	})
+
+	t.Run("should call hooks until error", func(t *testing.T) {
+		recorder := unitPreprocessingStageHooksCallRecorder{}
+
+		stage := specter.DefaultUnitPreprocessingStage{
+			Preprocessors: []specter.UnitPreprocessor{
+				specter.UnitPreprocessorFunc("unit-tester", func(pipelineContext specter.PipelineContext, units []specter.Unit) ([]specter.Unit, error) {
+					return units, assert.AnError
+				}),
+			},
+			Hooks: &recorder,
+		}
+
+		units, err := stage.Run(specter.PipelineContext{Context: context.Background()}, []specter.Unit{
+			testutils.NewUnitStub("id", "kind", specter.Source{}),
+		})
+		require.Error(t, err)
+		require.Nil(t, units)
+
+		assert.True(t, recorder.beforeCalled)
+		assert.True(t, recorder.beforePreprocessorCalled)
+		assert.Equal(t, "unit-tester", recorder.beforePreprocessorName)
+		assert.False(t, recorder.afterPreprocessorCalled)
+		assert.Equal(t, "", recorder.afterPreprocessorName)
+		assert.False(t, recorder.afterCalled)
+		assert.True(t, recorder.onErrorCalled)
+	})
+
+	t.Run("should return the loaded units", func(t *testing.T) {
+
+		recorder := unitPreprocessingStageHooksCallRecorder{}
+
+		expectedUnits := []specter.Unit{
+			testutils.NewUnitStub("id", "kind", specter.Source{}),
+		}
+		stage := specter.DefaultUnitPreprocessingStage{
+			Preprocessors: []specter.UnitPreprocessor{
+				specter.UnitPreprocessorFunc("unit-tester", func(pipelineContext specter.PipelineContext, units []specter.Unit) ([]specter.Unit, error) {
+					return units, nil
+				}),
+			},
+			Hooks: &recorder,
+		}
+
+		units, err := stage.Run(specter.PipelineContext{Context: context.Background()}, expectedUnits)
 		require.NoError(t, err)
 		require.Equal(t, expectedUnits, units)
 	})
@@ -798,6 +875,46 @@ func (s *sourceLoadingStageHooksCallRecorder) AfterSourceLocation(specter.Pipeli
 
 func (s *sourceLoadingStageHooksCallRecorder) OnError(_ specter.PipelineContext, err error) error {
 	s.onErrorCalled = true
+	return err
+}
+
+type unitPreprocessingStageHooksCallRecorder struct {
+	beforeCalled bool
+	afterCalled  bool
+
+	beforePreprocessorCalled bool
+	beforePreprocessorName   string
+
+	afterPreprocessorCalled bool
+	afterPreprocessorName   string
+
+	onErrorCalled bool
+}
+
+func (u *unitPreprocessingStageHooksCallRecorder) Before(specter.PipelineContext) error {
+	u.beforeCalled = true
+	return nil
+}
+
+func (u *unitPreprocessingStageHooksCallRecorder) After(specter.PipelineContext) error {
+	u.afterCalled = true
+	return nil
+}
+
+func (u *unitPreprocessingStageHooksCallRecorder) BeforePreprocessor(_ specter.PipelineContext, preprocessorName string) error {
+	u.beforePreprocessorCalled = true
+	u.beforePreprocessorName = preprocessorName
+	return nil
+}
+
+func (u *unitPreprocessingStageHooksCallRecorder) AfterPreprocessor(_ specter.PipelineContext, preprocessorName string) error {
+	u.afterPreprocessorCalled = true
+	u.afterPreprocessorName = preprocessorName
+	return nil
+}
+
+func (u *unitPreprocessingStageHooksCallRecorder) OnError(_ specter.PipelineContext, err error) error {
+	u.onErrorCalled = true
 	return err
 }
 
