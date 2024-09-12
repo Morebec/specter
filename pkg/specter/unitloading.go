@@ -50,15 +50,15 @@ type Unit interface {
 //
 //	wrapped := Spectre.UnitOf(myValue)
 //	unwrapped := wrapped.Unwrap()
-type WrappingUnit[T any] struct {
+type WrappingUnit struct {
 	id      UnitID
 	kind    UnitKind
 	source  Source
-	wrapped T
+	wrapped any
 }
 
-func UnitOf[T any](v T, id UnitID, kind UnitKind, source Source) *WrappingUnit[T] {
-	return &WrappingUnit[T]{
+func UnitOf(v any, id UnitID, kind UnitKind, source Source) *WrappingUnit {
+	return &WrappingUnit{
 		id:      id,
 		kind:    kind,
 		source:  source,
@@ -67,28 +67,30 @@ func UnitOf[T any](v T, id UnitID, kind UnitKind, source Source) *WrappingUnit[T
 }
 
 func UnwrapUnit[T any](unit Unit) (value T, ok bool) {
-	w, ok := unit.(*WrappingUnit[T])
+	w, ok := unit.(*WrappingUnit)
 	if !ok {
 		return value, false
 	}
 
-	return w.wrapped, true
+	v, ok := w.wrapped.(T)
+
+	return v, ok
 }
 
-func (w *WrappingUnit[T]) ID() UnitID {
+func (w *WrappingUnit) ID() UnitID {
 	return w.id
 }
 
-func (w *WrappingUnit[T]) Kind() UnitKind {
+func (w *WrappingUnit) Kind() UnitKind {
 	return w.kind
 }
 
-func (w *WrappingUnit[T]) Source() Source {
+func (w *WrappingUnit) Source() Source {
 	return w.source
 }
 
 // Unwrap returns the wrapped value.
-func (w *WrappingUnit[T]) Unwrap() T {
+func (w *WrappingUnit) Unwrap() any {
 	return w.wrapped
 }
 

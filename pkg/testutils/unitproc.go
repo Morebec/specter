@@ -19,5 +19,5 @@ import (
 )
 
 func NewUnitStub(id specter.UnitID, kind specter.UnitKind, source specter.Source) specter.Unit {
-	return specter.UnitOf[any](nil, id, kind, source)
+	return specter.UnitOf(nil, id, kind, source)
 }

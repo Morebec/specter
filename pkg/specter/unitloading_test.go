@@ -412,20 +412,20 @@ func TestUnitLoaderAdapter(t *testing.T) {
 }
 
 func TestUnwrapUnit(t *testing.T) {
-	type then[T any] struct {
-		value T
+	type then struct {
+		value any
 		ok    bool
 	}
-	type testCase[T any] struct {
+	type testCase struct {
 		name string
 		when specter.Unit
-		then then[T]
+		then then
 	}
-	tests := []testCase[string]{
+	tests := []testCase{
 		{
 			name: "Unwrap of non wrapped unit should return zero value and false",
 			when: testutils.NewUnitStub("id", "kind", specter.Source{}),
-			then: then[string]{
+			then: then{
 				value: "",
 				ok:    false,
 			},
@@ -433,7 +433,7 @@ func TestUnwrapUnit(t *testing.T) {
 		{
 			name: "Unwrap of a wrapped unit should return the value and true",
 			when: specter.UnitOf("hello", "id", "kind", specter.Source{}),
-			then: then[string]{
+			then: then{
 				value: "hello",
 				ok:    true,
 			},
