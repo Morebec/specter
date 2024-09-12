@@ -447,3 +447,30 @@ func TestUnwrapUnit(t *testing.T) {
 		})
 	}
 }
+
+func TestUnwrapUnitSafe(t *testing.T) {
+
+	type testCase struct {
+		name string
+		when specter.Unit
+		then string
+	}
+	tests := []testCase{
+		{
+			name: "Unwrap of non wrapped unit should return zero value",
+			when: testutils.NewUnitStub("id", "kind", specter.Source{}),
+			then: "",
+		},
+		{
+			name: "Unwrap of a wrapped unit should return the value",
+			when: specter.UnitOf("hello", "id", "kind", specter.Source{}),
+			then: "hello",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotValue := specter.UnwrapUnitSafe[string](tt.when)
+			assert.Equal(t, tt.then, gotValue)
+		})
+	}
+}

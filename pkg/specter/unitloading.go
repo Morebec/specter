@@ -77,6 +77,11 @@ func UnwrapUnit[T any](unit Unit) (value T, ok bool) {
 	return v, ok
 }
 
+func UnwrapUnitSafe[T any](unit Unit) T {
+	t, _ := UnwrapUnit[T](unit)
+	return t
+}
+
 func (w *WrappingUnit) ID() UnitID {
 	return w.id
 }
